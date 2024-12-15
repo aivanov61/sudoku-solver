@@ -18,9 +18,9 @@ class RectangularBlock:
     The size and position of the block are provided during instantiation.
     """
     BORDERS= [
-        [ Border({'top','left'}),    Border({'top'}),    Border({'top','right'}) ],
-        [ Border({'left'}),          Border(),           Border({'right'}) ],
-        [ Border({'left','bottom'}), Border({'bottom'}), Border({'right','bottom'}) ],
+        [ Border({Border.TOP,Border.LEFT}),    Border({Border.TOP}),    Border({Border.TOP,Border.RIGHT}) ],
+        [ Border({Border.LEFT}),               Border(),                Border({Border.RIGHT}) ],
+        [ Border({Border.LEFT,Border.BOTTOM}), Border({Border.BOTTOM}), Border({Border.RIGHT,Border.BOTTOM}) ],
     ]
 
     def __init__(self, parent, row, col, rows=0, cols=0):

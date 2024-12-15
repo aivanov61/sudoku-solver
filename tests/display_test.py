@@ -34,17 +34,17 @@ class TestDisplay(TestCase):
         Display.term.inkey(timeout=1.0)
 
     def draw_block(self, block_row, block_col):
-        Display.draw_cell(row=block_row*3 + 0, col=block_col*3 + 0, border=Border({'top','left'}))
-        Display.draw_cell(row=block_row*3 + 0, col=block_col*3 + 1, border=Border({'top'}))
-        Display.draw_cell(row=block_row*3 + 0, col=block_col*3 + 2, border=Border({'top','right'}))
+        Display.draw_cell(row=block_row*3 + 0, col=block_col*3 + 0, border=Border({Border.TOP,Border.LEFT}))
+        Display.draw_cell(row=block_row*3 + 0, col=block_col*3 + 1, border=Border({Border.TOP}))
+        Display.draw_cell(row=block_row*3 + 0, col=block_col*3 + 2, border=Border({Border.TOP,Border.RIGHT}))
 
-        Display.draw_cell(row=block_row*3 + 1, col=block_col*3 + 0, border=Border({'left'}))
+        Display.draw_cell(row=block_row*3 + 1, col=block_col*3 + 0, border=Border({Border.LEFT}))
         Display.draw_cell(row=block_row*3 + 1, col=block_col*3 + 1, border=Border())
-        Display.draw_cell(row=block_row*3 + 1, col=block_col*3 + 2, border=Border({'right'}))
+        Display.draw_cell(row=block_row*3 + 1, col=block_col*3 + 2, border=Border({Border.RIGHT}))
 
-        Display.draw_cell(row=block_row*3 + 2, col=block_col*3 + 0, border=Border({'left','bottom'}))
-        Display.draw_cell(row=block_row*3 + 2, col=block_col*3 + 1, border=Border({'bottom'}))
-        Display.draw_cell(row=block_row*3 + 2, col=block_col*3 + 2, border=Border({'right','bottom'}))
+        Display.draw_cell(row=block_row*3 + 2, col=block_col*3 + 0, border=Border({Border.LEFT,Border.BOTTOM}))
+        Display.draw_cell(row=block_row*3 + 2, col=block_col*3 + 1, border=Border({Border.BOTTOM}))
+        Display.draw_cell(row=block_row*3 + 2, col=block_col*3 + 2, border=Border({Border.RIGHT,Border.BOTTOM}))
 
     def fill_blocks(self):
         for row in range(9):

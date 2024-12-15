@@ -11,20 +11,25 @@ from blessed import Terminal
 echo = functools.partial(print, end='', flush=True)
 
 class Border:
+    TOP = 'top'
+    LEFT = 'left'
+    RIGHT = 'right'
+    BOTTOM = 'bottom'
+
     def __init__(self, borders=set()):
         self.__borders = borders
 
     def is_top(self):
-        return 'top' in self.__borders
+        return self.TOP in self.__borders
 
     def is_left(self):
-        return 'left' in self.__borders
+        return self.LEFT in self.__borders
 
     def is_right(self):
-        return 'right' in self.__borders
+        return self.RIGHT in self.__borders
 
     def is_bottom(self):
-        return 'bottom' in self.__borders
+        return self.BOTTOM in self.__borders
 
 class Display:
     """
