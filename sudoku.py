@@ -20,7 +20,7 @@ sys.path.insert(0, '.')
 
 from copyright import Copyright
 from commands import Commands
-from display import Display, echo
+from display import Display
 from input import Input
 
 # NOTE: supports different kinds of puzzles - change the following line
@@ -62,31 +62,27 @@ class Main:
         self._puzzle.display_status()
 
     def __handle_puzzle_func(self, cmd):
-        puzzle_func = None
-        try:
-            puzzle_func = getattr(self._puzzle, cmd)
-        except Exception as e:
-            self.__warn(f'This puzzle does not support the "{cmd}" command')
-            self.__check_and_handle_forced_quit(cmd)
+        self.__report_unsupported_func(cmd) if not hasattr(self._puzzle, cmd) else self.__execute_puzzle_func(cmd)
+
+    def __report_unsupported_func(self, cmd):
+        Display.warn(f'This puzzle does not support the "{cmd}" command')
+        self.__handle_possible_forced_quit(cmd)
+
+    def __handle_possible_forced_quit(self, cmd):
+        if not cmd == 'quit':
             return
+        Display.move_to_status_line()
+        print('\n' + Display.term.clear_eol + 'FORCING quit')
+        self._puzzle.is_playing = False
+
+    def __execute_puzzle_func(self, cmd):
         try:
-            puzzle_func()
+            getattr(self._puzzle, cmd)()
         except Exception as e:
-            self.__warn(f'This puzzle\'s "{cmd}" command is broken!')
-            self.__check_and_handle_forced_quit(cmd)
+            Display.warn(f'This puzzle\'s "{cmd}" command is broken!')
+            self.__handle_possible_forced_quit(cmd)
             return
         self._puzzle.display_status()
-
-    def __warn(self, msg):
-        Display.move_to_status_line()
-        echo(Display.term.clear_eol + Display.term.yellow(msg))
-        Display.move_to_cell(*self._puzzle.selected_cell)
-
-    def __check_and_handle_forced_quit(self, cmd):
-        if cmd == 'quit':
-            Display.move_to_status_line()
-            print('\n' + Display.term.clear_eol + 'FORCING quit')
-            self._puzzle.is_playing = False
 
 if __name__ == '__main__':
     Main().run()

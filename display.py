@@ -133,16 +133,21 @@ class Display:
         echo(' ' * (Display.CELL_HORIZONTAL_SIZE - len(values)))
         echo(''.join(str(v).translate(Display.small_nums) for v in values))
 
+    def status_line_location():
+        return 0, (Display.geom['v_cells'] or 0) * Display.CELL_HEIGHT + 1
+
     def move_to_status_line():
-        x = 0
-        y = (Display.geom['v_cells'] or 0) * Display.CELL_HEIGHT + 1
-        echo(Display.term.move_xy(x, y))
+        echo(Display.term.move_xy(*Display.status_line_location()))
 
     def move_to_cell(row=0, col=0):
         """Move to the middle of the cell"""
         x = Display.x(col) + Display.CELL_WIDTH // 2
         y = Display.y(row) + Display.CELL_VALUE_ROW
         echo(Display.term.move_xy(x, y))
+
+    def warn(msg):
+        with Display.term.location(*Display.status_line_location()):
+            echo(Display.term.clear_eol + Display.term.yellow(msg))
 
     # These character symbols are re-used from https://github.com/thisisparker/cursewords/blob/master/cursewords/characters.py
     vline = "│"

@@ -20,12 +20,18 @@ class TestDisplay(TestCase):
 
     def test_screen_size_validation(self):
         Display.validate_screen_size()
+        Display.term.inkey(timeout=1.0)
 
     def test_draw_puzzle(self):
         for row in range(3):
             for col in range(3):
                 self.draw_block(row, col)
         self.fill_blocks()
+        Display.term.inkey(timeout=1.0)
+
+    def test_warn(self0):
+        Display.warn("Testing - should be yellow")
+        Display.term.inkey(timeout=1.0)
 
     def draw_block(self, block_row, block_col):
         Display.draw_cell(row=block_row*3 + 0, col=block_col*3 + 0, border=Border({'top','left'}))

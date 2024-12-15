@@ -95,8 +95,9 @@ the years, that clean code will have certain look and feel.  Generally:
 - Unit testing is helpful to:
   - Provide simple way to test embedded operations/functions
   - Guide new coders on how stuff is supposed to work and how to use it
-- Test Driven Development (TDD) is super-useful for building the building blocks!
-- Using and IDE is **extremely** helpful since it helps drill into and back out of functions which are often in different files
+- Test Driven Development (TDD) is super-useful for coding the building blocks!
+- Using an IDE is **extremely** helpful since it helps drill into and back out
+of functions which are often in different files (I've been using VSCode lately)
 
 #### File layout
 
@@ -148,9 +149,10 @@ the display.  Key functions/attributes in this class are:
 #### Input
 
 Get terminal input and decode it using the commands given. It relies on commands
-given in a specific format (see Commands below).  It provides a single function.
+given in a specific format (see Commands below).  It provides a single function:
 
-- get_cmd() - Wait for, and get, keyboard input.  It handles exceptions and CTRL-C (keyboard interrupt) and returns a valid command.  Keyboard input that is not
+- get_cmd() - Wait for, and get, keyboard input.  It handles exceptions and CTRL-C
+(keyboard interrupt) and returns a valid command.  Keyboard input that is not
 recognized is ignored.
 
 #### [Rest of classes TBD]
