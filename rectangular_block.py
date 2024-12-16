@@ -5,10 +5,12 @@
 # -----------------------------------------------------------------------------
 
 import sys
-sys.path.insert(0, '.')
+
+sys.path.insert(0, ".")
 
 from cell import Cell
 from display import Border
+
 
 class RectangularBlock:
     """
@@ -17,11 +19,14 @@ class RectangularBlock:
 
     The size and position of the block are provided during instantiation.
     """
-    BORDERS= [
-        [ Border({Border.TOP,Border.LEFT}),    Border({Border.TOP}),    Border({Border.TOP,Border.RIGHT}) ],
-        [ Border({Border.LEFT}),               Border(),                Border({Border.RIGHT}) ],
-        [ Border({Border.LEFT,Border.BOTTOM}), Border({Border.BOTTOM}), Border({Border.RIGHT,Border.BOTTOM}) ],
+
+    # fmt: off
+    BORDERS = [
+        [ Border({Border.TOP, Border.LEFT}),    Border({Border.TOP}),    Border({Border.TOP, Border.RIGHT}) ],
+        [ Border({Border.LEFT}),                Border(),                Border({Border.RIGHT}) ],
+        [ Border({Border.BOTTOM, Border.LEFT}), Border({Border.BOTTOM}), Border({Border.BOTTOM, Border.RIGHT}) ],
     ]
+    # fmt: on
 
     def __init__(self, parent, row, col, rows=0, cols=0):
         self.parent = parent
@@ -39,8 +44,8 @@ class RectangularBlock:
 
     def phys_pos(self, row, col):
         return {
-            'row': self.block_row * self.rows + row,
-            'col': self.block_col * self.cols + col
+            "row": self.block_row * self.rows + row,
+            "col": self.block_col * self.cols + col,
         }
 
     def render(self):
@@ -49,7 +54,7 @@ class RectangularBlock:
                 self._cells[row][col].render()
 
     def cell(self, row, col):
-        return self._cells[row % self.rows ][col % self.cols]
+        return self._cells[row % self.rows][col % self.cols]
 
     def values(self):
         return range(1, self.rows * self.cols + 1)

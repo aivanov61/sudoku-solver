@@ -8,9 +8,10 @@ import sys
 from unittest import main, TestCase
 from unittest.mock import MagicMock
 
-sys.path.insert(0, '.')
+sys.path.insert(0, ".")
 
 from rectangular_block import RectangularBlock
+
 
 class TestRectangularBlock(TestCase):
 
@@ -31,5 +32,6 @@ class TestRectangularBlock(TestCase):
         block2 = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
         block1.render()
         block2.render()
+
 
 main()

@@ -5,26 +5,30 @@
 # -----------------------------------------------------------------------------
 
 import sys
-sys.path.insert(0, '.')
+
+sys.path.insert(0, ".")
 
 from commands import Commands
 from display import Display, echo
 from rectangular_block import RectangularBlock
+
 
 class Puzzle3x3:
     H_BLOCKS = 3
     V_BLOCKS = 3
 
     def __init__(self):
-        Display.geometry({'h_cells': self.H_BLOCKS ** 2 , 'v_cells': self.V_BLOCKS ** 2})
+        Display.geometry({"h_cells": self.H_BLOCKS**2, "v_cells": self.V_BLOCKS**2})
         Display.validate_screen_size()
 
         self._blocks = [[None for _col in range(self.H_BLOCKS)] for _row in range(self.V_BLOCKS)]
         for block_row in range(self.H_BLOCKS):
             for block_col in range(self.V_BLOCKS):
-                self._blocks[block_row][block_col] = RectangularBlock(self, row=block_row, col=block_col, rows=self.V_BLOCKS, cols=self.H_BLOCKS)
+                self._blocks[block_row][block_col] = RectangularBlock(
+                    self, row=block_row, col=block_col, rows=self.V_BLOCKS, cols=self.H_BLOCKS
+                )
 
-        self.selected_cell = (0,0) # row, col (NOT x, y)
+        self.selected_cell = (0, 0)  # row, col (NOT x, y)
         self.is_playing = True
 
     def render(self):
@@ -49,7 +53,7 @@ class Puzzle3x3:
     def help(self):
         Display.clear_screen()
         print(Commands.long_help())
-        echo('Hit any key to continue: ')
+        echo("Hit any key to continue: ")
         try:
             with Display.term.cbreak():
                 Display.term.inkey()
@@ -68,7 +72,7 @@ class Puzzle3x3:
 
     def down(self):
         row, col = self.selected_cell
-        row = row + 1 if row < Display.geom['v_cells'] - 1 else row
+        row = row + 1 if row < Display.geom["v_cells"] - 1 else row
         self.selected_cell = (row, col)
 
     def left(self):
@@ -78,7 +82,7 @@ class Puzzle3x3:
 
     def right(self):
         row, col = self.selected_cell
-        col = col + 1 if col < Display.geom['h_cells'] - 1 else col
+        col = col + 1 if col < Display.geom["h_cells"] - 1 else col
         self.selected_cell = (row, col)
 
     def play(self):

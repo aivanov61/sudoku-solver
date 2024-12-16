@@ -8,9 +8,10 @@ import sys
 from unittest import main, TestCase
 from unittest.mock import MagicMock
 
-sys.path.insert(0, '.')
+sys.path.insert(0, ".")
 
 from cell import Cell
+
 
 class TestCell(TestCase):
     MAX_VALUE = 10
@@ -20,7 +21,7 @@ class TestCell(TestCase):
         self.cell = Cell(self.parent, **self.x())
 
     def x(self):
-        return{'row':0, 'col':0}
+        return {"row": 0, "col": 0}
 
     def __setup_parent(self):
         """
@@ -28,7 +29,7 @@ class TestCell(TestCase):
         1. values() - range of legal values
         """
         self.parent = MagicMock()
-        self.parent.values.return_value = range(1,self.MAX_VALUE)
+        self.parent.values.return_value = range(1, self.MAX_VALUE)
 
     def test_cell_initial_value_is_not_set(self):
         self.assertIsNone(self.cell.value())
@@ -42,5 +43,6 @@ class TestCell(TestCase):
 
     def test_cell_can_render(self):
         self.cell.render()
+
 
 main()

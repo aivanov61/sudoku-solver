@@ -16,7 +16,8 @@
 # -----------------------------------------------------------------------------
 
 import sys
-sys.path.insert(0, '.')
+
+sys.path.insert(0, ".")
 
 from copyright import Copyright
 from commands import Commands
@@ -25,6 +26,7 @@ from input import Input
 
 # NOTE: supports different kinds of puzzles - change the following line
 from puzzle_3x3 import Puzzle3x3 as Puzzle
+
 
 class Main:
     """
@@ -37,7 +39,7 @@ class Main:
         self._puzzle.render()
         self.__play()
         Display.move_to_status_line()
-        print('\n')
+        print("\n")
 
     def __splash(self):
         Copyright.splash()
@@ -69,10 +71,10 @@ class Main:
         self.__handle_possible_forced_quit(cmd)
 
     def __handle_possible_forced_quit(self, cmd):
-        if not cmd == 'quit':
+        if not cmd == "quit":
             return
         Display.move_to_status_line()
-        print('\n' + Display.term.clear_eol + 'FORCING quit')
+        print("\n" + Display.term.clear_eol + "FORCING quit")
         self._puzzle.is_playing = False
 
     def __execute_puzzle_func(self, cmd):
@@ -84,5 +86,6 @@ class Main:
             return
         self._puzzle.display_status()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     Main().run()

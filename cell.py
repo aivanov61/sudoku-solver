@@ -6,6 +6,7 @@
 
 from display import Display, Border
 
+
 class Cell:
     """
     A Cell is the basic building block of a Sudoku puzzle.
@@ -31,14 +32,14 @@ class Cell:
 
     def set(self, value):
         if value not in self._parent.values():
-            raise ValueError(f'Cell value must be in {self._parent.values()}')
+            raise ValueError(f"Cell value must be in {self._parent.values()}")
         self._value = value
 
     def update(self, value, guess=False):
         # TODO: set color
         self.set(value)
-        Display.draw_cell_value(self.row, self.col, self._value or ' ')
+        Display.draw_cell_value(self.row, self.col, self._value or " ")
 
     def render(self):
         Display.draw_cell(self.row, self.col, self.borders)
-        Display.draw_cell_value(self.row, self.col, self._value or ' ')
+        Display.draw_cell_value(self.row, self.col, self._value or " ")
