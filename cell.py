@@ -22,6 +22,7 @@ class Cell:
 
     def __init__(self, parent, row=0, col=0, borders=Border()):
         self._value = None
+        self._attrs = dict()
         self._parent = parent
         self.row = row
         self.col = col
@@ -30,16 +31,21 @@ class Cell:
     def value(self):
         return self._value
 
-    def set(self, value):
+    def set(self, value, attrs=dict()):
         if value not in self._parent.values():
             raise ValueError(f"Cell value must be in {self._parent.values()}")
         self._value = value
+        self._attrs = attrs
 
-    def update(self, value, guess=False):
-        # TODO: set color
-        self.set(value)
-        Display.draw_cell_value(self.row, self.col, self._value or " ")
+    def update(self, value, attrs=dict()):
+        prev_attr = self._attrs
+        self.set(value, attrs)
+        (
+            Display.draw_cell_value(self.row, self.col, self._value or " ", self._attrs)
+            if prev_attr == self._attrs
+            else self.render()
+        )
 
     def render(self):
-        Display.draw_cell(self.row, self.col, self.borders)
-        Display.draw_cell_value(self.row, self.col, self._value or " ")
+        Display.draw_cell(self.row, self.col, self.borders, self._attrs)
+        Display.draw_cell_value(self.row, self.col, self._value or " ", self._attrs)

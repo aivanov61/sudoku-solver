@@ -38,7 +38,7 @@ class Puzzle3x3:
                 self._blocks[block_row][block_col].render()
         self.display_status()
 
-    def block(self, row, col):
+    def block(self, row, col) -> RectangularBlock:
         return self._blocks[row // self.V_BLOCKS][col // self.H_BLOCKS]
 
     def display_status(self):

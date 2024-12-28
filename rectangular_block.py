@@ -53,7 +53,7 @@ class RectangularBlock:
             for col in range(self.cols):
                 self._cells[row][col].render()
 
-    def cell(self, row, col):
+    def cell(self, row, col) -> Cell:
         return self._cells[row % self.rows][col % self.cols]
 
     def values(self):

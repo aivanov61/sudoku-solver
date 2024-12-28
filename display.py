@@ -7,6 +7,7 @@
 import functools
 
 from blessed import Terminal
+from display_attrs import DisplayAttrs as Attrs
 
 echo = functools.partial(print, end="", flush=True)
 
@@ -99,37 +100,69 @@ class Display:
                 return is_size_ok
         return is_size_ok
 
-    def draw_cell(row=0, col=0, border=Border()):
+    def draw_cell(row=0, col=0, border=Border(), attrs=dict()):
         x, y = Display.x(col), Display.y(row)
         echo(Display.term.move_xy(x, y))
-        Display.__draw_top_line(border)
+        Display.__draw_top_line(border, attrs)
         for line_no in range(1, Display.CELL_HEIGHT):
             echo(Display.term.move_xy(x, y + line_no))
-            Display.__draw_inner_line(border)
+            Display.__draw_inner_line(border, attrs)
         echo(Display.term.move_xy(x, y + Display.CELL_HEIGHT))
-        Display.__draw_bottom_line(border)
+        Display.__draw_bottom_line(border, attrs)
 
-    def __draw_top_line(border):
-        ulcorner = Display.fullblock if border.is_top() or border.is_left() else Display.bigplus
-        hline = Display.fullblock if border.is_top() else Display.hline
-        urcorner = Display.fullblock if border.is_top() or border.is_right() else Display.bigplus
+    def __draw_top_line(border, attrs):
+        ulcorner = (
+            Attrs.outer_border(Display.fullblock, attrs)
+            if border.is_top() or border.is_left()
+            else Attrs.inner_border(Display.bigplus, attrs)
+        )
+        hline = (
+            Attrs.outer_border(Display.fullblock, attrs)
+            if border.is_top()
+            else Attrs.inner_border(Display.hline, attrs)
+        )
+        urcorner = (
+            Attrs.outer_border(Display.fullblock, attrs)
+            if border.is_top() or border.is_right()
+            else Attrs.inner_border(Display.bigplus, attrs)
+        )
         echo(ulcorner + hline * Display.CELL_HORIZONTAL_SIZE + urcorner)
 
-    def __draw_inner_line(border):
-        lvline = Display.fullblock if border.is_left() else Display.vline
-        rvline = Display.fullblock if border.is_right() else Display.vline
-        echo(lvline + " " * Display.CELL_HORIZONTAL_SIZE + rvline)
+    def __draw_inner_line(border, attrs):
+        lvline = (
+            Attrs.outer_border(Display.fullblock, attrs)
+            if border.is_left()
+            else Attrs.inner_border(Display.vline, attrs)
+        )
+        rvline = (
+            Attrs.outer_border(Display.fullblock, attrs)
+            if border.is_right()
+            else Attrs.inner_border(Display.vline, attrs)
+        )
+        echo(lvline + Attrs.render_bg(" " * Display.CELL_HORIZONTAL_SIZE, attrs) + rvline)
 
-    def __draw_bottom_line(border):
-        llcorner = Display.fullblock if border.is_bottom() or border.is_left() else Display.bigplus
-        hline = Display.fullblock if border.is_bottom() else Display.hline
-        lrcorner = Display.fullblock if border.is_bottom() or border.is_right() else Display.bigplus
+    def __draw_bottom_line(border, attrs):
+        llcorner = (
+            Attrs.outer_border(Display.fullblock, attrs)
+            if border.is_bottom() or border.is_left()
+            else Attrs.inner_border(Display.bigplus, attrs)
+        )
+        hline = (
+            Attrs.outer_border(Display.fullblock, attrs)
+            if border.is_bottom()
+            else Attrs.inner_border(Display.hline, attrs)
+        )
+        lrcorner = (
+            Attrs.outer_border(Display.fullblock, attrs)
+            if border.is_bottom() or border.is_right()
+            else Attrs.inner_border(Display.bigplus, attrs)
+        )
         echo(llcorner + hline * Display.CELL_HORIZONTAL_SIZE + lrcorner)
 
-    def draw_cell_value(row=0, col=0, value=" "):
+    def draw_cell_value(row=0, col=0, value=" ", attrs=dict()):
         """Draw the value in the middle of the cell"""
         Display.move_to_cell(row, col)
-        echo(str(value))
+        echo(Attrs.render(str(value), attrs))
 
     def move_to_cell(row=0, col=0):
         """Move to the middle of the cell"""
@@ -137,14 +170,14 @@ class Display:
         y = Display.y(row) + Display.CELL_VALUE_ROW
         echo(Display.term.move_xy(x, y))
 
-    def draw_cell_possible_values(row=0, col=0, values=[]):
+    def draw_cell_possible_values(row=0, col=0, values=[], attrs=dict()):
         """Draw the possible values at the bottom of the cell"""
         values = values if len(values) <= Display.CELL_HORIZONTAL_SIZE else "....."
         x = Display.x(col) + 1
         y = Display.y(row) + Display.CELL_VALUES_ROW
         echo(Display.term.move_xy(x, y))
-        echo(" " * (Display.CELL_HORIZONTAL_SIZE - len(values)))
-        echo("".join(str(v).translate(Display.small_nums) for v in values))
+        echo(Attrs.render_bg(" " * (Display.CELL_HORIZONTAL_SIZE - len(values)), attrs))
+        echo(Attrs.render_bg("".join(str(v).translate(Display.small_nums) for v in values), attrs))
 
     def move_to_status_line():
         echo(Display.term.move_xy(*Display.status_line_location()))
