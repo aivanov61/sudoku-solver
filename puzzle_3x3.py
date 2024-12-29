@@ -63,7 +63,7 @@ class Puzzle3x3:
 
     def value(self, val, guess=False):
         row, col = self.selected_cell
-        self.block(row, col).cell(row, col).update(val, guess)
+        self.block(row, col).cell(row, col).update(val)
 
     def up(self):
         row, col = self.selected_cell

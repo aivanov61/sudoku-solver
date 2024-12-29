@@ -110,6 +110,38 @@ class Display:
         echo(Display.term.move_xy(x, y + Display.CELL_HEIGHT))
         Display.__draw_bottom_line(border, attrs)
 
+    def draw_cell_value(row=0, col=0, value=" ", attrs=dict()):
+        """Draw the value in the middle of the cell using the rendered attributes"""
+        Display.move_to_cell(row, col)
+        rendered_attrs = Display.__rendered_attrs(attrs)
+        echo(rendered_attrs + str(value) + Display.term.normal)
+
+    def move_to_cell(row=0, col=0):
+        """Move to the middle of the cell"""
+        x = Display.x(col) + Display.CELL_WIDTH // 2
+        y = Display.y(row) + Display.CELL_VALUE_ROW
+        echo(Display.term.move_xy(x, y))
+
+    def draw_cell_possible_values(row=0, col=0, values=[], attrs=dict()):
+        """Draw the possible values at the bottom of the cell"""
+        values = values if len(values) <= Display.CELL_HORIZONTAL_SIZE else "....."
+        x = Display.x(col) + 1
+        y = Display.y(row) + Display.CELL_VALUES_ROW
+        echo(Display.term.move_xy(x, y))
+        rendered_attrs = Display.__rendered_bg_attrs(attrs)
+        echo(rendered_attrs + " " * (Display.CELL_HORIZONTAL_SIZE - len(values)) + Display.term.normal)
+        echo(rendered_attrs + "".join(str(v).translate(Display.small_nums) for v in values) + Display.term.normal)
+
+    def move_to_status_line():
+        echo(Display.term.move_xy(*Display.status_line_location()))
+
+    def status_line_location():
+        return 0, (Display.geom["v_cells"] or 0) * Display.CELL_HEIGHT + 1
+
+    def warn(msg):
+        with Display.term.location(*Display.status_line_location()):
+            echo(Display.term.clear_eol + Display.term.yellow(msg))
+
     def __draw_top_line(border, attrs):
         ulcorner = (
             Attrs.outer_border(Display.fullblock, attrs)
@@ -139,7 +171,8 @@ class Display:
             if border.is_right()
             else Attrs.inner_border(Display.vline, attrs)
         )
-        echo(lvline + Attrs.render_bg(" " * Display.CELL_HORIZONTAL_SIZE, attrs) + rvline)
+        rendered_str = Display.__rendered_bg_attrs(attrs) + " " * Display.CELL_HORIZONTAL_SIZE + Display.term.normal
+        echo(lvline + rendered_str + rvline)
 
     def __draw_bottom_line(border, attrs):
         llcorner = (
@@ -159,35 +192,11 @@ class Display:
         )
         echo(llcorner + hline * Display.CELL_HORIZONTAL_SIZE + lrcorner)
 
-    def draw_cell_value(row=0, col=0, value=" ", attrs=dict()):
-        """Draw the value in the middle of the cell"""
-        Display.move_to_cell(row, col)
-        echo(Attrs.render(str(value), attrs))
+    def __rendered_attrs(attrs) -> str:
+        return getattr(Display.term, Attrs.render(attrs))
 
-    def move_to_cell(row=0, col=0):
-        """Move to the middle of the cell"""
-        x = Display.x(col) + Display.CELL_WIDTH // 2
-        y = Display.y(row) + Display.CELL_VALUE_ROW
-        echo(Display.term.move_xy(x, y))
-
-    def draw_cell_possible_values(row=0, col=0, values=[], attrs=dict()):
-        """Draw the possible values at the bottom of the cell"""
-        values = values if len(values) <= Display.CELL_HORIZONTAL_SIZE else "....."
-        x = Display.x(col) + 1
-        y = Display.y(row) + Display.CELL_VALUES_ROW
-        echo(Display.term.move_xy(x, y))
-        echo(Attrs.render_bg(" " * (Display.CELL_HORIZONTAL_SIZE - len(values)), attrs))
-        echo(Attrs.render_bg("".join(str(v).translate(Display.small_nums) for v in values), attrs))
-
-    def move_to_status_line():
-        echo(Display.term.move_xy(*Display.status_line_location()))
-
-    def status_line_location():
-        return 0, (Display.geom["v_cells"] or 0) * Display.CELL_HEIGHT + 1
-
-    def warn(msg):
-        with Display.term.location(*Display.status_line_location()):
-            echo(Display.term.clear_eol + Display.term.yellow(msg))
+    def __rendered_bg_attrs(attrs) -> str:
+        return getattr(Display.term, Attrs.render_bg(attrs))
 
     # These character symbols are re-used from https://github.com/thisisparker/cursewords/blob/master/cursewords/characters.py
     vline = "│"
