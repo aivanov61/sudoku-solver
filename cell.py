@@ -22,7 +22,7 @@ class Cell:
 
     def __init__(self, parent, row=0, col=0, borders=Border()):
         self._value = None
-        self._attrs = dict()
+        self._attrs = ()
         self._parent = parent
         self.row = row
         self.col = col
@@ -31,13 +31,13 @@ class Cell:
     def value(self):
         return self._value
 
-    def set(self, value, attrs=dict()):
+    def set(self, value, attrs=()):
         if value not in self._parent.values():
             raise ValueError(f"Cell value must be in {self._parent.values()}")
         self._value = value
         self._attrs = attrs
 
-    def update(self, value, attrs=dict()):
+    def update(self, value, attrs=()):
         prev_attr = self._attrs
         self.set(value, attrs)
         (

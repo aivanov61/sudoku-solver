@@ -25,8 +25,7 @@ class DisplayAttrs:
     CONFLICTING = "conflicting"
     CONFLICTED = "conflicted"
 
-    # Initial background level is black (no guess), increases the more guesses are made
-    bg_level = 0
+    DEFAULT_COLOR = "darkorange3"
 
     @dataclass
     class FgBgAttr:
@@ -66,7 +65,7 @@ class DisplayAttrs:
     def __get_fg_bg(_attrs):
         primary = DisplayAttrs.__get_attrs(_attrs, DisplayAttrs.ATTRS_PRIMARY)
         optional = DisplayAttrs.__get_attrs(_attrs, DisplayAttrs.ATTRS_OPTIONAL)
-        fg = "".join(optional.fg or primary.fg or ())
+        fg = "".join(optional.fg or primary.fg or DisplayAttrs.DEFAULT_COLOR)
         level = next(iter([attr["level"] for attr in _attrs if isinstance(attr, dict) and "level" in attr]), None)
         bg_level = f"gray{level}" if level else ()
         bg = "".join(optional.bg or primary.bg or bg_level)

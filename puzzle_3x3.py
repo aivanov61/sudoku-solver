@@ -10,12 +10,14 @@ sys.path.insert(0, ".")
 
 from commands import Commands
 from display import Display, echo
+from display_attrs import DisplayAttrs
 from rectangular_block import RectangularBlock
 
 
 class Puzzle3x3:
     H_BLOCKS = 3
     V_BLOCKS = 3
+    BG_LEVEL_DELTA = 10
 
     def __init__(self):
         Display.geometry({"h_cells": self.H_BLOCKS**2, "v_cells": self.V_BLOCKS**2})
@@ -30,6 +32,8 @@ class Puzzle3x3:
 
         self.selected_cell = (0, 0)  # row, col (NOT x, y)
         self.is_playing = True
+        self.initializing = True
+        self.bg_level = 0
 
     def render(self):
         Display.clear_screen()
@@ -53,17 +57,15 @@ class Puzzle3x3:
     def help(self):
         Display.clear_screen()
         print(Commands.long_help())
-        echo("Hit any key to continue: ")
-        try:
-            with Display.term.cbreak():
-                Display.term.inkey()
-        except:
-            pass
+        Display.hit_any_key_to_continue()
         self.render()
 
     def value(self, val, guess=False):
         row, col = self.selected_cell
-        self.block(row, col).cell(row, col).update(val)
+        self.__increment_bg_level() if guess and not self.initializing else 0
+        attr = [DisplayAttrs.INITIAL] if self.initializing else [DisplayAttrs.GUESS] if guess else []
+        attr += [dict(level=self.bg_level)] if self.bg_level else []
+        self.block(row, col).cell(row, col).update(val, tuple(attr))
 
     def up(self):
         row, col = self.selected_cell
@@ -86,9 +88,22 @@ class Puzzle3x3:
         self.selected_cell = (row, col)
 
     def play(self):
+        self.initializing = False
         Commands.CMDS = dict(list(Commands.COMMON_CMDS.items()) + list(Commands.PLAY_COMMANDS.items()))
         self.display_status()
 
     def init(self):
+        self.initializing = True
         Commands.CMDS = dict(list(Commands.COMMON_CMDS.items()) + list(Commands.INIT_COMMANDS.items()))
         self.display_status()
+
+    def undo(self):
+        new_level = self.bg_level - self.BG_LEVEL_DELTA
+        self.bg_level = new_level if new_level >= 0 else 0
+
+    def __increment_bg_level(self):
+        new_level = self.bg_level + self.BG_LEVEL_DELTA
+        if new_level > 100:
+            Display.warn("No more shades of gray left - using last shade. ", wait=True)
+        else:
+            self.bg_level = new_level

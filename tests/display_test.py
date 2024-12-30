@@ -32,7 +32,7 @@ class TestDisplay(TestCase):
         Display.term.inkey(timeout=1.0)
 
     def test_warn(self0):
-        Display.warn("Testing - should be yellow")
+        Display.warn("Testing - this line should be yellow")
         Display.term.inkey(timeout=1.0)
 
     def draw_block(self, block_row, block_col):

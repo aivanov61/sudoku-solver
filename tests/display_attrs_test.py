@@ -18,11 +18,11 @@ class TestDisplayRenderAttrs(TestCase):
 
     def test_no_attributes_renders_normal_terminal_output(self):
         out = DisplayAttrs.render(dict())
-        self.assertEqual(out, "normal")
+        self.assertEqual(out, DisplayAttrs.DEFAULT_COLOR)
 
     def test_unrecognized_attributes_renders_normal_terminal_output(self):
         out = DisplayAttrs.render(dict(junk1="junk", junk2=("JUNK"), junk3=DisplayAttrs.FgBgAttr(("blue"), ("red"))))
-        self.assertEqual(out, "normal")
+        self.assertEqual(out, DisplayAttrs.DEFAULT_COLOR)
 
     def test_initial_attribute_renders_purple_on_lavender(self):
         out = DisplayAttrs.render(DisplayAttrs.INITIAL)
@@ -38,17 +38,17 @@ class TestDisplayRenderAttrs(TestCase):
 
     def test_level_attribute_that_is_not_a_dict_is_ignored(self):
         out = DisplayAttrs.render("level")
-        self.assertEqual(out, "normal")
+        self.assertEqual(out, DisplayAttrs.DEFAULT_COLOR)
 
     def test_level_attribute_combined_with_non_dict_level_works_properly(self):
         out = DisplayAttrs.render(("level", dict(level=50)))
-        self.assertEqual(out, "on_gray50")
+        self.assertEqual(out, f"{DisplayAttrs.DEFAULT_COLOR}_on_gray50")
 
         out = DisplayAttrs.render((dict(level=50), "level"))
-        self.assertEqual(out, "on_gray50")
+        self.assertEqual(out, f"{DisplayAttrs.DEFAULT_COLOR}_on_gray50")
 
         out = DisplayAttrs.render(("level", dict(level=50), "level"))
-        self.assertEqual(out, "on_gray50")
+        self.assertEqual(out, f"{DisplayAttrs.DEFAULT_COLOR}_on_gray50")
 
     def test_level75_attribute_with_guess_renders_green_on_gray75(self):
         out = DisplayAttrs.render((DisplayAttrs.GUESS, dict(level=75)))
@@ -66,7 +66,7 @@ class TestDisplayRenderAttrs(TestCase):
 
     def test_conflicted_value_renders_primary_on_yellow(self):
         out = DisplayAttrs.render(DisplayAttrs.CONFLICTED)
-        self.assertEqual(out, "on_yellow")
+        self.assertEqual(out, f"{DisplayAttrs.DEFAULT_COLOR}_on_yellow")
 
         out = DisplayAttrs.render((DisplayAttrs.CONFLICTED, DisplayAttrs.INITIAL))
         self.assertEqual(out, "purple_on_yellow")

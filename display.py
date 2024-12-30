@@ -138,9 +138,18 @@ class Display:
     def status_line_location():
         return 0, (Display.geom["v_cells"] or 0) * Display.CELL_HEIGHT + 1
 
-    def warn(msg):
+    def warn(msg, wait=False):
         with Display.term.location(*Display.status_line_location()):
             echo(Display.term.clear_eol + Display.term.yellow(msg))
+            wait and Display.hit_any_key_to_continue()
+
+    def hit_any_key_to_continue():
+        echo("Hit any key to continue: ")
+        try:
+            with Display.term.cbreak():
+                Display.term.inkey()
+        except:
+            pass
 
     def __draw_top_line(border, attrs):
         ulcorner = (
