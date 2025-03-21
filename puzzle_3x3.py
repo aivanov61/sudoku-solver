@@ -72,11 +72,9 @@ class Puzzle3x3:
         self.render()
 
     def value(self, val, guess=False):
-        row, col = self.selected_cell
         self.__increment_bg_level() if guess and not self.initializing else 0
-        attr = [DisplayAttrs.INITIAL] if self.initializing else [DisplayAttrs.GUESS] if guess else []
-        attr += [dict(level=self.bg_level)] if self.bg_level else []
-        self.block(row, col).cell(row, col).update(val, tuple(attr))
+        attr = self.__primary_attribute(guess)
+        self.__selected_cell().update(val, tuple(attr))
 
     def up(self):
         row, col = self.selected_cell
@@ -118,3 +116,13 @@ class Puzzle3x3:
             Display.warn("No more shades of gray left - using last shade. ", wait=True)
         else:
             self.bg_level = new_level
+
+    def __primary_attribute(self, guess):
+        """Determine primary attribute(s): INITIAL or GUESS (or normal) plus background shading"""
+        attr = [DisplayAttrs.INITIAL] if self.initializing else [DisplayAttrs.GUESS] if guess else []
+        attr += [dict(level=self.bg_level)] if self.bg_level else []
+        return attr
+
+    def __selected_cell(self):
+        row, col = self.selected_cell
+        return self.block(row, col).cell(row, col)
