@@ -66,9 +66,14 @@ class Commands:
     }
 
     INIT_COMMANDS = {
+        "del": {
+            "keys": ["KEY_DELETE"],
+            "short": "Delete",
+            "long": "Delete/clear initialized value",
+        },
         "play": {
             "keys": ["KEY_ESCAPE"],
-            "short": "ESC " + Display.term.yellow("[initializing puzzle]"),
+            "short": "ESC " + Display.term.yellow("[initializing]"),
             "long": "Hit ESC to exit initialization mode and start playing the puzzle",
         },
     }
@@ -98,6 +103,11 @@ class Commands:
             "keys": ["KEY_ESCAPE"],
             "short": None,
             "long": Display.term.yellow("[hidden]") + " Hit ESC to re-enter initialization mode",
+        },
+        "del": {
+            "keys": ["KEY_DELETE"],
+            "short": None,
+            "long": Display.term.yellow("[hidden]") + " DEL key is available only in initialization mode",
         },
     }
 

@@ -31,9 +31,9 @@ class Input:
                 with Display.term.cbreak():
                     cmd = Input.__decode_inkey(Display.term.inkey(timeout=timeout))
             except Exception as e:  # Any exception just quit
-                return "quit"
+                return "quit_"
             except:  # Everything else that is bad, including CTRL-C (KeyboardInterrupt), just quit
-                return "quit"
+                return "quit_"
         return cmd
 
     def __decode_inkey(keystroke):
@@ -42,5 +42,5 @@ class Input:
         cmd_name = keystroke.name if keystroke.is_sequence else keystroke
         matching_cmds = [k for k in Commands.CMDS.keys() if cmd_name in Commands.CMDS[k]["keys"]]
         cmd = next(iter(matching_cmds), None)
-        cmd = cmd_name if cmd == "#" else cmd
+        cmd = cmd_name if cmd == "#" else cmd + "_" if cmd else cmd
         return cmd

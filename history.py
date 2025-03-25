@@ -26,15 +26,14 @@ class Entry:
     @dataclass
     class ValueInfo:
         INITIAL = "initial"
-        NORMAL = "normal"
         GUESS = "guess"
 
         value: int = 0
-        type: str = NORMAL
+        prim_attr: str = None
 
     cell: Cell
     valueinfo: ValueInfo
-    previous_value: ValueInfo = ValueInfo()
+    previous_valueinfo: ValueInfo = None
 
 
 class History:
@@ -44,8 +43,14 @@ class History:
 
     _history: list[Entry] = []
 
+    def clear():
+        History._history.clear()
+
     def add(entry: Entry):
         History._history.append(entry)
 
     def undo() -> Entry:
         return History._history.pop()
+
+    def is_empty() -> bool:
+        return len(History._history) == 0

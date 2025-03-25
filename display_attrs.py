@@ -78,6 +78,7 @@ class DisplayAttrs:
         optional = DisplayAttrs.__get_attrs(_attrs, DisplayAttrs.ATTRS_OPTIONAL)
         fg = "".join(optional.fg or primary.fg or DisplayAttrs.DEFAULT_COLOR)
         level = next(iter([attr["level"] for attr in _attrs if isinstance(attr, dict) and "level" in attr]), None)
+        level = min(level, 100) if level else None  # There are no gray levels greater than 100
         bg_level = f"gray{level}" if level else ()
         bg = "".join(optional.bg or primary.bg or bg_level)
         return fg, bg

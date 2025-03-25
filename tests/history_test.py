@@ -26,11 +26,11 @@ from history import History
 
 class TestHistory(TestCase):
     def setUp(self):
-        History._history.clear()
+        History.clear()
         return super().setUp()
 
     def test_add_history_adds_entries_to_the_end_of_history(self):
-        h = History._history
+        _h = History._history
 
         # Add first entry (a simple, normal value)
         c1 = history.Cell(0, 0)
@@ -38,10 +38,10 @@ class TestHistory(TestCase):
         e1 = history.Entry(c1, history.Entry.ValueInfo(v1))
         History.add(e1)
 
-        self.assertEqual(len(h), 1)
-        self.assertEqual(h[-1].cell, c1)
-        self.assertEqual(h[-1].valueinfo.value, v1)
-        self.assertEqual(h[-1].valueinfo.type, history.Entry.ValueInfo.NORMAL)
+        self.assertEqual(len(_h), 1)
+        self.assertEqual(_h[-1].cell, c1)
+        self.assertEqual(_h[-1].valueinfo.value, v1)
+        self.assertEqual(_h[-1].valueinfo.prim_attr, None)
 
         # Add second entry (a guessed value)
         c2 = history.Cell(1, 1)
@@ -50,18 +50,18 @@ class TestHistory(TestCase):
         e2 = history.Entry(c2, history.Entry.ValueInfo(v2, t2))
         History.add(e2)
 
-        self.assertEqual(len(h), 2)
-        self.assertEqual(h[-1].cell, c2)
-        self.assertEqual(h[-1].valueinfo.value, v2)
-        self.assertEqual(h[-1].valueinfo.type, t2)
+        self.assertEqual(len(_h), 2)
+        self.assertEqual(_h[-1].cell, c2)
+        self.assertEqual(_h[-1].valueinfo.value, v2)
+        self.assertEqual(_h[-1].valueinfo.prim_attr, t2)
 
         # Make sure first entry remains intact
-        self.assertEqual(h[0].cell, c1)
-        self.assertEqual(h[0].valueinfo.value, v1)
-        self.assertEqual(h[0].valueinfo.type, history.Entry.ValueInfo.NORMAL)
+        self.assertEqual(_h[0].cell, c1)
+        self.assertEqual(_h[0].valueinfo.value, v1)
+        self.assertEqual(_h[0].valueinfo.prim_attr, None)
 
     def test_undo_history_removes_and_returns_the_last_entry(self):
-        h = History._history
+        _h = History._history
 
         c1 = history.Cell(0, 0)
         v1 = 1
@@ -74,7 +74,7 @@ class TestHistory(TestCase):
         History.add(e2)
 
         u2 = History.undo()
-        self.assertEqual(len(h), 1)
+        self.assertEqual(len(_h), 1)
         self.assertEqual(u2, e2)
 
 

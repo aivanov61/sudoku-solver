@@ -42,8 +42,11 @@ class Cell:
     def value(self):
         return self._value
 
+    def attr(self):
+        return self._attrs
+
     def set(self, value, attrs=()):
-        if value not in self._parent.values():
+        if value and value not in self._parent.values():
             raise ValueError(f"Cell value must be in {self._parent.values()}")
         self._value = value
         self._attrs = attrs

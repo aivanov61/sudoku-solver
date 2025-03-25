@@ -19,7 +19,10 @@ import sys
 
 sys.path.insert(0, ".")
 
+from history import History, Entry
+
 from commands import Commands
+from cell import Cell
 from display import Display, echo
 from display_attrs import DisplayAttrs
 from rectangular_block import RectangularBlock
@@ -31,6 +34,7 @@ class Puzzle3x3:
     BG_LEVEL_DELTA = 10
 
     def __init__(self):
+        History.clear()
         Display.geometry({"h_cells": self.H_BLOCKS**2, "v_cells": self.V_BLOCKS**2})
         Display.validate_screen_size()
 
@@ -46,7 +50,7 @@ class Puzzle3x3:
         self.initializing = True
         self.bg_level = 0
 
-    def render(self):
+    def render(self) -> None:
         Display.clear_screen()
         for block_row in range(self.H_BLOCKS):
             for block_col in range(self.V_BLOCKS):
@@ -56,73 +60,118 @@ class Puzzle3x3:
     def block(self, row, col) -> RectangularBlock:
         return self._blocks[row // self.V_BLOCKS][col // self.H_BLOCKS]
 
-    def display_status(self):
+    def display_status(self) -> None:
         Display.move_to_status_line()
         echo(Commands.short_help() + Display.term.clear_eol)
 
     # Interface methods for commands (corresponding to commands in Commands)
 
-    def quit(self):
+    def quit_(self) -> None:
         self.is_playing = False
 
-    def help(self):
+    def help_(self) -> None:
         Display.clear_screen()
         print(Commands.long_help())
         Display.hit_any_key_to_continue()
         self.render()
 
-    def value(self, val, guess=False):
-        self.__increment_bg_level() if guess and not self.initializing else 0
-        attr = self.__primary_attribute(guess)
-        self.__selected_cell().update(val, tuple(attr))
+    def value_(self, val, guess=False) -> None:
+        guess and not self.initializing and self.__increment_bg_level()
+        attr = self.__attributes(guess)
+        cell = self.__selected_cell()
+        self.initializing or self.__add_history(cell, val, attr)
+        cell.update(val, attr)
 
-    def up(self):
+    def up_(self) -> None:
         row, col = self.selected_cell
         row = row - 1 if row > 0 else row
         self.selected_cell = (row, col)
 
-    def down(self):
+    def down_(self) -> None:
         row, col = self.selected_cell
         row = row + 1 if row < Display.geom["v_cells"] - 1 else row
         self.selected_cell = (row, col)
 
-    def left(self):
+    def left_(self) -> None:
         row, col = self.selected_cell
         col = col - 1 if col > 0 else col
         self.selected_cell = (row, col)
 
-    def right(self):
+    def right_(self) -> None:
         row, col = self.selected_cell
         col = col + 1 if col < Display.geom["h_cells"] - 1 else col
         self.selected_cell = (row, col)
 
-    def play(self):
+    def play_(self) -> None:
         self.initializing = False
         Commands.CMDS = dict(list(Commands.COMMON_CMDS.items()) + list(Commands.PLAY_COMMANDS.items()))
         self.display_status()
 
-    def init(self):
+    def init_(self) -> None:
+        if self.__check_for_active_play():
+            return
         self.initializing = True
         Commands.CMDS = dict(list(Commands.COMMON_CMDS.items()) + list(Commands.INIT_COMMANDS.items()))
         self.display_status()
 
-    def undo(self):
-        new_level = self.bg_level - self.BG_LEVEL_DELTA
-        self.bg_level = new_level if new_level >= 0 else 0
+    def del_(self) -> None:
+        if not self.initializing:
+            Display.warn("Deleting a cell value can only be done while initializing the puzzle. ", wait=True)
+            return
+        self.__selected_cell().update(None)
 
-    def __increment_bg_level(self):
-        new_level = self.bg_level + self.BG_LEVEL_DELTA
-        if new_level > 100:
-            Display.warn("No more shades of gray left - using last shade. ", wait=True)
-        else:
-            self.bg_level = new_level
+    def undo_(self) -> None:
+        (
+            self.__undo_history()
+            if not History.is_empty()
+            else Display.warn("Cannot undo initialized puzzle.  ESC will re-enter initialization mode. ", wait=True)
+        )
 
-    def __primary_attribute(self, guess):
+    # Private functions
+
+    def __increment_bg_level(self) -> None:
+        self.bg_level += self.BG_LEVEL_DELTA
+        self.bg_level > 100 and Display.warn("No more shades of gray left - using last shade. ", wait=True)
+
+    def __attributes(self, guess) -> tuple:
         """Determine primary attribute(s): INITIAL or GUESS (or normal) plus background shading"""
         attr = [DisplayAttrs.INITIAL] if self.initializing else [DisplayAttrs.GUESS] if guess else []
         attr += [dict(level=self.bg_level)] if self.bg_level else []
-        return attr
+        return tuple(attr)
 
-    def __selected_cell(self):
+    def __selected_cell(self) -> Cell:
         row, col = self.selected_cell
         return self.block(row, col).cell(row, col)
+
+    def __add_history(self, cell, val, attr) -> None:
+        new_info = Entry.ValueInfo(val, self.__prim_attr(attr))
+        prev_val = cell.value()
+        prev_info = Entry.ValueInfo(prev_val, self.__prim_attr(cell.attr())) if prev_val else None
+        History.add(Entry(cell, new_info, prev_info))
+
+    def __prim_attr(self, attr) -> str:
+        prim_attr = DisplayAttrs.INITIAL if DisplayAttrs.INITIAL in attr else None
+        prim_attr = prim_attr or (DisplayAttrs.GUESS if DisplayAttrs.GUESS in attr else None)
+        return prim_attr
+
+    def __check_for_active_play(self) -> bool:
+        is_actively_playing = not History.is_empty()
+        is_actively_playing and Display.warn(
+            "Cannot initialize puzzle while playing - undo everything first. ", wait=True
+        )
+        return is_actively_playing
+
+    def __undo_history(self) -> None:
+        entry = History.undo()
+        self.selected_cell = (entry.cell.row, entry.cell.col)
+        entry.valueinfo.prim_attr == DisplayAttrs.GUESS and self.__decrement_bg_level()
+        prev_val = entry.previous_valueinfo.value if entry.previous_valueinfo else None
+        prev_attr = (
+            self.__attributes(entry.previous_valueinfo.prim_attr == DisplayAttrs.GUESS)
+            if entry.previous_valueinfo
+            else ()
+        )
+        entry.cell.update(prev_val, prev_attr)
+
+    def __decrement_bg_level(self) -> None:
+        self.bg_level = max(self.bg_level - self.BG_LEVEL_DELTA, 0)

@@ -60,7 +60,7 @@ class Main:
         self.__handle_puzzle_value(cmd) if Commands.is_value(cmd) else self.__handle_puzzle_func(cmd)
 
     def __handle_puzzle_value(self, cmd):
-        self._puzzle.value(*Commands.val_with_guess(cmd))
+        self._puzzle.value_(*Commands.val_with_guess(cmd))
         self._puzzle.display_status()
 
     def __handle_puzzle_func(self, cmd):
@@ -71,7 +71,7 @@ class Main:
         self.__handle_possible_forced_quit(cmd)
 
     def __handle_possible_forced_quit(self, cmd):
-        if not cmd == "quit":
+        if not cmd == "quit_":
             return
         Display.move_to_status_line()
         print("\n" + Display.term.clear_eol + "FORCING quit")
