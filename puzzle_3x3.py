@@ -29,11 +29,31 @@ from rectangular_block import RectangularBlock
 
 
 class Puzzle3x3:
+    """
+    Implement a 3x3 puzzle.
+
+    All puzzles are required to have a minimum interface consisting of the following attributes:
+        selected_cell - (row: int, col: int) - a tuple that represents the currently selected cell
+        is_playing - bool - True if user is still playing the puzzle, False otherwise
+
+    And the following methods:
+        render() -
+        display_status() -
+
+    In addition, the puzzle should support all the commands available in commands.py.  Function
+    names for commands have underscore (_) as a suffix to eliminate conflicts with reserved words.
+
+    """
+
     H_BLOCKS = 3
     V_BLOCKS = 3
     BG_LEVEL_DELTA = 10
 
     def __init__(self):
+        # Public attributes required for all puzzles
+        self.selected_cell = (0, 0)  # row, col (NOT x, y)
+        self.is_playing = True
+
         History.clear()
         Display.geometry({"h_cells": self.H_BLOCKS**2, "v_cells": self.V_BLOCKS**2})
         Display.validate_screen_size()
@@ -45,10 +65,10 @@ class Puzzle3x3:
                     self, row=block_row, col=block_col, rows=self.V_BLOCKS, cols=self.H_BLOCKS
                 )
 
-        self.selected_cell = (0, 0)  # row, col (NOT x, y)
-        self.is_playing = True
-        self.initializing = True
-        self.bg_level = 0
+        self._initializing = True
+        self._bg_level = 0
+
+    # Required public interface methods
 
     def render(self) -> None:
         Display.clear_screen()
@@ -56,9 +76,6 @@ class Puzzle3x3:
             for block_col in range(self.V_BLOCKS):
                 self._blocks[block_row][block_col].render()
         self.display_status()
-
-    def block(self, row, col) -> RectangularBlock:
-        return self._blocks[row // self.V_BLOCKS][col // self.H_BLOCKS]
 
     def display_status(self) -> None:
         Display.move_to_status_line()
@@ -76,10 +93,10 @@ class Puzzle3x3:
         self.render()
 
     def value_(self, val, guess=False) -> None:
-        guess and not self.initializing and self.__increment_bg_level()
+        guess and not self._initializing and self.__increment_bg_level()
         attr = self.__attributes(guess)
         cell = self.__selected_cell()
-        self.initializing or self.__add_history(cell, val, attr)
+        self._initializing or self.__add_history(cell, val, attr)
         cell.update(val, attr)
 
     def up_(self) -> None:
@@ -103,19 +120,19 @@ class Puzzle3x3:
         self.selected_cell = (row, col)
 
     def play_(self) -> None:
-        self.initializing = False
+        self._initializing = False
         Commands.CMDS = dict(list(Commands.COMMON_CMDS.items()) + list(Commands.PLAY_COMMANDS.items()))
         self.display_status()
 
     def init_(self) -> None:
         if self.__check_for_active_play():
             return
-        self.initializing = True
+        self._initializing = True
         Commands.CMDS = dict(list(Commands.COMMON_CMDS.items()) + list(Commands.INIT_COMMANDS.items()))
         self.display_status()
 
     def del_(self) -> None:
-        if not self.initializing:
+        if not self._initializing:
             Display.warn("Deleting a cell value can only be done while initializing the puzzle. ", wait=True)
             return
         self.__selected_cell().update(None)
@@ -130,18 +147,23 @@ class Puzzle3x3:
     # Private functions
 
     def __increment_bg_level(self) -> None:
-        self.bg_level += self.BG_LEVEL_DELTA
-        self.bg_level > 100 and Display.warn("No more shades of gray left - using last shade. ", wait=True)
+        self._bg_level += self.BG_LEVEL_DELTA
+        self._bg_level > DisplayAttrs.MAX_GRAY_LEVEL and Display.warn(
+            "No more shades of gray left - repeating last shade. ", wait=True
+        )
 
     def __attributes(self, guess) -> tuple:
         """Determine primary attribute(s): INITIAL or GUESS (or normal) plus background shading"""
-        attr = [DisplayAttrs.INITIAL] if self.initializing else [DisplayAttrs.GUESS] if guess else []
-        attr += [dict(level=self.bg_level)] if self.bg_level else []
+        attr = [DisplayAttrs.INITIAL] if self._initializing else [DisplayAttrs.GUESS] if guess else []
+        attr += [dict(level=self._bg_level)] if self._bg_level else []
         return tuple(attr)
 
     def __selected_cell(self) -> Cell:
         row, col = self.selected_cell
-        return self.block(row, col).cell(row, col)
+        return self.__block(row, col).cell(row, col)
+
+    def __block(self, row, col) -> RectangularBlock:
+        return self._blocks[row // self.V_BLOCKS][col // self.H_BLOCKS]
 
     def __add_history(self, cell, val, attr) -> None:
         new_info = Entry.ValueInfo(val, self.__prim_attr(attr))
@@ -174,4 +196,4 @@ class Puzzle3x3:
         entry.cell.update(prev_val, prev_attr)
 
     def __decrement_bg_level(self) -> None:
-        self.bg_level = max(self.bg_level - self.BG_LEVEL_DELTA, 0)
+        self._bg_level = max(self._bg_level - self.BG_LEVEL_DELTA, 0)

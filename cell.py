@@ -29,37 +29,54 @@ class Cell:
     1. Store and retrieve a value with set()/value()
     1. Honor legal values provided by the block
     1. Display itself on the terminal
+    1. Trigger recalculation of other puzzle cell values when this cell value changes
     """
 
     def __init__(self, parent, row=0, col=0, borders=Border()):
         self._value = None
+        self._possible_values = set(sorted(parent.values()))
         self._attrs = ()
         self._parent = parent
         self.row = row
         self.col = col
         self.borders = borders
 
-    def value(self):
+    def value(self) -> int:
         return self._value
 
-    def attr(self):
+    def attr(self) -> tuple:
         return self._attrs
 
-    def set(self, value, attrs=()):
-        if value and value not in self._parent.values():
-            raise ValueError(f"Cell value must be in {self._parent.values()}")
-        self._value = value
-        self._attrs = attrs
-
-    def update(self, value, attrs=()):
+    def update(self, value, attrs=()) -> None:
+        """Update the cell value and display it"""
         prev_attr = self._attrs
         self.set(value, attrs)
-        (
-            Display.draw_cell_value(self.row, self.col, self._value or " ", self._attrs)
-            if prev_attr == self._attrs
-            else self.render()
-        )
+        self.__draw_cell_values() if prev_attr == self._attrs else self.render()
 
-    def render(self):
+    def render(self) -> None:
+        """Draw the cell and its current value"""
         Display.draw_cell(self.row, self.col, self.borders, self._attrs)
+        self.__draw_cell_values()
+
+    def set(self, value, attrs=()) -> None:
+        """Set the cell value but not the display"""
+        if value and value not in self._parent.values():
+            raise ValueError(f"Cell value must be in {self._parent.values()}")
+        value != self._value and self.__update_value(value)
+        self._attrs = attrs
+
+    # Private functions
+
+    def __draw_cell_values(self) -> None:
         Display.draw_cell_value(self.row, self.col, self._value or " ", self._attrs)
+        Display.draw_cell_possible_values(self.row, self.col, self._possible_values, self._attrs)
+
+    def __update_value(self, value):
+        self.__add_old_value_back_to_possible_values()
+        self._value = value
+        value and self._parent.remove_possible(self.row, self.col, value)
+
+    def __add_old_value_back_to_possible_values(self) -> None:
+        old_value = self._value
+        self._value = None
+        old_value and self._parent.add_possible(self.row, self.col, old_value)

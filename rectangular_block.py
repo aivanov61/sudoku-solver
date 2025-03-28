@@ -47,19 +47,9 @@ class RectangularBlock:
         self.cols = cols
         self.__initialize_cells()
 
-    def __initialize_cells(self):
-        self._cells = [[None for _col in range(self.rows)] for _row in range(self.cols)]
-        for row in range(self.rows):
-            for col in range(self.cols):
-                self._cells[row][col] = Cell(parent=self, **self.phys_pos(row, col), borders=self.BORDERS[row][col])
+    # Interface required for puzzles (arrangement of rectangular blocks)
 
-    def phys_pos(self, row, col):
-        return {
-            "row": self.block_row * self.rows + row,
-            "col": self.block_col * self.cols + col,
-        }
-
-    def render(self):
+    def render(self) -> None:
         for row in range(self.rows):
             for col in range(self.cols):
                 self._cells[row][col].render()
@@ -67,5 +57,27 @@ class RectangularBlock:
     def cell(self, row, col) -> Cell:
         return self._cells[row % self.rows][col % self.cols]
 
-    def values(self):
+    # Interface required for cell instances
+
+    def values(self) -> range:
         return range(1, self.rows * self.cols + 1)
+
+    def add_possible(self, row, col, value) -> None:
+        pass
+
+    def remove_possible(self, row, col, value) -> None:
+        pass
+
+    # Private functions
+
+    def __initialize_cells(self):
+        self._cells = [[None for _col in range(self.rows)] for _row in range(self.cols)]
+        for row in range(self.rows):
+            for col in range(self.cols):
+                self._cells[row][col] = Cell(parent=self, **self.__phys_pos(row, col), borders=self.BORDERS[row][col])
+
+    def __phys_pos(self, row, col):
+        return {
+            "row": self.block_row * self.rows + row,
+            "col": self.block_col * self.cols + col,
+        }

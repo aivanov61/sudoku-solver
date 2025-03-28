@@ -24,7 +24,7 @@ from commands import Commands
 from display import Display
 from input import Input
 
-# NOTE: supports different kinds of puzzles - change the following line
+# NOTE: supports different puzzle geometries/shapes - change the following line
 from puzzle_3x3 import Puzzle3x3 as Puzzle
 
 
