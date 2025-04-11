@@ -96,8 +96,11 @@ class Puzzle3x3:
         guess and not self._initializing and self.__increment_bg_level()
         attr = self.__attributes(guess)
         cell = self.__selected_cell()
-        self._initializing or self.__add_history(cell, val, attr)
-        cell.update(val, attr)
+        (
+            Display.warn("Cannot change an initial value while playing. ", wait=True)
+            if not self._initializing and DisplayAttrs.INITIAL in cell.attr()
+            else self.__accept_user_value(val, attr, cell)
+        )
 
     def up_(self) -> None:
         row, col = self.selected_cell
@@ -161,6 +164,10 @@ class Puzzle3x3:
     def __selected_cell(self) -> Cell:
         row, col = self.selected_cell
         return self.__block(row, col).cell(row, col)
+
+    def __accept_user_value(self, val, attr: tuple, cell: Cell) -> None:
+        self._initializing or self.__add_history(cell, val, attr)
+        cell.update(val, attr)
 
     def __block(self, row, col) -> RectangularBlock:
         return self._blocks[row // self.V_BLOCKS][col // self.H_BLOCKS]
