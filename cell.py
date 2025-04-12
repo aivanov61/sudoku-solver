@@ -15,10 +15,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from cell_solver import CellSolver
+from delegator import Delegator
 from display import Display, Border
 
 
-class Cell:
+class Cell(Delegator):
     """
     A Cell is the basic building block of a Sudoku puzzle.
 
@@ -34,12 +36,15 @@ class Cell:
 
     def __init__(self, parent, row=0, col=0, borders=Border()):
         self._value = None
-        self._possible_values = set(sorted(parent.values()))
+        self._solver = CellSolver(parent)  # Use the Solver class
         self._attrs = ()
         self._parent = parent
         self.row = row
         self.col = col
         self.borders = borders
+
+        # Initialize the Delegators (currently only CellSolver)
+        super().__init__({self._solver: ["possible_values"]})
 
     def value(self) -> int:
         return self._value
@@ -69,7 +74,7 @@ class Cell:
 
     def __draw_cell_values(self) -> None:
         Display.draw_cell_value(self.row, self.col, self._value or " ", self._attrs)
-        Display.draw_cell_possible_values(self.row, self.col, self._possible_values, self._attrs)
+        Display.draw_cell_possible_values(self.row, self.col, self.possible_values(), self._attrs)
 
     def __update_value(self, value):
         self.__add_old_value_back_to_possible_values()
