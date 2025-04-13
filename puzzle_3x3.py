@@ -155,17 +155,17 @@ class Puzzle3x3:
             "No more shades of gray left - repeating last shade. ", wait=True
         )
 
-    def __attributes(self, guess) -> tuple:
+    def __attributes(self, guess) -> set:
         """Determine primary attribute(s): INITIAL or GUESS (or normal) plus background shading"""
         attr = [DisplayAttrs.INITIAL] if self._initializing else [DisplayAttrs.GUESS] if guess else []
         attr += [dict(level=self._bg_level)] if self._bg_level else []
-        return tuple(attr)
+        return set(attr)
 
     def __selected_cell(self) -> Cell:
         row, col = self.selected_cell
         return self.__block(row, col).cell(row, col)
 
-    def __accept_user_value(self, val, attr: tuple, cell: Cell) -> None:
+    def __accept_user_value(self, val, attr: set, cell: Cell) -> None:
         self._initializing or self.__add_history(cell, val, attr)
         cell.update(val, attr)
 

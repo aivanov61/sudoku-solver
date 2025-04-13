@@ -18,6 +18,7 @@
 from cell_solver import CellSolver
 from delegator import Delegator
 from display import Display, Border
+from display_attrs import DisplayAttrs
 
 
 class Cell(Delegator):
@@ -37,7 +38,7 @@ class Cell(Delegator):
     def __init__(self, parent, row=0, col=0, borders=Border()):
         self._value = None
         self._solver = CellSolver(parent)  # Use the Solver class
-        self._attrs = ()
+        self._attrs = set()
         self._parent = parent
         self.row = row
         self.col = col
@@ -49,12 +50,13 @@ class Cell(Delegator):
     def value(self) -> int:
         return self._value
 
-    def attr(self) -> tuple:
+    def attr(self) -> set:
+        """Return the set of attributes."""
         return self._attrs
 
-    def update(self, value, attrs=()) -> None:
+    def update(self, value, attrs=set()) -> None:
         """Update the cell value and display it"""
-        prev_attr = self._attrs
+        prev_attr = self._attrs.copy()
         self.set(value, attrs)
         self.__draw_cell_values() if prev_attr == self._attrs else self.render()
 
@@ -67,8 +69,8 @@ class Cell(Delegator):
         """Set the cell value but not the display"""
         if value and value not in self._parent.values():
             raise ValueError(f"Cell value must be in {self._parent.values()}")
-        value != self._value and self.__update_value(value)
-        self._attrs = attrs
+        self._attrs = set(attrs)
+        value != self._value and self.__smart_update(value)
 
     # Private functions
 
@@ -76,12 +78,11 @@ class Cell(Delegator):
         Display.draw_cell_value(self.row, self.col, self._value or " ", self._attrs)
         Display.draw_cell_possible_values(self.row, self.col, self.possible_values(), self._attrs)
 
-    def __update_value(self, value):
-        self.__add_old_value_back_to_possible_values()
-        self._value = value
+    def __smart_update(self, value) -> None:
+        """
+        The brains of the cell.  It will update the cell taking into account any logic/analysis required.
+        """
+        not value or value in self._solver.possible_values() or self._attrs.add(DisplayAttrs.CONFLICTING)
+        self._value and self._parent.add_possible(self.row, self.col, self._value)
         value and self._parent.remove_possible(self.row, self.col, value)
-
-    def __add_old_value_back_to_possible_values(self) -> None:
-        old_value = self._value
-        self._value = None
-        old_value and self._parent.add_possible(self.row, self.col, old_value)
+        self._value = value
