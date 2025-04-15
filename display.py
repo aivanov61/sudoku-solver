@@ -98,7 +98,7 @@ class Display:
         is_size_ok = True
         min_width = Display.geom["h_cells"] * Display.CELL_WIDTH
         min_height = Display.geom["v_cells"] * Display.CELL_HEIGHT + 2
-        while Display.term.width < min_width or Display.term.height < min_height:
+        while Display.term.is_a_tty and (Display.term.width < min_width or Display.term.height < min_height):
             is_size_ok = False
             Display.clear_screen()
             print(f"The terminal must have at least {min_height} lines and {min_width} columns")

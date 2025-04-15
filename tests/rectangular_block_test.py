@@ -46,4 +46,5 @@ class TestRectangularBlock(TestCase):
         block2.render()
 
 
-main()
+if __name__ == "__main__":
+    main()

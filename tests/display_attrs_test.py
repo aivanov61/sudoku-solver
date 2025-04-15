@@ -130,4 +130,5 @@ class TestDisplayRenderBgAttrs(TestCase):
         self.assertEqual(out, "on_yellow")
 
 
-main()
+if __name__ == "__main__":
+    main()

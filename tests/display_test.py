@@ -68,4 +68,5 @@ class TestDisplay(TestCase):
         Display.move_to_status_line()
 
 
-main()
+if __name__ == "__main__":
+    main()

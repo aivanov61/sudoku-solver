@@ -83,4 +83,5 @@ class TestHistory(TestCase):
         self.assertEqual(u2, e2)
 
 
-main()
+if __name__ == "__main__":
+    main()
