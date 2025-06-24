@@ -64,7 +64,16 @@ class Main:
         self._puzzle.display_status()
 
     def __handle_puzzle_func(self, cmd):
-        self.__report_unsupported_func(cmd) if not hasattr(self._puzzle, cmd) else self.__execute_puzzle_func(cmd)
+        self.__execute_puzzle_func(cmd)if hasattr(self._puzzle, cmd) else self.__report_unsupported_func(cmd)
+
+    def __execute_puzzle_func(self, cmd):
+        try:
+            getattr(self._puzzle, cmd)()
+        except Exception as e:
+            Display.warn(f'This puzzle\'s "{cmd}" command is broken!')
+            self.__handle_possible_forced_quit(cmd)
+            return
+        self._puzzle.display_status()
 
     def __report_unsupported_func(self, cmd):
         Display.warn(f'This puzzle does not support the "{cmd}" command')
@@ -76,15 +85,6 @@ class Main:
         Display.move_to_status_line()
         print("\n" + Display.term.clear_eol + "FORCING quit")
         self._puzzle.is_playing = False
-
-    def __execute_puzzle_func(self, cmd):
-        try:
-            getattr(self._puzzle, cmd)()
-        except Exception as e:
-            Display.warn(f'This puzzle\'s "{cmd}" command is broken!')
-            self.__handle_possible_forced_quit(cmd)
-            return
-        self._puzzle.display_status()
 
 
 if __name__ == "__main__":

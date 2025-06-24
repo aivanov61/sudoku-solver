@@ -45,8 +45,8 @@ class Puzzle3x3:
 
     """
 
-    H_BLOCKS = 3
-    V_BLOCKS = 3
+    H_BLOCKS = 3  # columns
+    V_BLOCKS = 3  # rows
     BG_LEVEL_DELTA = 10
 
     def __init__(self):
@@ -59,8 +59,8 @@ class Puzzle3x3:
         Display.validate_screen_size()
 
         self._blocks = [[None for _col in range(self.H_BLOCKS)] for _row in range(self.V_BLOCKS)]
-        for block_row in range(self.H_BLOCKS):
-            for block_col in range(self.V_BLOCKS):
+        for block_row in range(self.V_BLOCKS):
+            for block_col in range(self.H_BLOCKS):
                 self._blocks[block_row][block_col] = RectangularBlock(
                     self, row=block_row, col=block_col, rows=self.V_BLOCKS, cols=self.H_BLOCKS
                 )
@@ -72,8 +72,8 @@ class Puzzle3x3:
 
     def render(self) -> None:
         Display.clear_screen()
-        for block_row in range(self.H_BLOCKS):
-            for block_col in range(self.V_BLOCKS):
+        for block_row in range(self.V_BLOCKS):
+            for block_col in range(self.H_BLOCKS):
                 self._blocks[block_row][block_col].render()
         self.display_status()
 

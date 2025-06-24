@@ -71,7 +71,7 @@ class RectangularBlock:
     # Private functions
 
     def __initialize_cells(self):
-        self._cells = [[None for _col in range(self.rows)] for _row in range(self.cols)]
+        self._cells = [[None for _col in range(self.cols)] for _row in range(self.rows)]
         for row in range(self.rows):
             for col in range(self.cols):
                 self._cells[row][col] = Cell(parent=self, **self.__phys_pos(row, col), borders=self.BORDERS[row][col])
