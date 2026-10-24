@@ -83,7 +83,8 @@ class Cell(Delegator):
         """
         The brains of the cell.  It will update the cell taking into account any logic/analysis required.
         """
-        not value or value in self._solver.possible_values() or self._attrs.add(DisplayAttrs.CONFLICTING)
+        if value and value not in self.possible_values():
+            self._attrs = (*self._attrs, DisplayAttrs.CONFLICTING)
         self._value and self._parent.add_possible(self.row, self.col, self._value)
         value and self._parent.remove_possible(self.row, self.col, value)
         self._value = value
