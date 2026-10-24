@@ -16,6 +16,7 @@
 # -----------------------------------------------------------------------------
 
 from cell_solver import CellSolver
+from copy import deepcopy
 from delegator import Delegator
 from display import Display, Border
 from display_attrs import DisplayAttrs
@@ -38,7 +39,7 @@ class Cell(Delegator):
     def __init__(self, parent, row=0, col=0, borders=Border()):
         self._value = None
         self._solver = CellSolver(parent)  # Use the Solver class
-        self._attrs = set()
+        self._attrs = tuple()
         self._parent = parent
         self.row = row
         self.col = col
@@ -50,13 +51,13 @@ class Cell(Delegator):
     def value(self) -> int:
         return self._value
 
-    def attr(self) -> set:
-        """Return the set of attributes."""
+    def attr(self) -> tuple:
+        """Return the attributes."""
         return self._attrs
 
-    def update(self, value, attrs=set()) -> None:
+    def update(self, value, attrs=tuple()) -> None:
         """Update the cell value and display it"""
-        prev_attr = self._attrs.copy()
+        prev_attr = deepcopy(self._attrs)
         self.set(value, attrs)
         self.__draw_cell_values() if prev_attr == self._attrs else self.render()
 
@@ -69,7 +70,7 @@ class Cell(Delegator):
         """Set the cell value but not the display"""
         if value and value not in self._parent.values():
             raise ValueError(f"Cell value must be in {self._parent.values()}")
-        self._attrs = set(attrs)
+        self._attrs = attrs
         value != self._value and self.__smart_update(value)
 
     # Private functions
