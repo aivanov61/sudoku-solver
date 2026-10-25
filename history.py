@@ -15,8 +15,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-from cell import Cell
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from cell import Cell
 
 
 @dataclass
@@ -31,7 +34,7 @@ class Entry:
         value: int = 0
         prim_attr: str = None
 
-    cell: Cell
+    cell: "Cell"
     valueinfo: ValueInfo
     previous_valueinfo: ValueInfo = None
 

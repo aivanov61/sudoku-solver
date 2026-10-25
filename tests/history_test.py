@@ -22,6 +22,7 @@ from unittest.mock import MagicMock
 sys.path.insert(0, ".")
 
 import history
+from cell import Cell
 from history import History
 
 # Set up mock parent for Cell which has return_value() as a required interface
@@ -38,7 +39,7 @@ class TestHistory(TestCase):
         _h = History._history
 
         # Add first entry (a simple, normal value)
-        c1 = history.Cell(cell_parent, 0, 0)
+        c1 = Cell(cell_parent, 0, 0)
         v1 = 1
         e1 = history.Entry(c1, history.Entry.ValueInfo(v1))
         History.add(e1)
@@ -49,7 +50,7 @@ class TestHistory(TestCase):
         self.assertEqual(_h[-1].valueinfo.prim_attr, None)
 
         # Add second entry (a guessed value)
-        c2 = history.Cell(cell_parent, 1, 1)
+        c2 = Cell(cell_parent, 1, 1)
         t2 = history.Entry.ValueInfo.GUESS
         v2 = 2
         e2 = history.Entry(c2, history.Entry.ValueInfo(v2, t2))
@@ -68,12 +69,12 @@ class TestHistory(TestCase):
     def test_undo_history_removes_and_returns_the_last_entry(self):
         _h = History._history
 
-        c1 = history.Cell(cell_parent, 0, 0)
+        c1 = Cell(cell_parent, 0, 0)
         v1 = 1
         e1 = history.Entry(c1, history.Entry.ValueInfo(v1))
         History.add(e1)
 
-        c2 = history.Cell(cell_parent, 1, 1)
+        c2 = Cell(cell_parent, 1, 1)
         v2 = 2
         e2 = history.Entry(c2, history.Entry.ValueInfo(v2))
         History.add(e2)

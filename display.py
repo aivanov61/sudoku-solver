@@ -29,7 +29,7 @@ class Border:
     RIGHT = "right"
     BOTTOM = "bottom"
 
-    def __init__(self, borders=set()):
+    def __init__(self, borders=frozenset()):
         self.__borders = borders
 
     def is_top(self):
@@ -111,7 +111,7 @@ class Display:
                 return is_size_ok
         return is_size_ok
 
-    def draw_cell(row=0, col=0, border=Border(), attrs=dict()):
+    def draw_cell(row=0, col=0, border=Border(), attrs=tuple()):
         x, y = Display.x(col), Display.y(row)
         echo(Display.term.move_xy(x, y))
         Display.__draw_top_line(border, attrs)
