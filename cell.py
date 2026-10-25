@@ -17,12 +17,11 @@
 
 from cell_solver import CellSolver
 from copy import deepcopy
-from delegator import Delegator
 from display import Display, Border
 from display_attrs import DisplayAttrs
 
 
-class Cell(Delegator):
+class Cell:
     """
     A Cell is the basic building block of a Sudoku puzzle.
 
@@ -44,9 +43,6 @@ class Cell(Delegator):
         self.row = row
         self.col = col
         self.borders = borders
-
-        # Initialize the Delegators (currently only CellSolver)
-        super().__init__({self._solver: ["possible_values"]})
 
     def value(self) -> int:
         return self._value
@@ -73,18 +69,37 @@ class Cell(Delegator):
         self._attrs = attrs
         value != self._value and self.__smart_update(value)
 
+    def remove_possible(self, value) -> None:
+        """Remove a possible value and redraw the possible values if they changed"""
+        if value in self.possible_values():
+            self._solver.remove_possible(value)
+            self.__draw_possible_values()
+
+    def clear_possible(self) -> None:
+        """Remove all possible values and redraw the possible values if they changed"""
+        if self.possible_values():
+            self._solver.clear_possible()
+            self.__draw_possible_values()
+
+    def possible_values(self) -> set:
+        return self._solver.possible_values()
+
     # Private functions
 
     def __draw_cell_values(self) -> None:
         Display.draw_cell_value(self.row, self.col, self._value or " ", self._attrs)
+        self.__draw_possible_values()
+
+    def __draw_possible_values(self) -> None:
         Display.draw_cell_possible_values(self.row, self.col, self.possible_values(), self._attrs)
 
     def __smart_update(self, value) -> None:
         """
         The brains of the cell.  It will update the cell taking into account any logic/analysis required.
         """
-        if value and value not in self.possible_values():
+        if value and self._parent.is_conflicting(self.row, self.col, value):
             self._attrs = (*self._attrs, DisplayAttrs.CONFLICTING)
         self._value and self._parent.add_possible(self.row, self.col, self._value)
         value and self._parent.remove_possible(self.row, self.col, value)
+        value and self.clear_possible()
         self._value = value

@@ -31,3 +31,11 @@ class CellSolver:
     def possible_values(self) -> set:
         """Return the set of possible values for the cell."""
         return self._possible_values
+
+    def remove_possible(self, value) -> None:
+        """Remove a value from the set of possible values for the cell."""
+        self._possible_values.discard(value)
+
+    def clear_possible(self) -> None:
+        """Remove all possible values for the cell."""
+        self._possible_values.clear()

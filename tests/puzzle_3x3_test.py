@@ -1,0 +1,105 @@
+# -----------------------------------------------------------------------------
+# Copyright (c) by Anton Ivanov.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.
+# -----------------------------------------------------------------------------
+
+import sys
+from unittest import main, TestCase
+from unittest.mock import patch
+
+sys.path.insert(0, ".")
+
+from display_attrs import DisplayAttrs
+from puzzle_3x3 import Puzzle3x3
+
+
+class TestPuzzle3x3(TestCase):
+    SIZE = 9
+    ALL_VALUES = set(range(1, SIZE + 1))
+
+    def setUp(self):
+        with patch("display.Display.validate_screen_size"):
+            self.puzzle = Puzzle3x3()
+        return super().setUp()
+
+    def __cell(self, row, col):
+        """Access to the puzzle's private cell lookup"""
+        return self.puzzle._Puzzle3x3__cell(row, col)
+
+    def __is_affected_by(self, row, col, origin_row, origin_col) -> bool:
+        same_box = row // 3 == origin_row // 3 and col // 3 == origin_col // 3
+        return row == origin_row or col == origin_col or same_box
+
+    def test_cell_returns_cell_at_puzzle_position(self):
+        cell = self.__cell(4, 7)
+        self.assertEqual((cell.row, cell.col), (4, 7))
+
+    def test_setting_value_clears_all_possible_values_of_that_cell(self):
+        self.__cell(4, 4).set(5)
+        self.assertEqual(self.__cell(4, 4).possible_values(), set())
+
+    def test_setting_value_removes_it_from_row_column_and_box(self):
+        self.__cell(4, 4).set(5)
+        for row in range(self.SIZE):
+            for col in range(self.SIZE):
+                if (row, col) != (4, 4) and self.__is_affected_by(row, col, 4, 4):
+                    self.assertEqual(self.__cell(row, col).possible_values(), self.ALL_VALUES - {5})
+
+    def test_setting_value_leaves_other_cells_unchanged(self):
+        self.__cell(4, 4).set(5)
+        for row in range(self.SIZE):
+            for col in range(self.SIZE):
+                if not self.__is_affected_by(row, col, 4, 4):
+                    self.assertEqual(self.__cell(row, col).possible_values(), self.ALL_VALUES)
+
+    def test_value_already_in_row_is_conflicting(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(4, 0).attr())
+
+    def test_value_already_in_column_is_conflicting(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(0, 4).set(5)
+        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(0, 4).attr())
+
+    def test_value_already_in_box_is_conflicting(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(3, 3).set(5)
+        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(3, 3).attr())
+
+    def test_value_directly_above_in_another_block_is_conflicting(self):
+        self.__cell(0, 8).set(7)
+        self.__cell(6, 8).set(7)
+        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(6, 8).attr())
+
+    def test_value_in_block_above_but_not_in_same_column_is_not_conflicting(self):
+        self.__cell(0, 6).set(5)
+        self.__cell(6, 8).set(5)
+        self.assertNotIn(DisplayAttrs.CONFLICTING, self.__cell(6, 8).attr())
+
+    def test_replacing_value_with_unused_value_is_not_conflicting(self):
+        self.__cell(4, 4).set(3)
+        self.__cell(4, 4).set(7)
+        self.assertNotIn(DisplayAttrs.CONFLICTING, self.__cell(4, 4).attr())
+
+    def test_replacing_conflicting_value_with_unused_value_clears_conflict(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.__cell(4, 0).set(7)
+        self.assertNotIn(DisplayAttrs.CONFLICTING, self.__cell(4, 0).attr())
+
+
+if __name__ == "__main__":
+    main()

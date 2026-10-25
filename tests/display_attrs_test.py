@@ -65,15 +65,15 @@ class TestDisplayRenderAttrs(TestCase):
         out = DisplayAttrs.render((DisplayAttrs.GUESS, dict(level=75)))
         self.assertEqual(out, "green_on_gray75")
 
-    def test_conflicting_value_renders_boldred_on_yellow(self):
+    def test_conflicting_value_renders_bold_red_on_yellow(self):
         out = DisplayAttrs.render(DisplayAttrs.CONFLICTING)
-        self.assertEqual(out, "boldred_on_yellow")
+        self.assertEqual(out, "bold_red_on_yellow")
 
         out = DisplayAttrs.render((DisplayAttrs.INITIAL, DisplayAttrs.CONFLICTING))
-        self.assertEqual(out, "boldred_on_yellow")
+        self.assertEqual(out, "bold_red_on_yellow")
 
         out = DisplayAttrs.render((DisplayAttrs.GUESS, DisplayAttrs.CONFLICTING, dict(level=75)))
-        self.assertEqual(out, "boldred_on_yellow")
+        self.assertEqual(out, "bold_red_on_yellow")
 
     def test_conflicted_value_renders_primary_on_yellow(self):
         out = DisplayAttrs.render(DisplayAttrs.CONFLICTED)

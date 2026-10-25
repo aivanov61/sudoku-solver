@@ -50,12 +50,18 @@ class RectangularBlock:
     # Interface required for puzzles (arrangement of rectangular blocks)
 
     def render(self) -> None:
-        for row in range(self.rows):
-            for col in range(self.cols):
-                self._cells[row][col].render()
+        for cell in self.__cells():
+            cell.render()
 
     def cell(self, row, col) -> Cell:
         return self._cells[row % self.rows][col % self.cols]
+
+    def remove_possible_in_row_and_col(self, row, col, value) -> None:
+        for cell in self.__cells_in_row_or_col(row, col):
+            cell.remove_possible(value)
+
+    def has_value_in_row_or_col(self, row, col, value) -> bool:
+        return self.__holds_value(self.__cells_in_row_or_col(row, col), row, col, value)
 
     # Interface required for cell instances
 
@@ -66,7 +72,12 @@ class RectangularBlock:
         pass
 
     def remove_possible(self, row, col, value) -> None:
-        pass
+        for cell in self.__cells():
+            cell.remove_possible(value)
+        self.parent.remove_possible(row, col, value)
+
+    def is_conflicting(self, row, col, value) -> bool:
+        return self.__holds_value(self.__cells(), row, col, value) or self.parent.is_conflicting(row, col, value)
 
     # Private functions
 
@@ -81,3 +92,13 @@ class RectangularBlock:
             "row": self.block_row * self.rows + row,
             "col": self.block_col * self.cols + col,
         }
+
+    def __cells(self):
+        return (cell for cells in self._cells for cell in cells)
+
+    def __cells_in_row_or_col(self, row, col):
+        return (cell for cell in self.__cells() if cell.row == row or cell.col == col)
+
+    def __holds_value(self, cells, row, col, value) -> bool:
+        """Return True if any of the cells, other than the one at row, col, holds the value"""
+        return any(cell.value() == value and (cell.row, cell.col) != (row, col) for cell in cells)

@@ -46,14 +46,14 @@ class DisplayAttrs:
 
     ATTRS_PRIMARY = {
         # The following are mutually exclusive basic required attributes
-        INITIAL: FgBgAttr(("purple"), ("lavender")),
-        GUESS: FgBgAttr(("green"), None),
+        INITIAL: FgBgAttr(("purple",), ("lavender",)),
+        GUESS: FgBgAttr(("green",), None),
     }
 
     ATTRS_OPTIONAL = {
         # The following are optional (can be combined with the required ones) but are also mutually exclusive
-        CONFLICTING: FgBgAttr(("bold", "red"), ("yellow")),
-        CONFLICTED: FgBgAttr(None, ("yellow")),
+        CONFLICTING: FgBgAttr(("bold", "red"), ("yellow",)),
+        CONFLICTED: FgBgAttr(None, ("yellow",)),
     }
 
     def outer_border(_str, _attrs):
@@ -77,11 +77,11 @@ class DisplayAttrs:
     def __get_fg_bg(_attrs):
         primary = DisplayAttrs.__get_attrs(_attrs, DisplayAttrs.ATTRS_PRIMARY)
         optional = DisplayAttrs.__get_attrs(_attrs, DisplayAttrs.ATTRS_OPTIONAL)
-        fg = "".join(optional.fg or primary.fg or DisplayAttrs.DEFAULT_COLOR)
+        fg = "_".join(optional.fg or primary.fg or (DisplayAttrs.DEFAULT_COLOR,))
         level = next(iter([attr["level"] for attr in _attrs if isinstance(attr, dict) and "level" in attr]), None)
         level = min(level, DisplayAttrs.MAX_GRAY_LEVEL) if level else None
-        bg_level = f"gray{level}" if level else ()
-        bg = "".join(optional.bg or primary.bg or bg_level)
+        bg_level = (f"gray{level}",) if level else ()
+        bg = "_".join(optional.bg or primary.bg or bg_level)
         return fg, bg
 
     def __get_attrs(_attrs, _attr_list) -> FgBgAttr:

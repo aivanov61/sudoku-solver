@@ -72,14 +72,22 @@ class Puzzle3x3:
 
     def render(self) -> None:
         Display.clear_screen()
-        for block_row in range(self.V_BLOCKS):
-            for block_col in range(self.H_BLOCKS):
-                self._blocks[block_row][block_col].render()
+        for block in self.__all_blocks():
+            block.render()
         self.display_status()
 
     def display_status(self) -> None:
         Display.move_to_status_line()
         echo(Commands.short_help() + Display.term.clear_eol)
+
+    # Interface required for blocks
+
+    def remove_possible(self, row, col, value) -> None:
+        for block in self.__all_blocks():
+            block.remove_possible_in_row_and_col(row, col, value)
+
+    def is_conflicting(self, row, col, value) -> bool:
+        return any(block.has_value_in_row_or_col(row, col, value) for block in self.__all_blocks())
 
     # Interface methods for commands (corresponding to commands in Commands)
 
@@ -149,6 +157,9 @@ class Puzzle3x3:
 
     # Private functions
 
+    def __all_blocks(self):
+        return (block for blocks in self._blocks for block in blocks)
+
     def __increment_bg_level(self) -> None:
         self._bg_level += self.BG_LEVEL_DELTA
         self._bg_level > DisplayAttrs.MAX_GRAY_LEVEL and Display.warn(
@@ -162,15 +173,17 @@ class Puzzle3x3:
         return tuple(attr)
 
     def __selected_cell(self) -> Cell:
-        row, col = self.selected_cell
+        return self.__cell(*self.selected_cell)
+
+    def __cell(self, row, col) -> Cell:
         return self.__block(row, col).cell(row, col)
+
+    def __block(self, row, col) -> RectangularBlock:
+        return self._blocks[row // self.V_BLOCKS][col // self.H_BLOCKS]
 
     def __accept_user_value(self, val, attr: tuple, cell: Cell) -> None:
         self._initializing or self.__add_history(cell, val, attr)
         cell.update(val, attr)
-
-    def __block(self, row, col) -> RectangularBlock:
-        return self._blocks[row // self.V_BLOCKS][col // self.H_BLOCKS]
 
     def __add_history(self, cell, val, attr) -> None:
         new_info = Entry.ValueInfo(val, self.__prim_attr(attr))
