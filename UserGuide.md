@@ -4,7 +4,7 @@ This program lets you type in a 9x9 Sudoku puzzle, such as one from a newspaper 
 
 ## Getting started
 
-1. Install Python 3 and the `blessed` package: `pip install blessed`
+1. Install Python 3, then the `blessed` package: `pip install -r requirements.txt`
 2. In a terminal, go to the program's folder and run: `python sudoku.py`
 3. A copyright notice appears. It goes away after 5 seconds, or press any key.
 

@@ -1,18 +1,20 @@
 # sudoku-solver
 
-Play and auto-solve (with hints) sudoku puzzles - written in python, plays on terminal
+Play sudoku puzzles in the terminal - written in python.  The program shows each
+cell's possible values and highlights conflicts as you play; auto-solving with
+hints is planned.
 
 ## Requirements
 
 Once this git package is downloaded into a directory, the only two requirements are:
-1. Python is installed
-1. Blessed - `pip install blessed` (at least ver 1.20.0)
+1. Python 3 is installed
+1. Blessed (at least ver 1.20.0) - `pip install -r requirements.txt`
 
-*TODO: Add setup and requirements.txt*
+The terminal must use UTF-8 and be at least 54 columns by 29 lines.
 
 ## Playing
 
-To play the game, simply `cd` to the top-level directory and run `python sukoku.py`
+To play the game, simply `cd` to the top-level directory and run `python sudoku.py`
 
 First you will get a GNU GPL splash page which will disappear in 5 seconds (or
 with the first/any key press).  Then the screen size will be checked and ensured
@@ -47,7 +49,7 @@ screen (**INIT** mode):
 █     │     │     █     │     │     █     │     │     █
 █     │     │     █     │     │     █     │     │     █
 ███████████████████████████████████████████████████████
-HELP=?, #=1-9/shift=guess, UP=k/^, DOWN=j/v, LEFT=h/<, RIGHT=l/>, QUIT=q/CTRL-C, PLAY=ESC [initializing puzzle]
+HELP=?, #=1-9/shift=guess, UP=k/^, DOWN=j/v, LEFT=h/<, RIGHT=l/>, QUIT=q/CTRL-C, DEL=Delete, PLAY=ESC [initializing]
 ```
 Notice at the bottom of the play field is a status line which will display
 information during game setup and playing and also provides command hints.
@@ -57,12 +59,13 @@ information during game setup and playing and also provides command hints.
 Use the arrow keys and/or the hjkl keys (left, down, up, right) to move around.
 Use the '?' to get help on possible commands.  Enter numbers in the squares
 (I call them cells in the code) for the given numbers in your puzzle.  You
-will notice that the cell turns gray and that these numbers show up in purple.
+will notice that these numbers show up in purple on a lavender background.
+Use the Delete key to clear a cell.
 
 When you are done, hit the ESC key to enter the **PLAY** mode.  If you
 accidentally hit the ESC key before completing the puzzle, or you notice a
-mistake or just want to change the initialization values, while in PLAY mode,
-hit the ESC key again to re-enter **INIT** mode.
+mistake or just want to change the initialization values, undo all your moves
+and hit the ESC key again to re-enter **INIT** mode.
 
 ### Solving the Puzzle (**PLAY** mode)
 
@@ -72,10 +75,30 @@ command options.  There are some **hidden** commands that do not show up in the
 status line for two reasons: 1) It would make the status line very long, 2) they
 are not common commands.  To see these, use the **HELP** key (?).
 
+Follow the Sudoku rules to solve the puzzle:
+- The bottom line of each cell shows the values still possible for it (or `.....`
+when more than 5 are possible).  Entering a value removes it from the possible
+values of every cell in its row, column and box.
+- If you enter a number that is already in the same row, column or box, the cell
+turns bold red on yellow.
+- Enter a SHIFTED digit to make a guess.  Guesses, and every value entered after
+them, get a gray background so you can see what depends on the guess.  Use "u"
+to undo back to it.
+
 *[Not completed]*
-Follow the Sudoku rules to solve puzzle.  If you enter a number that is not valid
-due to duplication, the number will flash red and the corresponding number that it
-violates will flash yellow.
+Rewind (r), auto-play (a) and next (n) are listed in the help but not implemented
+yet.  Possible values are not given back when a value is deleted, undone or
+changed, and the cell that a conflicting number clashes with is not highlighted
+yet.
+
+See [UserGuide.md](UserGuide.md) for the full list of keys and colors.
+
+## Testing
+
+Run all the unit tests with `py -m pytest` (or `python -m pytest`), or run a single
+test file directly, e.g. `python tests/cell_test.py`.  Two tests are meant to be
+watched: `tests/display_test.py::TestDisplay` draws on the terminal and
+`tests/input_test.py` waits for a key press.
 
 ## Purpose and Design
 
@@ -108,14 +131,19 @@ some guidance:
 of 3x3 cells per block; `Puzzle3x3` class
 - rectangular_block.py - creates/manages a rectangular block of 3x3 cells; `RectangularBlock` class.
 - cell.py - creates/manages an individual cell; `Cell` class
+- cell_solver.py - keeps the possible values of a cell; `CellSolver` class
 - commands.py - establish the commands for the puzzle; `Commands` class
 - display.py - manages the terminal display; `Display` class
+- display_attrs.py - turns cell attributes into terminal colors; `DisplayAttrs` class
+- history.py - keeps the history of entries for undo; `History` and `Entry` classes
 - input.py - manages keyboard input and decodes into a valid command; `Input` class
+- copyright.py - the GNU GPL splash text; `Copyright` class
 
 #### Class Organization
 
 Rather than drawing a UML (I'll leave that to the reader and IDE), here is an
-explanation of the various classes:
+explanation of a few of the classes.  [DesignDoc.md](DesignDoc.md) describes
+all of them and how they work together.
 
 #### Main
 
@@ -134,7 +162,7 @@ the display.  Key functions/attributes in this class are:
 
 - term - an instance of the `blessed` Terminal()
 - geometry() - establish the horizontal and vertical sizes of the puzzle
-- geom - access the geometry `h_size` and `v_size` (horizontal and vertical respectively)
+- geom - access the geometry `h_cells` and `v_cells` (horizontal and vertical respectively)
 - CONSTANTS for the puzzle cell sizes
 - y() - return the terminal y offset for a given row
 - x() - return the terminal x offset for a given column
@@ -142,9 +170,10 @@ the display.  Key functions/attributes in this class are:
 - validate_screen_size() - makes sure terminal is big enough; forces resizing until it is
 - draw_cell() - Draws the cell outline/background, sans the values
 - draw_cell_value() - Draws the current cell value with color/attributes
-- draw_cell_possible_values() - Draws the values possible for the cell (or `.` if there are too many to fit in the cell)
+- draw_cell_possible_values() - Draws the sorted values possible for the cell (or `.....` if there are too many to fit in the cell)
 - move_to_status_line() - Move the cursor to the first character of the status line (one line below the puzzle cells)
 - move_to_cell() - Move to the 'center' of the cell (where the value will be printed)
+- warn() - Display a warning in yellow on the status line
 
 #### Input
 
@@ -154,5 +183,3 @@ given in a specific format (see Commands below).  It provides a single function:
 - get_cmd() - Wait for, and get, keyboard input.  It handles exceptions and CTRL-C
 (keyboard interrupt) and returns a valid command.  Keyboard input that is not
 recognized is ignored.
-
-#### [Rest of classes TBD]

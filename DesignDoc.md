@@ -22,7 +22,7 @@ The code is also meant as an example of clean, object-oriented Python built with
 
 ## 3. Running and testing
 
-- **Requirements:** Python 3 (currently developed on 3.15) and `blessed` 1.20 or later (`pip install blessed`).
+- **Requirements:** Python 3 (currently developed on 3.15) and `blessed` 1.20 or later (`pip install -r requirements.txt`).
 - **Run:** `python sudoku.py` from the project folder.
 - **Terminal size:** at least 54 columns × 29 lines (9 cells × 6 columns; 9 cells × 3 lines, plus 2 for the status line).
 - **Tests:** `py -m pytest` from the project folder, or run one file directly, for example `py tests/cell_test.py`. The tests use `unittest` and pytest runs them unchanged. Note:
@@ -147,4 +147,3 @@ The full list is in `CLAUDE.md`. The main points:
 2. **`CONFLICTED` marking:** mark the cell a new value clashes with, and clear both marks when the clash goes away.
 3. **Rewind, auto and next:** add `rewind_`, `auto_` and `next_` to `Puzzle3x3`. Rewind needs the guess points already stored in `History`. Auto and next need solving logic in `CellSolver`, starting with cells that have a single possible value.
 4. **Redo**, if wanted.
-5. **Packaging:** add a `requirements.txt` (`blessed>=1.20`).
