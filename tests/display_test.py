@@ -21,6 +21,7 @@ import sys
 sys.path.insert(0, ".")
 
 from unittest import main, TestCase
+from unittest.mock import patch
 
 from display import Display, Border
 
@@ -66,6 +67,14 @@ class TestDisplay(TestCase):
                 Display.draw_cell_value(row, col, 1 + (row + col) // 2)
                 Display.draw_cell_possible_values(row, col, random.choices(range(1, 10), k=random.randint(0, 6)))
         Display.move_to_status_line()
+
+
+class TestDisplayPossibleValues(TestCase):
+    @patch("display.echo")
+    def test_possible_values_are_drawn_in_increasing_order(self, echo):
+        Display.draw_cell_possible_values(0, 0, [9, 5, 1])
+        drawn = echo.call_args_list[-1].args[0]
+        self.assertIn("".join(str(v).translate(Display.small_nums) for v in (1, 5, 9)), drawn)
 
 
 if __name__ == "__main__":

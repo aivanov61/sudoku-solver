@@ -26,7 +26,7 @@ class CellSolver:
     """
 
     def __init__(self, cell_parent):
-        self._possible_values = set(sorted(cell_parent.values()))
+        self._possible_values = set(cell_parent.values())
 
     def possible_values(self) -> set:
         """Return the set of possible values for the cell."""

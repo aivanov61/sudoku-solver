@@ -28,6 +28,7 @@ class TestRectangularBlock(TestCase):
 
     def setUp(self):
         self.__setup_parent()
+        self.block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
         return super().setUp()
 
     def __setup_parent(self):
@@ -49,74 +50,62 @@ class TestRectangularBlock(TestCase):
         block2.render()
 
     def test_remove_possible_removes_value_from_every_cell_in_block(self):
-        block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
-        block.remove_possible(1, 7, 5)
+        self.block.remove_possible(1, 7, 5)
         for row in range(self.BLOCK_ROWS):
             for col in range(self.BLOCK_COLS):
-                self.assertNotIn(5, block.cell(row, col).possible_values())
+                self.assertNotIn(5, self.block.cell(row, col).possible_values())
 
     def test_remove_possible_leaves_other_values_possible(self):
-        block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
-        block.remove_possible(1, 7, 5)
-        self.assertEqual(block.cell(0, 0).possible_values(), set(block.values()) - {5})
+        self.block.remove_possible(1, 7, 5)
+        self.assertEqual(self.block.cell(0, 0).possible_values(), set(self.block.values()) - {5})
 
     def test_remove_possible_is_passed_to_parent(self):
-        block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
-        block.remove_possible(1, 7, 5)
+        self.block.remove_possible(1, 7, 5)
         self.parent.remove_possible.assert_called_once_with(1, 7, 5)
 
     def test_value_is_conflicting_when_another_cell_in_block_holds_it(self):
-        block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
-        block.cell(0, 6).set(5)
+        self.block.cell(0, 6).set(5)
         self.parent.is_conflicting.reset_mock()
-        self.assertTrue(block.is_conflicting(2, 8, 5))
+        self.assertTrue(self.block.is_conflicting(2, 8, 5))
         self.parent.is_conflicting.assert_not_called()
 
     def test_value_in_the_same_cell_is_not_conflicting(self):
-        block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
-        block.cell(0, 6).set(5)
-        self.assertFalse(block.is_conflicting(0, 6, 5))
+        self.block.cell(0, 6).set(5)
+        self.assertFalse(self.block.is_conflicting(0, 6, 5))
 
     def test_conflict_check_is_passed_to_parent_when_block_has_no_conflict(self):
-        block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
         self.parent.is_conflicting.return_value = True
-        self.assertTrue(block.is_conflicting(1, 7, 5))
+        self.assertTrue(self.block.is_conflicting(1, 7, 5))
         self.parent.is_conflicting.assert_called_once_with(1, 7, 5)
 
     def test_remove_possible_in_row_and_col_removes_value_only_from_cells_in_that_row_or_col(self):
-        block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
-        block.remove_possible_in_row_and_col(1, 7, 5)
-        for cell in (block.cell(1, 6), block.cell(1, 8), block.cell(0, 7), block.cell(2, 7)):
+        self.block.remove_possible_in_row_and_col(1, 7, 5)
+        for cell in (self.block.cell(1, 6), self.block.cell(1, 8), self.block.cell(0, 7), self.block.cell(2, 7)):
             self.assertNotIn(5, cell.possible_values())
-        for cell in (block.cell(0, 6), block.cell(0, 8), block.cell(2, 6), block.cell(2, 8)):
+        for cell in (self.block.cell(0, 6), self.block.cell(0, 8), self.block.cell(2, 6), self.block.cell(2, 8)):
             self.assertIn(5, cell.possible_values())
 
     def test_remove_possible_in_row_and_col_handles_row_outside_block(self):
-        block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
-        block.remove_possible_in_row_and_col(5, 7, 5)
+        self.block.remove_possible_in_row_and_col(5, 7, 5)
         for row in range(self.BLOCK_ROWS):
-            self.assertNotIn(5, block.cell(row, 7).possible_values())
-            self.assertIn(5, block.cell(row, 6).possible_values())
+            self.assertNotIn(5, self.block.cell(row, 7).possible_values())
+            self.assertIn(5, self.block.cell(row, 6).possible_values())
 
     def test_has_value_in_row_or_col_finds_value_in_row(self):
-        block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
-        block.cell(1, 6).set(5)
-        self.assertTrue(block.has_value_in_row_or_col(1, 0, 5))
+        self.block.cell(1, 6).set(5)
+        self.assertTrue(self.block.has_value_in_row_or_col(1, 0, 5))
 
     def test_has_value_in_row_or_col_finds_value_in_col(self):
-        block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
-        block.cell(1, 6).set(5)
-        self.assertTrue(block.has_value_in_row_or_col(7, 6, 5))
+        self.block.cell(1, 6).set(5)
+        self.assertTrue(self.block.has_value_in_row_or_col(7, 6, 5))
 
     def test_has_value_in_row_or_col_ignores_value_outside_row_and_col(self):
-        block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
-        block.cell(1, 6).set(5)
-        self.assertFalse(block.has_value_in_row_or_col(0, 7, 5))
+        self.block.cell(1, 6).set(5)
+        self.assertFalse(self.block.has_value_in_row_or_col(0, 7, 5))
 
     def test_has_value_in_row_or_col_ignores_the_cell_itself(self):
-        block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
-        block.cell(1, 6).set(5)
-        self.assertFalse(block.has_value_in_row_or_col(1, 6, 5))
+        self.block.cell(1, 6).set(5)
+        self.assertFalse(self.block.has_value_in_row_or_col(1, 6, 5))
 
 
 if __name__ == "__main__":

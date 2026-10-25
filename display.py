@@ -135,7 +135,7 @@ class Display:
 
     def draw_cell_possible_values(row=0, col=0, values=[], attrs=dict()):
         """Draw the possible values at the bottom of the cell"""
-        values = values if len(values) <= Display.CELL_HORIZONTAL_SIZE else "....."
+        values = sorted(values) if len(values) <= Display.CELL_HORIZONTAL_SIZE else "....."
         x = Display.x(col) + 1
         y = Display.y(row) + Display.CELL_VALUES_ROW
         echo(Display.term.move_xy(x, y))
