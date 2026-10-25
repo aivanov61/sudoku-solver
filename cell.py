@@ -99,7 +99,7 @@ class Cell:
         """
         if value and self._parent.is_conflicting(self.row, self.col, value):
             self._attrs = (*self._attrs, DisplayAttrs.CONFLICTING)
-        self._value and self._parent.add_possible(self.row, self.col, self._value)
+        old_value, self._value = self._value, value
+        old_value and self._parent.add_possible(self.row, self.col, old_value)
         value and self._parent.remove_possible(self.row, self.col, value)
         value and self.clear_possible()
-        self._value = value

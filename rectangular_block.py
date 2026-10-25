@@ -56,12 +56,9 @@ class RectangularBlock:
     def cell(self, row, col) -> Cell:
         return self._cells[row % self.rows][col % self.cols]
 
-    def remove_possible_in_row_and_col(self, row, col, value) -> None:
-        for cell in self.__cells_in_row_or_col(row, col):
-            cell.remove_possible(value)
-
-    def has_value_in_row_or_col(self, row, col, value) -> bool:
-        return self.__holds_value(self.__cells_in_row_or_col(row, col), row, col, value)
+    def cells_in_row_or_col(self, row, col):
+        """Yield the cells of this block that are in the given puzzle row or column"""
+        yield from (cell for cell in self.__cells() if cell.row == row or cell.col == col)
 
     # Interface required for cell instances
 
@@ -72,12 +69,11 @@ class RectangularBlock:
         pass
 
     def remove_possible(self, row, col, value) -> None:
-        for cell in self.__cells():
+        for cell in self.__related_cells(row, col):
             cell.remove_possible(value)
-        self.parent.remove_possible(row, col, value)
 
     def is_conflicting(self, row, col, value) -> bool:
-        return self.__holds_value(self.__cells(), row, col, value) or self.parent.is_conflicting(row, col, value)
+        return any(cell.value() == value for cell in self.__related_cells(row, col))
 
     # Private functions
 
@@ -96,9 +92,8 @@ class RectangularBlock:
     def __cells(self):
         return (cell for cells in self._cells for cell in cells)
 
-    def __cells_in_row_or_col(self, row, col):
-        return (cell for cell in self.__cells() if cell.row == row or cell.col == col)
-
-    def __holds_value(self, cells, row, col, value) -> bool:
-        """Return True if any of the cells, other than the one at row, col, holds the value"""
-        return any(cell.value() == value and (cell.row, cell.col) != (row, col) for cell in cells)
+    def __related_cells(self, row, col):
+        """Yield, once each, every other cell in the same block, row or column as the cell at row, col"""
+        block_cells = list(self.__cells())
+        yield from (cell for cell in block_cells if (cell.row, cell.col) != (row, col))
+        yield from (cell for cell in self.parent.cells_in_row_or_col(row, col) if cell not in block_cells)

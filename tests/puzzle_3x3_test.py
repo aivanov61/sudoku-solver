@@ -46,6 +46,12 @@ class TestPuzzle3x3(TestCase):
         cell = self.__cell(4, 7)
         self.assertEqual((cell.row, cell.col), (4, 7))
 
+    def test_cells_in_row_or_col_yields_each_cell_in_that_row_and_col_once(self):
+        cells = list(self.puzzle.cells_in_row_or_col(4, 4))
+        positions = [(cell.row, cell.col) for cell in cells]
+        self.assertEqual(len(positions), len(set(positions)))
+        self.assertEqual(set(positions), {(4, i) for i in range(self.SIZE)} | {(i, 4) for i in range(self.SIZE)})
+
     def test_setting_value_clears_all_possible_values_of_that_cell(self):
         self.__cell(4, 4).set(5)
         self.assertEqual(self.__cell(4, 4).possible_values(), set())

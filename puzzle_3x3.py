@@ -82,12 +82,10 @@ class Puzzle3x3:
 
     # Interface required for blocks
 
-    def remove_possible(self, row, col, value) -> None:
+    def cells_in_row_or_col(self, row, col):
+        """Yield the cells in the given row or column, as identified by each block"""
         for block in self.__all_blocks():
-            block.remove_possible_in_row_and_col(row, col, value)
-
-    def is_conflicting(self, row, col, value) -> bool:
-        return any(block.has_value_in_row_or_col(row, col, value) for block in self.__all_blocks())
+            yield from block.cells_in_row_or_col(row, col)
 
     # Interface methods for commands (corresponding to commands in Commands)
 
