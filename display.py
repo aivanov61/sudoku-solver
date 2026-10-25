@@ -66,6 +66,38 @@ class Display:
     - move_to_status_line() - move the cursor to the status line: one line below the puzzle
     """
 
+    # Cell dimensions (internally fixed sizes to work on terminals)
+    CELL_HORIZONTAL_SIZE = 5
+    CELL_WIDTH = CELL_HORIZONTAL_SIZE + 1
+    CELL_HEIGHT = 3
+    CELL_VALUE_ROW = 1
+    CELL_VALUES_ROW = 2
+
+    # These character symbols are re-used from https://github.com/thisisparker/cursewords/blob/master/cursewords/characters.py
+    vline = "│"
+    hline = "─"
+
+    llcorner = "└"
+    ulcorner = "┌"
+    lrcorner = "┘"
+    urcorner = "┐"
+
+    ttee = "┬"
+
+    btee = "┴"
+    ltee = "├"
+    rtee = "┤"
+
+    bigplus = "┼"
+
+    lhblock = "▌"
+    rhblock = "▐"
+    fullblock = "█"
+    squareblock = rhblock + fullblock + lhblock
+
+    small_nums = str.maketrans("1234567890", "₁₂₃₄₅₆₇₈₉₀")
+    encircle = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ ", "ⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏ◯")
+
     # Initialize terminal and set basic configuration
     term = Terminal()
     geom = {"h_cells": None, "v_cells": None}
@@ -73,13 +105,6 @@ class Display:
     def geometry(geometry):
         Display.geom["h_cells"] = geometry["h_cells"]
         Display.geom["v_cells"] = geometry["v_cells"]
-
-    # Cell dimensions (internally fixed sizes to work on terminals)
-    CELL_HORIZONTAL_SIZE = 5
-    CELL_WIDTH = CELL_HORIZONTAL_SIZE + 1
-    CELL_HEIGHT = 3
-    CELL_VALUE_ROW = 1
-    CELL_VALUES_ROW = 2
 
     # Cell location helpers
     def y(cell_row):
@@ -217,28 +242,3 @@ class Display:
 
     def __rendered_bg_attrs(attrs) -> str:
         return getattr(Display.term, Attrs.render_bg(attrs))
-
-    # These character symbols are re-used from https://github.com/thisisparker/cursewords/blob/master/cursewords/characters.py
-    vline = "│"
-    hline = "─"
-
-    llcorner = "└"
-    ulcorner = "┌"
-    lrcorner = "┘"
-    urcorner = "┐"
-
-    ttee = "┬"
-
-    btee = "┴"
-    ltee = "├"
-    rtee = "┤"
-
-    bigplus = "┼"
-
-    lhblock = "▌"
-    rhblock = "▐"
-    fullblock = "█"
-    squareblock = rhblock + fullblock + lhblock
-
-    small_nums = str.maketrans("1234567890", "₁₂₃₄₅₆₇₈₉₀")
-    encircle = str.maketrans("ABCDEFGHIJKLMNOPQRSTUVWXYZ ", "ⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏ◯")

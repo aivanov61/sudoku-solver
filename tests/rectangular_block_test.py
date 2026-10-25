@@ -25,6 +25,8 @@ from rectangular_block import RectangularBlock
 
 
 class TestRectangularBlock(TestCase):
+    BLOCK_ROWS = 3
+    BLOCK_COLS = 3
 
     def setUp(self):
         self.__setup_parent()
@@ -38,9 +40,6 @@ class TestRectangularBlock(TestCase):
         """
         self.parent = MagicMock()
         self.parent.cells_in_row_or_col.return_value = []
-
-    BLOCK_ROWS = 3
-    BLOCK_COLS = 3
 
     def test_block_can_render(self):
         block1 = RectangularBlock(self.parent, 0, 0, self.BLOCK_ROWS, self.BLOCK_COLS)
