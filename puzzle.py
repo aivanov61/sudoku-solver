@@ -17,6 +17,8 @@
 
 import sys
 
+from abc import ABC, abstractmethod
+
 sys.path.insert(0, ".")
 
 from history import History, Entry
@@ -25,14 +27,19 @@ from commands import Commands
 from cell import Cell
 from display import Display, echo
 from display_attrs import DisplayAttrs
-from rectangular_block import RectangularBlock
 
 
-class Puzzle3x3:
+class Puzzle(ABC):
     """
-    Implement a 3x3 puzzle.
+    The generic Sudoku puzzle: everything that does not depend on how the blocks are laid out.
 
-    All puzzles are required to have a minimum interface consisting of the following attributes:
+    A layout is a subclass (in the puzzles folder) that provides:
+        NAME - the name shown to the player
+        __init__() - calls super().__init__(v_cells, h_cells) with the overall size, then builds its blocks
+        _blocks() - yield every block
+        _block_at(row, col) - return the block holding the cell at a puzzle row and column
+
+    Main relies on the following attributes:
         selected_cell - (row: int, col: int) - a tuple that represents the currently selected cell
         is_playing - bool - True if user is still playing the puzzle, False otherwise
 
@@ -43,37 +50,27 @@ class Puzzle3x3:
 
     In addition, the puzzle should support all the commands available in commands.py.  Function
     names for commands have underscore (_) as a suffix to eliminate conflicts with reserved words.
-
     """
 
-    H_BLOCKS = 3  # columns
-    V_BLOCKS = 3  # rows
     BG_LEVEL_DELTA = 10
 
-    def __init__(self):
+    def __init__(self, v_cells, h_cells):
         # Public attributes required for all puzzles
         self.selected_cell = (0, 0)  # row, col (NOT x, y)
         self.is_playing = True
 
         History.clear()
-        Display.geometry({"h_cells": self.H_BLOCKS**2, "v_cells": self.V_BLOCKS**2})
+        Display.geometry({"h_cells": h_cells, "v_cells": v_cells})
         Display.validate_screen_size()
-
-        self._blocks = [[None for _col in range(self.H_BLOCKS)] for _row in range(self.V_BLOCKS)]
-        for block_row in range(self.V_BLOCKS):
-            for block_col in range(self.H_BLOCKS):
-                self._blocks[block_row][block_col] = RectangularBlock(
-                    self, row=block_row, col=block_col, rows=self.V_BLOCKS, cols=self.H_BLOCKS
-                )
 
         self._initializing = True
         self._bg_level = 0
 
-    # Required public interface methods
+    # Interface required for Main
 
     def render(self) -> None:
         Display.clear_screen()
-        for block in self.__all_blocks():
+        for block in self._blocks():
             block.render()
         self.display_status()
 
@@ -81,20 +78,20 @@ class Puzzle3x3:
         Display.move_to_status_line()
         echo(Commands.short_help() + Display.term.clear_eol)
 
+    def force_quit_(self) -> None:
+        self.is_playing = False
+
     # Interface required for blocks
 
     def cells_in_row_or_col(self, row, col):
         """Yield the cells in the given row or column, as identified by each block"""
-        for block in self.__all_blocks():
+        for block in self._blocks():
             yield from block.cells_in_row_or_col(row, col)
 
-    # Interface methods for commands (corresponding to commands in Commands)
+    # Interface required for Main: one method per command in Commands
 
     def quit_(self) -> None:
         Display.confirm("Really quit?") and self.force_quit_()
-
-    def force_quit_(self) -> None:
-        self.is_playing = False
 
     def help_(self) -> None:
         Display.clear_screen()
@@ -157,10 +154,17 @@ class Puzzle3x3:
                 return
         Display.warn("No obvious next move. You'll have to make a guess. ", wait=True)
 
-    # Private functions
+    # Interface required from layout subclasses
 
-    def __all_blocks(self):
-        return (block for blocks in self._blocks for block in blocks)
+    @abstractmethod
+    def _blocks(self):
+        """Yield every block of the layout"""
+
+    @abstractmethod
+    def _block_at(self, row, col):
+        """Return the block that holds the cell at the given puzzle row and column"""
+
+    # Private functions
 
     def __increment_bg_level(self) -> None:
         self._bg_level += self.BG_LEVEL_DELTA
@@ -178,10 +182,7 @@ class Puzzle3x3:
         return self.__cell(*self.selected_cell)
 
     def __cell(self, row, col) -> Cell:
-        return self.__block(row, col).cell(row, col)
-
-    def __block(self, row, col) -> RectangularBlock:
-        return self._blocks[row // self.V_BLOCKS][col // self.H_BLOCKS]
+        return self._block_at(row, col).cell(row, col)
 
     def __accept_user_value(self, val, attr: tuple, cell: Cell) -> None:
         self._initializing or self.__add_history(cell, val, attr)
@@ -248,7 +249,7 @@ class Puzzle3x3:
 
     def __first_cell(self, cells_of_block) -> Cell:
         """Return the first cell, left to right and top to bottom, among the cells each block reports"""
-        cells = (cell for block in self.__all_blocks() for cell in cells_of_block(block))
+        cells = (cell for block in self._blocks() for cell in cells_of_block(block))
         return min(cells, key=lambda cell: (cell.row, cell.col), default=None)
 
     def __stopped_by_dead_end(self) -> bool:

@@ -22,7 +22,7 @@ from unittest.mock import patch
 sys.path.insert(0, ".")
 
 from display_attrs import DisplayAttrs
-from puzzle_3x3 import Puzzle3x3
+from puzzles.puzzle_3x3 import Puzzle3x3
 
 
 class TestPuzzle3x3(TestCase):
@@ -354,7 +354,7 @@ class TestPuzzle3x3(TestCase):
 
     def __cell(self, row, col):
         """Access to the puzzle's private cell lookup"""
-        return self.puzzle._Puzzle3x3__cell(row, col)
+        return self.puzzle._Puzzle__cell(row, col)
 
     def __is_affected_by(self, row, col, origin_row, origin_col) -> bool:
         same_box = row // 3 == origin_row // 3 and col // 3 == origin_col // 3

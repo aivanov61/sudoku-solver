@@ -126,8 +126,11 @@ of functions which are often in different files (I've been using VSCode lately)
 When looking at the code for this Sudoku puzzle solver, this list will give you
 some guidance:
 - sudoku.py - plays the game, handles the flow; `Main` class, has entry point run()
-- puzzle_3x3.py - creates/manages a 3x3 rectangular block Sudoku puzzle
-of 3x3 cells per block; `Puzzle3x3` class
+- puzzle.py - the generic puzzle: values, history, undo/rewind, next; `Puzzle` class
+- puzzles/puzzle_3x3.py - the standard layout of nine 3x3 blocks; `Puzzle3x3` class
+(new layouts go in the puzzles folder)
+- puzzle_catalog.py - finds the available layouts; `PuzzleCatalog` class
+- layout_menu.py - lets the player choose a layout; `LayoutMenu` class
 - rectangular_block.py - creates/manages a rectangular block of 3x3 cells; `RectangularBlock` class.
 - cell.py - creates/manages an individual cell; `Cell` class
 - cell_solver.py - keeps the possible values of a cell; `CellSolver` class
@@ -148,8 +151,10 @@ all of them and how they work together.
 
 This class is instantiated in sudoku.py and drives the Sudoku program.  Driving
 the Sudoku program entails:
-1. Handling the GNU GPL notice
-1. Instantiating the Puzzle object
+1. Getting the puzzle layouts from the catalog
+1. Handling the GNU GPL notice (with a note if the only layout is not fully usable)
+1. Letting the player choose a layout from a menu, when there are several
+1. Instantiating the puzzle
 1. Rendering the puzzle
 1. Entering the *play* loop
 1. Cleaning up and exiting when the *play* is over
