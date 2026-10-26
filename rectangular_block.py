@@ -47,7 +47,7 @@ class RectangularBlock:
         self.cols = cols
         self.__initialize_cells()
 
-    # Interface required for puzzles (arrangement of rectangular blocks)
+    # Interface required for puzzles
 
     def render(self) -> None:
         for cell in self.__cells():
@@ -69,29 +69,16 @@ class RectangularBlock:
     def single_value_cells(self):
         yield from self.__cells_where(Cell.single_possible_value)
 
-    # Interface required for cell instances
+    # Interface required for cells
 
     def values(self) -> range:
         return range(1, self.rows * self.cols + 1)
 
-    def add_possible(self, row, col, value) -> None:
-        for cell in self.__related_cells(row, col):
-            cell.add_possible(value)
-
-    def remove_possible(self, row, col, value) -> None:
-        for cell in self.__related_cells(row, col):
-            cell.remove_possible(value)
-
-    def is_held_by_related_cell(self, row, col, value) -> bool:
-        return any(cell.value() == value for cell in self.__related_cells(row, col))
-
-    def mark_conflicted(self, row, col, value) -> None:
-        for cell in self.__related_cells(row, col):
-            cell.mark_conflicted(value)
-
-    def clear_resolved_conflicts(self, row, col, value) -> None:
-        for cell in self.__related_cells(row, col):
-            cell.clear_resolved_conflict(value)
+    def related_cells(self, row, col):
+        """Yield, once each, every other cell in the same block, row or column as the cell at row, col"""
+        block_cells = list(self.__cells())
+        yield from (cell for cell in block_cells if (cell.row, cell.col) != (row, col))
+        yield from (cell for cell in self.parent.cells_in_row_or_col(row, col) if cell not in block_cells)
 
     # Private functions
 
@@ -112,9 +99,3 @@ class RectangularBlock:
 
     def __cells_where(self, condition):
         return (cell for cell in self.__cells() if condition(cell))
-
-    def __related_cells(self, row, col):
-        """Yield, once each, every other cell in the same block, row or column as the cell at row, col"""
-        block_cells = list(self.__cells())
-        yield from (cell for cell in block_cells if (cell.row, cell.col) != (row, col))
-        yield from (cell for cell in self.parent.cells_in_row_or_col(row, col) if cell not in block_cells)

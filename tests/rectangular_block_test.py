@@ -39,80 +39,26 @@ class TestRectangularBlock(TestCase):
         block1.render()
         block2.render()
 
-    def test_mark_conflicted_is_passed_to_every_related_cell(self):
+    def test_related_cells_are_the_other_cells_in_the_block_then_the_parents_row_and_col_cells(self):
         other_cell = self.__other_cell()
         self.parent.cells_in_row_or_col.return_value = [other_cell]
-        own_cell = self.block.cell(0, 6)
-        with patch.object(own_cell, "mark_conflicted") as mark_conflicted:
-            self.block.mark_conflicted(1, 7, 5)
-        mark_conflicted.assert_called_once_with(5)
-        other_cell.mark_conflicted.assert_called_once_with(5)
-
-    def test_clear_resolved_conflicts_is_passed_to_every_related_cell(self):
-        other_cell = self.__other_cell()
-        self.parent.cells_in_row_or_col.return_value = [other_cell]
-        own_cell = self.block.cell(0, 6)
-        with patch.object(own_cell, "clear_resolved_conflict") as clear_resolved_conflict:
-            self.block.clear_resolved_conflicts(1, 7, 5)
-        clear_resolved_conflict.assert_called_once_with(5)
-        other_cell.clear_resolved_conflict.assert_called_once_with(5)
-
-    def test_add_possible_gives_value_back_to_every_other_cell_in_block(self):
-        self.block.remove_possible(1, 7, 5)
-        self.block.add_possible(1, 7, 5)
-        for row in range(self.BLOCK_ROWS):
-            for col in range(6, 6 + self.BLOCK_COLS):
-                if (row, col) != (1, 7):
-                    self.assertIn(5, self.block.cell(row, col).possible_values())
-
-    def test_add_possible_gives_value_back_to_row_and_col_cells_given_by_parent(self):
-        other_cell = self.__other_cell()
-        self.parent.cells_in_row_or_col.return_value = [other_cell]
-        self.block.add_possible(1, 7, 5)
-        other_cell.add_possible.assert_called_once_with(5)
-
-    def test_remove_possible_removes_value_from_every_other_cell_in_block(self):
-        self.block.remove_possible(1, 7, 5)
-        for row in range(self.BLOCK_ROWS):
-            for col in range(6, 6 + self.BLOCK_COLS):
-                if (row, col) != (1, 7):
-                    self.assertNotIn(5, self.block.cell(row, col).possible_values())
-
-    def test_remove_possible_leaves_other_values_possible(self):
-        self.block.remove_possible(1, 7, 5)
-        self.assertEqual(self.block.cell(0, 6).possible_values(), set(self.block.values()) - {5})
-
-    def test_remove_possible_removes_value_from_row_and_col_cells_given_by_parent(self):
-        other_cell = self.__other_cell()
-        self.parent.cells_in_row_or_col.return_value = [other_cell]
-        self.block.remove_possible(1, 7, 5)
+        related = list(self.block.related_cells(1, 7))
+        positions = [(cell.row, cell.col) for cell in related[:-1]]
+        self.assertEqual(sorted(positions), [(r, c) for r in range(3) for c in range(6, 9) if (r, c) != (1, 7)])
+        self.assertIs(related[-1], other_cell)
         self.parent.cells_in_row_or_col.assert_called_once_with(1, 7)
-        other_cell.remove_possible.assert_called_once_with(5)
 
-    def test_remove_possible_skips_parent_cells_that_are_in_this_block(self):
+    def test_related_cells_skips_parent_cells_that_are_in_this_block(self):
         own_cell = self.block.cell(1, 6)
         self.parent.cells_in_row_or_col.return_value = [own_cell]
-        with patch.object(own_cell, "remove_possible") as remove_possible:
-            self.block.remove_possible(1, 7, 5)
-        remove_possible.assert_called_once_with(5)
+        related = list(self.block.related_cells(1, 7))
+        self.assertEqual(related.count(own_cell), 1)
 
-    def test_value_is_held_when_another_cell_in_block_holds_it(self):
-        self.block.cell(0, 6).set(5)
-        self.parent.cells_in_row_or_col.reset_mock()
-        self.assertTrue(self.block.is_held_by_related_cell(2, 8, 5))
+    def test_related_cells_asks_parent_only_after_the_block_cells(self):
+        related = self.block.related_cells(1, 7)
+        for _ in range(8):
+            next(related)
         self.parent.cells_in_row_or_col.assert_not_called()
-
-    def test_value_in_the_same_cell_is_not_held_by_a_related_cell(self):
-        self.block.cell(0, 6).set(5)
-        self.assertFalse(self.block.is_held_by_related_cell(0, 6, 5))
-
-    def test_value_is_held_when_a_row_or_col_cell_given_by_parent_holds_it(self):
-        self.parent.cells_in_row_or_col.return_value = [self.__other_cell(value=5)]
-        self.assertTrue(self.block.is_held_by_related_cell(1, 7, 5))
-
-    def test_value_is_not_held_when_no_related_cell_holds_it(self):
-        self.parent.cells_in_row_or_col.return_value = [self.__other_cell(value=3)]
-        self.assertFalse(self.block.is_held_by_related_cell(1, 7, 5))
 
     def test_single_value_cells_yields_only_cells_with_one_possible_value(self):
         self.__leave_only(self.block.cell(1, 7), {4})

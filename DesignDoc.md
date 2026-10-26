@@ -58,14 +58,14 @@ Supporting modules:
 
 ### 4.2 Responsibilities between layers
 
-Each layer talks only to the layer next to it. Requests travel up and are routed back down:
+Blocks decide which cells are related; cells act on them:
 
-- **A cell** never looks at other cells. It asks its parent block (`values()`, `remove_possible()`, `add_possible()`, `is_held_by_related_cell()`).
-- **A block** answers each request by visiting the cell's *related cells* (every other cell in the same box, row or column, once each) through the private generator `__related_cells(row, col)`. It yields its own box cells first, then the row and column cells it gets from the puzzle, skipping any in its own box. `add_possible`, `remove_possible` and `is_held_by_related_cell` are each a short loop over it, and `is_held_by_related_cell` stops at the first match.
+- **A block** gives a cell its *related cells* (every other cell in the same box, row or column, once each) through the generator `related_cells(row, col)`. It yields its own box cells first, then the row and column cells it gets from the puzzle, skipping any in its own box. Besides that, it gives cells the legal `values()`.
+- **A cell** acts on its related cells directly: it gives them back an old value (`add_possible`), removes a new one (`remove_possible`), and marks or clears conflicts (`mark_conflicted`, `clear_resolved_conflict`). It checks whether a related cell holds a value with `any()`, which stops at the first match. New cross-cell behavior is added to `Cell` alone, so blocks and the puzzle stay unchanged.
 - **The puzzle** knows only its block layout. Its single method for blocks, `cells_in_row_or_col(row, col)`, yields from every block's `cells_in_row_or_col`. Each block decides which of its own cells are in the row or column. The puzzle passes those cells along but never reads or changes them, because in other Sudoku layouts the blocks may not form a regular grid, and only a block knows which of its cells lie in a given row or column.
 - **The one exception** is the selected cell. The cursor moves by row and column, and a Sudoku's outer edge is always rectangular, so `Puzzle3x3` finds the selected cell itself (`__selected_cell` → `__cell` → `__block`). Revisit this if a puzzle with a non-rectangular outer edge is ever designed.
 
-Each class groups its methods under comments naming who calls them, for example `# Interface required for cell instances` in `RectangularBlock` and `# Interface required for blocks` in `Puzzle3x3`.
+Each class groups its methods under comments naming who calls them, for example `# Interface required for cells` in `RectangularBlock` and `# Interface required for related cells` in `Cell`, with private methods last under `# Private functions`.
 
 ### 4.3 Coordinates
 
@@ -97,23 +97,24 @@ Puzzle3x3.value_(val, guess)
        ├─ play mode → History.add(Entry(cell, new value, previous value))
        └─ Cell.update(val, attrs)
             └─ Cell.set()
-                 ├─ parent.is_held_by_related_cell(row, col, value)? → add CONFLICTING (even if the value is unchanged)
+                 ├─ a related cell holds the value? → add CONFLICTING (even if the value is unchanged)
                  └─ value changed → __smart_update(value)
                       ├─ assign the new value (before notifying, so related cells see the board as it now is)
-                      ├─ old value → parent.add_possible(...)              each related cell takes it back if it is empty
-                      │                                                   and none of its own related cells holds it
-                      ├─ old value → parent.clear_resolved_conflicts(...)  each related cell holding it drops its mark
-                      │                                                   if none of its own related cells holds it
-                      ├─ new value → parent.remove_possible(...)           each related cell removes it
-                      ├─ new value → parent.mark_conflicted(...)           each related cell holding it is marked CONFLICTED
+                      ├─ for each cell in parent.related_cells(row, col), in one pass:
+                      │    ├─ old value → cell.add_possible(...)              takes it back if it is empty and
+                      │    │                                                  none of its own related cells holds it
+                      │    ├─ old value → cell.clear_resolved_conflict(...)   drops its mark if it holds the value and
+                      │    │                                                  none of its own related cells holds it
+                      │    ├─ new value → cell.remove_possible(...)           removes it
+                      │    └─ new value → cell.mark_conflicted(...)           is marked CONFLICTED if it holds it
                       ├─ new value → the cell clears its own possible values
                       └─ no value  → the cell adds back every value no related cell holds
 ```
 
-- A cell redraws its possible values only when they actually change. That way, cells reached twice (by the box and by the row or column) don't flicker.
+- A cell redraws its possible values only when they actually change.
 - `update()` then redraws the cell: only its value and possible values if its attributes are unchanged, or the whole cell if they changed.
 
-**Conflicts** are worked out from the values on the board, never from a cell's possible values. The block checks its box, then the puzzle asks every block about the row and column. A cell's own position is always skipped, so its current value never counts against it. The same check decides whether a value can be given back: a cell regains a value only if `is_held_by_related_cell` says no related cell holds it, so a duplicate left on the board keeps the value blocked.
+**Conflicts** are worked out from the values on the board, never from a cell's possible values. A cell checks its related cells (its box first, then the row and column). Its own position is never among them, so its current value never counts against it. The same check decides whether a value can be given back: a cell regains a value only if no related cell holds it, so a duplicate left on the board keeps the value blocked.
 
 ### 5.4 Modes
 

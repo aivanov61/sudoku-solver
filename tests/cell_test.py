@@ -51,23 +51,29 @@ class TestCell(TestCase):
         self.assertEqual(self.cell.possible_values(), set())
 
     def test_cell_value_is_conflicting_when_a_related_cell_holds_it(self):
-        self.parent.is_held_by_related_cell.return_value = True
+        self.__related_cell(value=8)
         self.cell.set(8)
-        self.parent.is_held_by_related_cell.assert_called_once_with(0, 0, 8)
+        self.parent.related_cells.assert_called_with(0, 0)
         self.assertIn(DisplayAttrs.CONFLICTING, self.cell.attr())
 
     def test_cell_value_is_not_conflicting_when_no_related_cell_holds_it(self):
         self.cell.set(8)
         self.assertNotIn(DisplayAttrs.CONFLICTING, self.cell.attr())
 
-    def test_cell_changing_value_gives_old_value_back_to_parent(self):
+    def test_cell_new_value_is_removed_from_related_cells(self):
+        related = self.__related_cell()
+        self.cell.set(8)
+        related.remove_possible.assert_called_once_with(8)
+
+    def test_cell_changing_value_gives_old_value_back_to_related_cells(self):
+        related = self.__related_cell()
         self.cell.set(8)
         self.cell.set(4)
-        self.parent.add_possible.assert_called_once_with(0, 0, 8)
+        related.add_possible.assert_called_once_with(8)
 
     def test_cell_emptied_cell_regains_values_not_held_by_related_cells(self):
+        self.__related_cell(value=3)
         self.cell.set(8)
-        self.parent.is_held_by_related_cell.side_effect = lambda row, col, value: value == 3
         self.cell.set(None)
         self.assertEqual(self.cell.possible_values(), set(range(1, self.MAX_VALUE)) - {3})
 
@@ -78,9 +84,8 @@ class TestCell(TestCase):
 
     def test_cell_add_possible_ignores_value_held_by_related_cell(self):
         self.cell.remove_possible(5)
-        self.parent.is_held_by_related_cell.return_value = True
+        self.__related_cell(value=5)
         self.cell.add_possible(5)
-        self.parent.is_held_by_related_cell.assert_called_once_with(0, 0, 5)
         self.assertNotIn(5, self.cell.possible_values())
 
     def test_cell_add_possible_ignores_value_when_cell_has_a_value(self):
@@ -101,19 +106,21 @@ class TestCell(TestCase):
         draw.assert_not_called()
 
     def test_cell_re_entering_same_value_keeps_it_conflicting(self):
-        self.parent.is_held_by_related_cell.return_value = True
+        self.__related_cell(value=8)
         self.cell.set(8)
         self.cell.set(8)
         self.assertIn(DisplayAttrs.CONFLICTING, self.cell.attr())
 
-    def test_cell_new_value_asks_parent_to_mark_conflicted_cells(self):
+    def test_cell_new_value_marks_related_cells_conflicted(self):
+        related = self.__related_cell()
         self.cell.set(8)
-        self.parent.mark_conflicted.assert_called_once_with(0, 0, 8)
+        related.mark_conflicted.assert_called_once_with(8)
 
-    def test_cell_changing_value_asks_parent_to_clear_resolved_conflicts(self):
+    def test_cell_changing_value_clears_resolved_conflicts_of_related_cells(self):
+        related = self.__related_cell()
         self.cell.set(8)
         self.cell.set(4)
-        self.parent.clear_resolved_conflicts.assert_called_once_with(0, 0, 8)
+        related.clear_resolved_conflict.assert_called_once_with(8)
 
     @patch("cell.Display")
     def test_cell_mark_conflicted_marks_cell_holding_the_value(self, display):
@@ -131,17 +138,17 @@ class TestCell(TestCase):
 
     @patch("cell.Display")
     def test_cell_mark_conflicted_does_not_mark_a_conflicting_cell_again(self, display):
-        self.parent.is_held_by_related_cell.return_value = True
+        self.__related_cell(value=8)
         self.cell.set(8)
         self.cell.mark_conflicted(8)
         self.assertEqual(self.cell.attr(), (DisplayAttrs.CONFLICTING,))
 
     @patch("cell.Display")
     def test_cell_clear_resolved_conflict_clears_marks_when_no_related_cell_holds_value(self, display):
-        self.parent.is_held_by_related_cell.return_value = True
+        related = self.__related_cell(value=8)
         self.cell.set(8, (DisplayAttrs.GUESS,))
         self.cell.mark_conflicted(8)
-        self.parent.is_held_by_related_cell.return_value = False
+        related.value.return_value = None
         self.cell.clear_resolved_conflict(8)
         self.assertEqual(self.cell.attr(), (DisplayAttrs.GUESS,))
 
@@ -149,7 +156,7 @@ class TestCell(TestCase):
     def test_cell_clear_resolved_conflict_keeps_mark_while_a_related_cell_holds_value(self, display):
         self.cell.set(8)
         self.cell.mark_conflicted(8)
-        self.parent.is_held_by_related_cell.return_value = True
+        self.__related_cell(value=8)
         self.cell.clear_resolved_conflict(8)
         self.assertIn(DisplayAttrs.CONFLICTED, self.cell.attr())
 
@@ -168,7 +175,7 @@ class TestCell(TestCase):
         self.assertFalse(self.cell.is_dead_end())
 
     def test_cell_is_marked_in_conflict_when_conflicting(self):
-        self.parent.is_held_by_related_cell.return_value = True
+        self.__related_cell(value=8)
         self.cell.set(8)
         self.assertTrue(self.cell.is_marked_in_conflict())
 
@@ -213,11 +220,18 @@ class TestCell(TestCase):
         """
         Mock 'parent' needs to provide:
         1. values() - range of legal values
-        2. is_held_by_related_cell() - whether another related cell already holds the value
+        2. related_cells() - the cells in the same block, row or column (none until a test adds some)
         """
         self.parent = MagicMock()
         self.parent.values.return_value = range(1, self.MAX_VALUE)
-        self.parent.is_held_by_related_cell.return_value = False
+        self.parent.related_cells.return_value = []
+
+    def __related_cell(self, value=None):
+        """Add a mock related cell holding the value"""
+        cell = MagicMock()
+        cell.value.return_value = value
+        self.parent.related_cells.return_value.append(cell)
+        return cell
 
 
 if __name__ == "__main__":
