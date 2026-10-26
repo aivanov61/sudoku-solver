@@ -85,12 +85,6 @@ class Cell:
             self._solver.remove_possible(value)
             self.__draw_possible_values()
 
-    def clear_possible(self) -> None:
-        """Remove all possible values and redraw the possible values if they changed"""
-        if self.possible_values():
-            self._solver.clear_possible()
-            self.__draw_possible_values()
-
     def possible_values(self) -> set:
         return self._solver.possible_values()
 
@@ -112,8 +106,14 @@ class Cell:
         old_value, self._value = self._value, value
         old_value and self._parent.add_possible(self.row, self.col, old_value)
         value and self._parent.remove_possible(self.row, self.col, value)
-        value and self.clear_possible()
+        value and self.__clear_possible()
         value or self.__restore_possible()
+
+    def __clear_possible(self) -> None:
+        """Remove all possible values and redraw the possible values if they changed"""
+        if self.possible_values():
+            self._solver.clear_possible()
+            self.__draw_possible_values()
 
     def __restore_possible(self) -> None:
         """Add back every value that no related cell holds"""

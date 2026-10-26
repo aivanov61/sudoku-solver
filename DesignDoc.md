@@ -100,7 +100,7 @@ Puzzle3x3.value_(val, guess)
                  ├─ old value → parent.add_possible(...)     each related cell takes it back if it is empty
                  │                                          and none of its own related cells holds it
                  ├─ new value → parent.remove_possible(...)  each related cell removes it
-                 ├─ new value → cell.clear_possible()
+                 ├─ new value → the cell clears its own possible values
                  └─ no value  → the cell adds back every value no related cell holds
 ```
 

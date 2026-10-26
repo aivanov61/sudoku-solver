@@ -114,10 +114,6 @@ class TestCell(TestCase):
         self.cell.remove_possible(5)
         self.assertNotIn(5, self.cell.possible_values())
 
-    def test_cell_clear_possible_updates_solver(self):
-        self.cell.clear_possible()
-        self.assertEqual(self.cell.possible_values(), set())
-
     @patch("cell.Display.draw_cell_possible_values")
     def test_cell_draws_possible_values_when_value_removed(self, draw):
         self.cell.remove_possible(5)
@@ -131,15 +127,15 @@ class TestCell(TestCase):
         draw.assert_not_called()
 
     @patch("cell.Display.draw_cell_possible_values")
-    def test_cell_draws_possible_values_when_cleared(self, draw):
-        self.cell.clear_possible()
+    def test_cell_draws_empty_possible_values_when_value_is_set(self, draw):
+        self.cell.set(8)
         draw.assert_called_once_with(0, 0, set(), self.cell.attr())
 
     @patch("cell.Display.draw_cell_possible_values")
-    def test_cell_does_not_draw_when_already_cleared(self, draw):
-        self.cell.clear_possible()
+    def test_cell_does_not_redraw_possible_values_when_value_changes(self, draw):
+        self.cell.set(8)
         draw.reset_mock()
-        self.cell.clear_possible()
+        self.cell.set(4)
         draw.assert_not_called()
 
     def test_cell_can_render(self):
