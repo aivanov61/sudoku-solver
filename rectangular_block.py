@@ -60,6 +60,15 @@ class RectangularBlock:
         """Yield the cells of this block that are in the given puzzle row or column"""
         yield from (cell for cell in self.__cells() if cell.row == row or cell.col == col)
 
+    def cells_in_conflict(self):
+        yield from (cell for cell in self.__cells() if cell.is_marked_in_conflict())
+
+    def dead_end_cells(self):
+        yield from (cell for cell in self.__cells() if cell.is_dead_end())
+
+    def single_value_cells(self):
+        yield from (cell for cell in self.__cells() if cell.single_possible_value())
+
     # Interface required for cell instances
 
     def values(self) -> range:

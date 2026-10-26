@@ -43,6 +43,18 @@ class TestCellSolver(TestCase):
     def test_all_values_are_initially_possible(self):
         self.assertEqual(self.solver.possible_values(), set(range(1, self.MAX_VALUE)))
 
+    def test_single_possible_value_is_the_only_value_left(self):
+        for value in range(1, self.MAX_VALUE - 1):
+            self.solver.remove_possible(value)
+        self.assertEqual(self.solver.single_possible_value(), self.MAX_VALUE - 1)
+
+    def test_single_possible_value_is_none_when_several_values_are_left(self):
+        self.assertIsNone(self.solver.single_possible_value())
+
+    def test_single_possible_value_is_none_when_no_values_are_left(self):
+        self.solver.clear_possible()
+        self.assertIsNone(self.solver.single_possible_value())
+
     def test_add_possible_adds_value_back(self):
         self.solver.remove_possible(5)
         self.solver.add_possible(5)

@@ -122,6 +122,23 @@ class TestRectangularBlock(TestCase):
         self.parent.cells_in_row_or_col.return_value = [self.__other_cell(value=3)]
         self.assertFalse(self.block.is_held_by_related_cell(1, 7, 5))
 
+    def test_single_value_cells_yields_only_cells_with_one_possible_value(self):
+        self.__leave_only(self.block.cell(1, 7), {4})
+        self.assertEqual([(c.row, c.col) for c in self.block.single_value_cells()], [(1, 7)])
+
+    def test_dead_end_cells_yields_only_empty_cells_without_possible_values(self):
+        self.__leave_only(self.block.cell(2, 6), set())
+        self.assertEqual([(c.row, c.col) for c in self.block.dead_end_cells()], [(2, 6)])
+
+    def test_cells_in_conflict_yields_only_marked_cells(self):
+        self.parent.cells_in_row_or_col.return_value = [self.__other_cell(value=5)]
+        self.block.cell(0, 8).set(5)
+        self.assertEqual([(c.row, c.col) for c in self.block.cells_in_conflict()], [(0, 8)])
+
+    def __leave_only(self, cell, values):
+        for value in set(self.block.values()) - values:
+            cell.remove_possible(value)
+
     def test_cells_in_row_or_col_yields_block_cells_in_that_row_or_col(self):
         cells = self.block.cells_in_row_or_col(1, 7)
         self.assertEqual({(cell.row, cell.col) for cell in cells}, {(1, 6), (1, 7), (1, 8), (0, 7), (2, 7)})

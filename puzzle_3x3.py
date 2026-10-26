@@ -104,7 +104,7 @@ class Puzzle3x3:
 
     def value_(self, val, guess=False) -> None:
         guess and not self._initializing and self.__increment_bg_level()
-        attr = self.__attributes(guess)
+        attr = self.__attributes(DisplayAttrs.GUESS if guess else None)
         cell = self.__selected_cell()
         (
             Display.warn("Cannot change an initial value while playing. ", wait=True)
@@ -159,6 +159,12 @@ class Puzzle3x3:
         elif Display.confirm("Rewind cannot be undone.  Really rewind?"):
             self.__rewind_history()
 
+    def next_(self) -> None:
+        for make_move in (self.__stopped_by_conflicts, self.__stopped_by_dead_end, self.__filled_single_value):
+            if make_move():
+                return
+        Display.warn("No obvious next move. You'll have to make a guess. ", wait=True)
+
     # Private functions
 
     def __all_blocks(self):
@@ -170,9 +176,9 @@ class Puzzle3x3:
             "No more shades of gray left - repeating last shade. ", wait=True
         )
 
-    def __attributes(self, guess) -> tuple:
-        """Determine primary attribute(s): INITIAL or GUESS (or normal) plus background shading"""
-        attr = [DisplayAttrs.INITIAL] if self._initializing else [DisplayAttrs.GUESS] if guess else []
+    def __attributes(self, prim_attr) -> tuple:
+        """Primary attribute: INITIAL while initializing, else prim_attr (if any); plus background shading"""
+        attr = [DisplayAttrs.INITIAL] if self._initializing else [prim_attr] if prim_attr else []
         attr += [dict(level=self._bg_level)] if self._bg_level else []
         return tuple(attr)
 
@@ -196,9 +202,7 @@ class Puzzle3x3:
         History.add(Entry(cell, new_info, prev_info))
 
     def __prim_attr(self, attr) -> str:
-        prim_attr = DisplayAttrs.INITIAL if DisplayAttrs.INITIAL in attr else None
-        prim_attr = prim_attr or (DisplayAttrs.GUESS if DisplayAttrs.GUESS in attr else None)
-        return prim_attr
+        return next((prim_attr for prim_attr in DisplayAttrs.ATTRS_PRIMARY if prim_attr in attr), None)
 
     def __check_for_active_play(self) -> bool:
         is_actively_playing = not History.is_empty()
@@ -209,18 +213,18 @@ class Puzzle3x3:
 
     def __undo_history(self) -> None:
         entry = History.undo()
-        self.__select_cell_of(entry)
+        self.__select(entry.cell)
         self.__is_guess(entry) and self.__decrement_bg_level()
         prev_val = entry.previous_valueinfo.value if entry.previous_valueinfo else None
         prev_attr = (
-            self.__attributes(entry.previous_valueinfo.prim_attr == DisplayAttrs.GUESS)
+            self.__attributes(entry.previous_valueinfo.prim_attr)
             if entry.previous_valueinfo
             else ()
         )
         entry.cell.update(prev_val, prev_attr)
 
-    def __select_cell_of(self, entry) -> None:
-        self.selected_cell = (entry.cell.row, entry.cell.col)
+    def __select(self, cell) -> None:
+        self.selected_cell = (cell.row, cell.col)
 
     def __is_guess(self, entry) -> bool:
         return entry.valueinfo.prim_attr == DisplayAttrs.GUESS
@@ -236,4 +240,28 @@ class Puzzle3x3:
         self.__undo_history()
         while not History.is_empty() and not self.__is_guess(History.last()):
             self.__undo_history()
-        History.is_empty() or self.__select_cell_of(History.last())
+        History.is_empty() or self.__select(History.last().cell)
+
+    def __stopped_by_conflicts(self) -> bool:
+        cell = self.__first_cell(lambda block: block.cells_in_conflict())
+        cell and Display.warn("Resolve the conflicts first. ", wait=True)
+        return cell is not None
+
+    def __first_cell(self, cells_of_block) -> Cell:
+        """Return the first cell, left to right and top to bottom, among the cells each block reports"""
+        cells = (cell for block in self.__all_blocks() for cell in cells_of_block(block))
+        return min(cells, key=lambda cell: (cell.row, cell.col), default=None)
+
+    def __stopped_by_dead_end(self) -> bool:
+        cell = self.__first_cell(lambda block: block.dead_end_cells())
+        if cell:
+            self.__select(cell)
+            Display.warn("Dead end - try undoing until this square shows at least one possible value. ", wait=True)
+        return cell is not None
+
+    def __filled_single_value(self) -> bool:
+        cell = self.__first_cell(lambda block: block.single_value_cells())
+        if cell:
+            self.__select(cell)
+            self.__accept_user_value(cell.single_possible_value(), self.__attributes(DisplayAttrs.SOLVED), cell)
+        return cell is not None

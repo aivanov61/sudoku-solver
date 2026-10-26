@@ -43,6 +43,12 @@ class TestDisplayRenderAttrs(TestCase):
         out = DisplayAttrs.render(t)
         self.assertEqual(out, "purple_on_lavender")
 
+    def test_solved_attribute_renders_steelblue(self):
+        self.assertEqual(DisplayAttrs.render(DisplayAttrs.SOLVED), "steelblue")
+
+    def test_solved_attribute_keeps_the_guess_shading(self):
+        self.assertEqual(DisplayAttrs.render((DisplayAttrs.SOLVED, dict(level=10))), "steelblue_on_gray10")
+
     def test_guess_attribute_renders_green(self):
         out = DisplayAttrs.render(DisplayAttrs.GUESS)
         self.assertEqual(out, "green")
@@ -94,6 +100,9 @@ class TestDisplayRenderBgAttrs(TestCase):
     def test_unrecognized_attributes_renders_normal_terminal_output(self):
         out = DisplayAttrs.render_bg(dict(junk1="junk", junk2=("JUNK"), junk3=DisplayAttrs.FgBgAttr(("blue"), ("red"))))
         self.assertEqual(out, "normal")
+
+    def test_solved_attribute_has_no_background_of_its_own(self):
+        self.assertEqual(DisplayAttrs.render_bg(DisplayAttrs.SOLVED), "normal")
 
     def test_guess_attribute_renders_the_right_level_of_gray(self):
         out = DisplayAttrs.render_bg(DisplayAttrs.GUESS)

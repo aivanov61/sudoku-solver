@@ -18,7 +18,8 @@ The code is also meant as an example of clean, object-oriented Python built with
 | Possible values | Removed from the row, column and box when a value is entered, and given back when it is deleted, undone or changed, unless another related cell still holds it. An emptied cell works out its whole set again. |
 | Conflict marking | The cell just entered is marked `CONFLICTING` (bold red on bright yellow), and every related cell already holding the value is marked `CONFLICTED` (its usual color on yellow). Marks clear when the value is deleted, changed or undone, once no related cell still holds it. |
 | Rewind (`r`) | Working |
-| Auto (`a`), next (`n`) | **Not implemented.** The keys are defined in `Commands`, but `Puzzle3x3` has no `auto_` or `next_` method, so `Main` shows "This puzzle does not support…". |
+| Next (`n`) | Working for the first rule: a cell with a single possible value (see 5.6) |
+| Auto (`a`) | **Not implemented.** The key is defined in `Commands`, but `Puzzle3x3` has no `auto_` method, so `Main` shows "This puzzle does not support…". |
 | Redo | Not implemented. |
 
 ## 3. Running and testing
@@ -126,12 +127,26 @@ Puzzle3x3.value_(val, guess)
 - `rewind_()` undoes at least one entry, then keeps undoing until the most recent remaining entry is a guess (primary attribute `GUESS`), or until the history is empty. The guess stays on the board and the cursor moves to it, ready for a different value to be typed over it. Pressing `r` again undoes that guess and rewinds to the one before. It uses `History.last()` to look at the most recent entry without removing it. With nothing to undo, it gives the same warning as `undo_()`. Otherwise it asks for confirmation first, since a rewind can't be undone.
 - **Guess shading:** each guess raises `_bg_level` by 10. Every value entered afterwards, guess or not, gets that gray background, which shows what depends on the guess. Undoing a guess lowers the level by 10. Above `MAX_GRAY_LEVEL` (100), the program warns and keeps reusing the last shade.
 
+### 5.6 Next: the obvious next move
+
+`next_()` runs a list of checks in order and stops at the first one that acts:
+
+1. **Conflicts:** if any cell carries a conflict mark, it warns "Resolve the conflicts first." and does nothing else.
+2. **Dead end:** if an empty cell has no possible values, it moves the cursor there and warns "Dead end - try undoing until this square shows at least one possible value." It suggests undoing rather than rewinding, because a rewind could go back further than needed.
+3. **Single value:** it fills in a cell whose only possible value is left, as a `SOLVED` value, and moves the cursor there.
+
+If none acts, it warns "No obvious next move. You'll have to make a guess."
+
+- **Finding the cell:** each check asks every block for its matching cells (`cells_in_conflict()`, `dead_end_cells()`, `single_value_cells()`), and `__first_cell()` picks the smallest (row, col), which is the first one left to right and top to bottom. Only the blocks look inside cells, as section 4.2 requires.
+- **Making the move:** a `SOLVED` value goes through the same path as a typed value, so it is recorded in `History` with `SOLVED` as its primary attribute. `u` and `r` treat it like any other non-guess entry, and undoing a change restores the steel blue. It also picks up the current guess shading.
+- **Adding rules:** a new rule is another check in `next_()`'s list, placed before the final warning. `auto_()` can repeat `next_()`'s checks until none acts.
+
 ## 6. Display
 
 - **Cell layout:** each cell is 6 columns by 3 lines. The top line is the border (shared with the cell above), the middle line shows the value, and the bottom line shows the possible values. Box edges use full blocks (`█`); inner lines use `│`, `─` and `┼`.
 - **Possible values** are drawn in increasing order as subscript digits. When there are more than 5, `.....` is shown instead.
 - **Attributes:** `DisplayAttrs` turns mnemonics into `blessed` style names such as `purple_on_lavender` or `bold_red_on_bright_yellow`. There are two kinds:
-  - *Primary* attributes (at most one per cell): `INITIAL` gives purple on lavender, and `GUESS` gives green on the current gray.
+  - *Primary* attributes (at most one per cell): `INITIAL` gives purple on lavender, `GUESS` gives green on the current gray, and `SOLVED` (values filled in by `n`) gives steel blue on the current gray.
   - *Optional* attributes: `CONFLICTING` gives bold red on bright yellow. `CONFLICTED` gives the primary color on yellow, so the newest entry stands out from the cells it clashes with. A cell carries at most one of the two; `CONFLICTING` wins.
   - Values with no primary attribute are drawn in `darkorange3`.
   - The gray level travels in the attribute tuple as `{"level": n}`.
@@ -152,5 +167,6 @@ The full list is in `CLAUDE.md`. The main points:
 
 ## 8. Next steps
 
-1. **Auto and next:** add `auto_` and `next_` to `Puzzle3x3`. They need solving logic in `CellSolver`, starting with cells that have a single possible value.
-2. **Redo**, if wanted.
+1. **Auto:** add `auto_` to `Puzzle3x3`, repeating `next_()`'s checks until none acts.
+2. **More rules for next:** for example, a value that fits only one cell in a row, column or box.
+3. **Redo**, if wanted.

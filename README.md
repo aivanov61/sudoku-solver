@@ -87,7 +87,8 @@ them, get a gray background so you can see what depends on the guess.  Use "r"
 to rewind back to the most recent guess and try a different one.
 
 *[Not completed]*
-Auto-play (a) and next (n) are listed in the help but not implemented yet.
+Auto-play (a) is listed in the help but not implemented yet, and next (n) only
+fills in cells that have a single possible value so far.
 
 See [UserGuide.md](UserGuide.md) for the full list of keys and colors.
 

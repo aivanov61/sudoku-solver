@@ -42,6 +42,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | Shifted `1`–`9` (`!` `@` `#` `$` `%` `^` `&` `*` `(` on a US keyboard) | Enter a **guess** (see below) |
 | `u` | Undo your last entry |
 | `r` | Rewind: undo everything entered after your most recent guess, keeping the guess (or undo everything, if there's no guess). Asks you to confirm, since it can't be undone. |
+| `n` | Next: fill in an obvious next move for you (see below) |
 | `ESC` | Go back to setup mode (only once everything has been undone) |
 | `?` | Show all commands, including ones not listed on the status line |
 | `q` | Quit (asks you to confirm) |
@@ -61,6 +62,15 @@ Every value you enter after a guess gets the same gray background, so you can se
 
 If you enter a value that's already in the same row, column or box, the cell turns **bold red on bright yellow**, and each cell it clashes with gets a **yellow background**. Replace, delete or undo the clashing value, and the cells go back to normal. A cell that clashes with more than one other cell stays marked until all of its clashes are gone.
 
+## Next: an obvious move
+
+Press `n` to have the program make the next obvious move. It looks, left to right and top to bottom, for an empty cell with only one possible value, moves the cursor there and fills it in, in steel blue. Press `u` to take it back.
+
+It won't move if:
+- **There are conflicts on the board:** it asks you to resolve them first.
+- **An empty cell has no possible values left:** it moves the cursor there and suggests undoing (`u`) until that cell shows at least one possible value, because an earlier entry or guess must be wrong.
+- **There's no obvious move:** it tells you that you'll have to make a guess.
+
 ## Colors at a glance
 
 | Looks like | Meaning |
@@ -68,13 +78,15 @@ If you enter a value that's already in the same row, column or box, the cell tur
 | Purple on lavender | A given number from setup |
 | Orange | A value you entered |
 | Green on gray | A guess; gray backgrounds also mark values entered after a guess |
+| Steel blue | A value filled in by `n` |
 | Bold red on bright yellow | The value you just entered is already in the same row, column or box |
 | Usual color on yellow | Holds a value that a newer entry clashes with |
 | Yellow text on the status line | A warning. If it waits, press any key to continue. |
 
 ## Current limitations
 
-- **Auto (`a`) and next (`n`)** are listed in the help but not available yet. Pressing them shows a "does not support" warning.
+- **Auto (`a`)** is listed in the help but not available yet. Pressing it shows a "does not support" warning.
+- **Next (`n`)** only knows one rule so far: a cell with a single possible value.
 - There's no redo, and puzzles can't be saved.
 
 ## Troubleshooting

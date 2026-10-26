@@ -191,6 +191,79 @@ class TestPuzzle3x3(TestCase):
         with patch("display.Display.confirm", return_value=True):
             self.puzzle.rewind_()
 
+    def test_next_fills_in_a_cell_with_a_single_possible_value(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.puzzle.next_()
+        self.assertEqual(self.__cell(0, 8).value(), 9)
+        self.assertEqual(self.__cell(0, 8).attr(), (DisplayAttrs.SOLVED,))
+        self.assertEqual(self.puzzle.selected_cell, (0, 8))
+
+    def test_next_picks_the_first_single_value_cell_left_to_right_top_to_bottom(self):
+        self.__fill_row(4, 0, range(1, 9))
+        self.__fill_row(2, 1, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.puzzle.next_()
+        self.assertEqual(self.__cell(2, 0).value(), 9)
+        self.assertIsNone(self.__cell(4, 8).value())
+
+    def test_next_can_be_undone(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.puzzle.next_()
+            self.puzzle.undo_()
+        self.assertIsNone(self.__cell(0, 8).value())
+
+    def test_undo_restores_a_solved_value_that_was_typed_over(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.puzzle.next_()
+            self.__enter(0, 8, 5)
+            self.puzzle.undo_()
+        self.assertEqual(self.__cell(0, 8).value(), 9)
+        self.assertEqual(self.__cell(0, 8).attr(), (DisplayAttrs.SOLVED,))
+
+    def test_next_after_a_guess_keeps_the_guess_shading(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.__enter(8, 0, 9, guess=True)
+            self.puzzle.next_()
+        self.assertEqual(self.__cell(0, 8).attr(), (DisplayAttrs.SOLVED, dict(level=10)))
+
+    def test_next_refuses_while_there_are_conflicts(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.puzzle.play_()
+        with patch("cell.Display"), patch("display.Display.warn") as warn:
+            self.puzzle.next_()
+        self.assertIn("conflicts", warn.call_args.args[0])
+        self.assertIsNone(self.__cell(0, 8).value())
+
+    def test_next_stops_at_a_dead_end(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.__cell(5, 8).set(9)
+        self.puzzle.play_()
+        with patch("cell.Display"), patch("display.Display.warn") as warn:
+            self.puzzle.next_()
+        self.assertIn("try undoing until this square shows at least one possible value", warn.call_args.args[0])
+        self.assertEqual(self.puzzle.selected_cell, (0, 8))
+
+    def test_next_with_no_obvious_move_says_to_guess(self):
+        self.puzzle.play_()
+        with patch("display.Display.warn") as warn:
+            self.puzzle.next_()
+        self.assertIn("No obvious next move. You'll have to make a guess.", warn.call_args.args[0])
+
+    def __fill_row(self, row, start_col, values):
+        for col, value in enumerate(values, start_col):
+            self.__cell(row, col).set(value)
+
     def __enter(self, row, col, value, guess=False):
         self.puzzle.selected_cell = (row, col)
         self.puzzle.value_(value, guess)

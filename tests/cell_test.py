@@ -163,6 +163,29 @@ class TestCell(TestCase):
         self.cell.clear_resolved_conflict(8)
         self.assertIn(DisplayAttrs.CONFLICTED, self.cell.attr())
 
+    def test_cell_single_possible_value_comes_from_solver(self):
+        for value in range(1, self.MAX_VALUE - 1):
+            self.cell.remove_possible(value)
+        self.assertEqual(self.cell.single_possible_value(), self.MAX_VALUE - 1)
+
+    def test_cell_is_dead_end_when_empty_with_no_possible_values(self):
+        for value in range(1, self.MAX_VALUE):
+            self.cell.remove_possible(value)
+        self.assertTrue(self.cell.is_dead_end())
+
+    def test_cell_with_a_value_is_not_a_dead_end(self):
+        self.cell.set(8)
+        self.assertFalse(self.cell.is_dead_end())
+
+    def test_cell_is_marked_in_conflict_when_conflicting(self):
+        self.parent.is_held_by_related_cell.return_value = True
+        self.cell.set(8)
+        self.assertTrue(self.cell.is_marked_in_conflict())
+
+    def test_cell_is_not_marked_in_conflict_by_default(self):
+        self.cell.set(8)
+        self.assertFalse(self.cell.is_marked_in_conflict())
+
     def test_cell_remove_possible_updates_solver(self):
         self.cell.remove_possible(5)
         self.assertNotIn(5, self.cell.possible_values())

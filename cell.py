@@ -89,17 +89,27 @@ class Cell:
     def possible_values(self) -> set:
         return self._solver.possible_values()
 
+    def single_possible_value(self) -> int:
+        return self._solver.single_possible_value()
+
+    def is_dead_end(self) -> bool:
+        """Return True if the cell is empty but no value fits it"""
+        return not self._value and not self.possible_values()
+
     def mark_conflicted(self, value) -> None:
         """Mark the cell as conflicted if it holds the value just entered in a related cell"""
-        if value == self._value and not self.__is_marked_in_conflict():
+        if value == self._value and not self.is_marked_in_conflict():
             self._attrs = (*self._attrs, DisplayAttrs.CONFLICTED)
             self.render()
+
+    def is_marked_in_conflict(self) -> bool:
+        return any(attr in DisplayAttrs.CONFLICT_ATTRS for attr in self._attrs)
 
     def clear_resolved_conflict(self, value) -> None:
         """Clear the cell's conflict mark if it holds the value and no related cell holds it any more"""
         if (
             value == self._value
-            and self.__is_marked_in_conflict()
+            and self.is_marked_in_conflict()
             and not self._parent.is_held_by_related_cell(self.row, self.col, value)
         ):
             self._attrs = tuple(attr for attr in self._attrs if attr not in DisplayAttrs.CONFLICT_ATTRS)
@@ -140,6 +150,3 @@ class Cell:
         """Add back every value that no related cell holds"""
         for value in self._parent.values():
             self.add_possible(value)
-
-    def __is_marked_in_conflict(self) -> bool:
-        return any(attr in DisplayAttrs.CONFLICT_ATTRS for attr in self._attrs)

@@ -26,6 +26,7 @@ class DisplayAttrs:
     - Primary (at most one is allowed per cell)
         - INITIAL - FG=Purple, BG=Lavender
         - GUESS - FG=Green, BG=[shade of gray]
+        - SOLVED - FG=SteelBlue, BG=[shade of gray]
     - Additional (optional)
         - CONFLICTING - FG=BoldRed, BG=BrightYellow
         - CONFLICTED - FG=[primary], BG=Yellow
@@ -33,6 +34,7 @@ class DisplayAttrs:
 
     INITIAL = "initial"
     GUESS = "guess"
+    SOLVED = "solved"
     CONFLICTING = "conflicting"
     CONFLICTED = "conflicted"
     CONFLICT_ATTRS = (CONFLICTING, CONFLICTED)
@@ -49,6 +51,7 @@ class DisplayAttrs:
         # The following are mutually exclusive basic required attributes
         INITIAL: FgBgAttr(("purple",), ("lavender",)),
         GUESS: FgBgAttr(("green",), None),
+        SOLVED: FgBgAttr(("steelblue",), None),
     }
 
     ATTRS_OPTIONAL = {

@@ -43,3 +43,7 @@ class CellSolver:
     def clear_possible(self) -> None:
         """Remove all possible values for the cell."""
         self._possible_values.clear()
+
+    def single_possible_value(self) -> int:
+        """Return the only possible value for the cell, or None unless exactly one is left."""
+        return next(iter(self._possible_values)) if len(self._possible_values) == 1 else None
