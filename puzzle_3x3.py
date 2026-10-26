@@ -113,35 +113,27 @@ class Puzzle3x3:
         )
 
     def up_(self) -> None:
-        row, col = self.selected_cell
-        row = row - 1 if row > 0 else row
-        self.selected_cell = (row, col)
+        self.__move(-1, 0)
 
     def down_(self) -> None:
-        row, col = self.selected_cell
-        row = row + 1 if row < Display.geom["v_cells"] - 1 else row
-        self.selected_cell = (row, col)
+        self.__move(1, 0)
 
     def left_(self) -> None:
-        row, col = self.selected_cell
-        col = col - 1 if col > 0 else col
-        self.selected_cell = (row, col)
+        self.__move(0, -1)
 
     def right_(self) -> None:
-        row, col = self.selected_cell
-        col = col + 1 if col < Display.geom["h_cells"] - 1 else col
-        self.selected_cell = (row, col)
+        self.__move(0, 1)
 
     def play_(self) -> None:
         self._initializing = False
-        Commands.CMDS = dict(list(Commands.COMMON_CMDS.items()) + list(Commands.PLAY_COMMANDS.items()))
+        Commands.use(Commands.PLAY_COMMANDS)
         self.display_status()
 
     def init_(self) -> None:
         if self.__check_for_active_play():
             return
         self._initializing = True
-        Commands.CMDS = dict(list(Commands.COMMON_CMDS.items()) + list(Commands.INIT_COMMANDS.items()))
+        Commands.use(Commands.INIT_COMMANDS)
         self.display_status()
 
     def del_(self) -> None:
@@ -203,6 +195,13 @@ class Puzzle3x3:
 
     def __prim_attr(self, attr) -> str:
         return next((prim_attr for prim_attr in DisplayAttrs.ATTRS_PRIMARY if prim_attr in attr), None)
+
+    def __move(self, d_row, d_col) -> None:
+        """Move the selected cell, stopping at the edges of the puzzle"""
+        row, col = self.selected_cell
+        row = min(max(row + d_row, 0), Display.geom["v_cells"] - 1)
+        col = min(max(col + d_col, 0), Display.geom["h_cells"] - 1)
+        self.selected_cell = (row, col)
 
     def __check_for_active_play(self) -> bool:
         is_actively_playing = not History.is_empty()

@@ -46,6 +46,27 @@ class TestPuzzle3x3(TestCase):
         cell = self.__cell(4, 7)
         self.assertEqual((cell.row, cell.col), (4, 7))
 
+    def test_arrow_commands_move_the_selected_cell(self):
+        self.puzzle.selected_cell = (4, 4)
+        self.puzzle.up_()
+        self.puzzle.left_()
+        self.assertEqual(self.puzzle.selected_cell, (3, 3))
+        self.puzzle.down_()
+        self.puzzle.right_()
+        self.assertEqual(self.puzzle.selected_cell, (4, 4))
+
+    def test_arrow_commands_stop_at_the_top_left_edge(self):
+        self.puzzle.selected_cell = (0, 0)
+        self.puzzle.up_()
+        self.puzzle.left_()
+        self.assertEqual(self.puzzle.selected_cell, (0, 0))
+
+    def test_arrow_commands_stop_at_the_bottom_right_edge(self):
+        self.puzzle.selected_cell = (8, 8)
+        self.puzzle.down_()
+        self.puzzle.right_()
+        self.assertEqual(self.puzzle.selected_cell, (8, 8))
+
     def test_cells_in_row_or_col_yields_each_cell_in_that_row_and_col_once(self):
         cells = list(self.puzzle.cells_in_row_or_col(4, 4))
         positions = [(cell.row, cell.col) for cell in cells]

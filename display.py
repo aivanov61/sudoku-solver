@@ -17,6 +17,8 @@
 
 import functools
 
+from contextlib import contextmanager
+
 from blessed import Terminal
 from display_attrs import DisplayAttrs as Attrs
 
@@ -81,19 +83,6 @@ class Display:
         Display.geom["h_cells"] = geometry["h_cells"]
         Display.geom["v_cells"] = geometry["v_cells"]
 
-    # Cell location helpers
-    def y(cell_row):
-        """Return the screen row of the upper-left corner of the cell given its row relative to other cells"""
-        return Display.CELL_HEIGHT * cell_row
-
-    def x(cell_col):
-        """Return the screen column of the upper-left corner of the cell given its column relative to other cells"""
-        return Display.CELL_WIDTH * cell_col
-
-    def clear_screen():
-        echo(Display.term.home())
-        echo(Display.term.clear())
-
     def validate_screen_size():
         is_size_ok = True
         min_width = Display.geom["h_cells"] * Display.CELL_WIDTH
@@ -111,15 +100,28 @@ class Display:
                 return is_size_ok
         return is_size_ok
 
+    def clear_screen():
+        echo(Display.term.home())
+        echo(Display.term.clear())
+
     def draw_cell(row=0, col=0, border=Border(), attrs=tuple()):
         x, y = Display.x(col), Display.y(row)
         echo(Display.term.move_xy(x, y))
-        Display.__draw_top_line(border, attrs)
+        Display.__draw_edge_line(border.is_top(), border, attrs)
         for line_no in range(1, Display.CELL_HEIGHT):
             echo(Display.term.move_xy(x, y + line_no))
             Display.__draw_inner_line(border, attrs)
         echo(Display.term.move_xy(x, y + Display.CELL_HEIGHT))
-        Display.__draw_bottom_line(border, attrs)
+        Display.__draw_edge_line(border.is_bottom(), border, attrs)
+
+    # Cell location helpers
+    def x(cell_col):
+        """Return the screen column of the upper-left corner of the cell given its column relative to other cells"""
+        return Display.CELL_WIDTH * cell_col
+
+    def y(cell_row):
+        """Return the screen row of the upper-left corner of the cell given its row relative to other cells"""
+        return Display.CELL_HEIGHT * cell_row
 
     def draw_cell_value(row=0, col=0, value=" ", attrs=dict()):
         """Draw the value in the middle of the cell using the rendered attributes"""
@@ -150,8 +152,7 @@ class Display:
         return 0, (Display.geom["v_cells"] or 0) * Display.CELL_HEIGHT + 1
 
     def warn(msg, wait=False):
-        with Display.term.location(*Display.status_line_location()):
-            echo(Display.term.clear_eol + Display.term.yellow(msg))
+        with Display.__status_line_message(msg):
             wait and Display.hit_any_key_to_continue()
 
     def hit_any_key_to_continue():
@@ -164,69 +165,41 @@ class Display:
 
     def confirm(msg) -> bool:
         """Ask a yes/no question on the status line; only "y" or "Y" confirms"""
-        with Display.term.location(*Display.status_line_location()):
-            echo(Display.term.clear_eol + Display.term.yellow(msg + " (y/n) "))
+        with Display.__status_line_message(msg + " (y/n) "):
             try:
                 with Display.term.cbreak():
                     return Display.term.inkey() in ("y", "Y")
             except:
                 return False
 
-    def __draw_top_line(border, attrs):
-        ulcorner = (
-            Attrs.outer_border(Display.fullblock, attrs)
-            if border.is_top() or border.is_left()
-            else Attrs.inner_border(Display.bigplus, attrs)
-        )
-        hline = (
-            Attrs.outer_border(Display.fullblock, attrs)
-            if border.is_top()
-            else Attrs.inner_border(Display.hline, attrs)
-        )
-        urcorner = (
-            Attrs.outer_border(Display.fullblock, attrs)
-            if border.is_top() or border.is_right()
-            else Attrs.inner_border(Display.bigplus, attrs)
-        )
-        echo(ulcorner + hline * Display.CELL_HORIZONTAL_SIZE + urcorner)
+    def __draw_edge_line(is_edge, border, attrs):
+        """Draw the top or bottom line of a cell; is_edge tells whether it lies on the block's outer edge"""
+        left = Display.__border_char(is_edge or border.is_left(), Display.bigplus, attrs)
+        line = Display.__border_char(is_edge, Display.hline, attrs)
+        right = Display.__border_char(is_edge or border.is_right(), Display.bigplus, attrs)
+        echo(left + line * Display.CELL_HORIZONTAL_SIZE + right)
+
+    def __border_char(is_outer, inner_char, attrs) -> str:
+        return Attrs.outer_border(Display.fullblock, attrs) if is_outer else Attrs.inner_border(inner_char, attrs)
 
     def __draw_inner_line(border, attrs):
-        lvline = (
-            Attrs.outer_border(Display.fullblock, attrs)
-            if border.is_left()
-            else Attrs.inner_border(Display.vline, attrs)
-        )
-        rvline = (
-            Attrs.outer_border(Display.fullblock, attrs)
-            if border.is_right()
-            else Attrs.inner_border(Display.vline, attrs)
-        )
+        left = Display.__border_char(border.is_left(), Display.vline, attrs)
+        right = Display.__border_char(border.is_right(), Display.vline, attrs)
         rendered_str = Display.__rendered_bg_attrs(attrs) + " " * Display.CELL_HORIZONTAL_SIZE + Display.term.normal
-        echo(lvline + rendered_str + rvline)
-
-    def __draw_bottom_line(border, attrs):
-        llcorner = (
-            Attrs.outer_border(Display.fullblock, attrs)
-            if border.is_bottom() or border.is_left()
-            else Attrs.inner_border(Display.bigplus, attrs)
-        )
-        hline = (
-            Attrs.outer_border(Display.fullblock, attrs)
-            if border.is_bottom()
-            else Attrs.inner_border(Display.hline, attrs)
-        )
-        lrcorner = (
-            Attrs.outer_border(Display.fullblock, attrs)
-            if border.is_bottom() or border.is_right()
-            else Attrs.inner_border(Display.bigplus, attrs)
-        )
-        echo(llcorner + hline * Display.CELL_HORIZONTAL_SIZE + lrcorner)
+        echo(left + rendered_str + right)
 
     def __rendered_attrs(attrs) -> str:
         return getattr(Display.term, Attrs.render(attrs))
 
     def __rendered_bg_attrs(attrs) -> str:
         return getattr(Display.term, Attrs.render_bg(attrs))
+
+    @contextmanager
+    def __status_line_message(msg):
+        """Show the message in yellow on the status line, keeping the cursor there until the block ends"""
+        with Display.term.location(*Display.status_line_location()):
+            echo(Display.term.clear_eol + Display.term.yellow(msg))
+            yield
 
     # These character symbols are re-used from https://github.com/thisisparker/cursewords/blob/master/cursewords/characters.py
     vline = "│"

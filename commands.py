@@ -112,7 +112,11 @@ class Commands:
     }
 
     # Note: this is the starting value of CMDS; the puzzle can change it as desired
-    CMDS = dict(list(COMMON_CMDS.items()) + list(INIT_COMMANDS.items()))
+    CMDS = {**COMMON_CMDS, **INIT_COMMANDS}
+
+    def use(mode_cmds):
+        """Make the common commands plus the given mode's commands the active ones"""
+        Commands.CMDS = {**Commands.COMMON_CMDS, **mode_cmds}
 
     def is_value(cmd):
         return cmd in Commands.DIGITS + Commands.SHIFTED_DIGITS

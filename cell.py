@@ -99,7 +99,7 @@ class Cell:
     def mark_conflicted(self, value) -> None:
         """Mark the cell as conflicted if it holds the value just entered in a related cell"""
         if value == self._value and not self.is_marked_in_conflict():
-            self._attrs = (*self._attrs, DisplayAttrs.CONFLICTED)
+            self.__add_attr(DisplayAttrs.CONFLICTED)
             self.render()
 
     def is_marked_in_conflict(self) -> bool:
@@ -126,7 +126,10 @@ class Cell:
 
     def __mark_if_conflicting(self, value) -> None:
         if value and self._parent.is_held_by_related_cell(self.row, self.col, value):
-            self._attrs = (*self._attrs, DisplayAttrs.CONFLICTING)
+            self.__add_attr(DisplayAttrs.CONFLICTING)
+
+    def __add_attr(self, attr) -> None:
+        self._attrs = (*self._attrs, attr)
 
     def __smart_update(self, value) -> None:
         """

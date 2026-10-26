@@ -58,16 +58,16 @@ class RectangularBlock:
 
     def cells_in_row_or_col(self, row, col):
         """Yield the cells of this block that are in the given puzzle row or column"""
-        yield from (cell for cell in self.__cells() if cell.row == row or cell.col == col)
+        yield from self.__cells_where(lambda cell: cell.row == row or cell.col == col)
 
     def cells_in_conflict(self):
-        yield from (cell for cell in self.__cells() if cell.is_marked_in_conflict())
+        yield from self.__cells_where(Cell.is_marked_in_conflict)
 
     def dead_end_cells(self):
-        yield from (cell for cell in self.__cells() if cell.is_dead_end())
+        yield from self.__cells_where(Cell.is_dead_end)
 
     def single_value_cells(self):
-        yield from (cell for cell in self.__cells() if cell.single_possible_value())
+        yield from self.__cells_where(Cell.single_possible_value)
 
     # Interface required for cell instances
 
@@ -109,6 +109,9 @@ class RectangularBlock:
 
     def __cells(self):
         return (cell for cells in self._cells for cell in cells)
+
+    def __cells_where(self, condition):
+        return (cell for cell in self.__cells() if condition(cell))
 
     def __related_cells(self, row, col):
         """Yield, once each, every other cell in the same block, row or column as the cell at row, col"""
