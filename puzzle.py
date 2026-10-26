@@ -27,6 +27,8 @@ from commands import Commands
 from cell import Cell
 from display import Display, echo
 from display_attrs import DisplayAttrs
+from puzzle_solver import PuzzleSolver
+from rules.rule import Outcome
 
 
 class Puzzle(ABC):
@@ -65,6 +67,7 @@ class Puzzle(ABC):
 
         self._initializing = True
         self._bg_level = 0
+        self.__solver = PuzzleSolver(self)
 
     # Interface required for Main
 
@@ -149,10 +152,22 @@ class Puzzle(ABC):
             self.__rewind_history()
 
     def next_(self) -> None:
-        for make_move in (self.__stopped_by_conflicts, self.__stopped_by_dead_end, self.__filled_single_value):
-            if make_move():
-                return
-        Display.warn("No obvious next move. You'll have to make a guess. ", wait=True)
+        if self.__solver.next_move() is Outcome.NONE:
+            Display.warn("No obvious next move. You'll have to make a guess. ", wait=True)
+
+    # Interface required for the solver
+
+    def first_cell_where(self, condition) -> Cell:
+        """Return the first cell, left to right and top to bottom, for which condition(cell) is true, or None"""
+        cells = (cell for block in self._blocks() for cell in block.cells_where(condition))
+        return min(cells, key=lambda cell: (cell.row, cell.col), default=None)
+
+    def select(self, cell) -> None:
+        self.selected_cell = (cell.row, cell.col)
+
+    def enter_solved_value(self, cell, value) -> None:
+        """Enter a value found by the solver, the same way as a typed value but marked SOLVED"""
+        self.__accept_user_value(value, self.__attributes(DisplayAttrs.SOLVED), cell)
 
     # Interface required from layout subclasses
 
@@ -213,7 +228,7 @@ class Puzzle(ABC):
 
     def __undo_history(self) -> None:
         entry = History.undo()
-        self.__select(entry.cell)
+        self.select(entry.cell)
         self.__is_guess(entry) and self.__decrement_bg_level()
         prev_val = entry.previous_valueinfo.value if entry.previous_valueinfo else None
         prev_attr = (
@@ -222,9 +237,6 @@ class Puzzle(ABC):
             else ()
         )
         entry.cell.update(prev_val, prev_attr)
-
-    def __select(self, cell) -> None:
-        self.selected_cell = (cell.row, cell.col)
 
     def __is_guess(self, entry) -> bool:
         return entry.valueinfo.prim_attr == DisplayAttrs.GUESS
@@ -240,28 +252,4 @@ class Puzzle(ABC):
         self.__undo_history()
         while not History.is_empty() and not self.__is_guess(History.last()):
             self.__undo_history()
-        History.is_empty() or self.__select(History.last().cell)
-
-    def __stopped_by_conflicts(self) -> bool:
-        cell = self.__first_cell(lambda block: block.cells_in_conflict())
-        cell and Display.warn("Resolve the conflicts first. ", wait=True)
-        return cell is not None
-
-    def __first_cell(self, cells_of_block) -> Cell:
-        """Return the first cell, left to right and top to bottom, among the cells each block reports"""
-        cells = (cell for block in self._blocks() for cell in cells_of_block(block))
-        return min(cells, key=lambda cell: (cell.row, cell.col), default=None)
-
-    def __stopped_by_dead_end(self) -> bool:
-        cell = self.__first_cell(lambda block: block.dead_end_cells())
-        if cell:
-            self.__select(cell)
-            Display.warn("Dead end - try undoing until this square shows at least one possible value. ", wait=True)
-        return cell is not None
-
-    def __filled_single_value(self) -> bool:
-        cell = self.__first_cell(lambda block: block.single_value_cells())
-        if cell:
-            self.__select(cell)
-            self.__accept_user_value(cell.single_possible_value(), self.__attributes(DisplayAttrs.SOLVED), cell)
-        return cell is not None
+        History.is_empty() or self.select(History.last().cell)

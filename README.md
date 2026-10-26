@@ -131,6 +131,8 @@ some guidance:
 (new layouts go in the puzzles folder)
 - puzzle_catalog.py - finds the available layouts; `PuzzleCatalog` class
 - layout_menu.py - lets the player choose a layout; `LayoutMenu` class
+- puzzle_solver.py - finds the next obvious move by applying the solving rules; `PuzzleSolver` class
+- rules/ - one solving rule per file (`Rule` subclasses); rules/order.py sets the order they are applied in
 - rectangular_block.py - creates/manages a rectangular block of 3x3 cells; `RectangularBlock` class.
 - cell.py - creates/manages an individual cell; `Cell` class
 - cell_solver.py - keeps the possible values of a cell; `CellSolver` class

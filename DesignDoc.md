@@ -57,6 +57,8 @@ Supporting modules:
 | `puzzles/` | one module per layout | e.g. `puzzle_3x3.py` with `Puzzle3x3` |
 | `puzzle_catalog.py` | `PuzzleCatalog`, `PuzzleLayout` | Finds the layouts and reports any that are broken or not fully functional |
 | `layout_menu.py` | `LayoutMenu` | Lets the player choose a layout when there are several |
+| `puzzle_solver.py` | `PuzzleSolver` | Applies the solving rules in order to find the next move |
+| `rules/` | one module per rule, plus `rule.py` and `order.py` | `Rule`, `Outcome` and the rules; `order.py` sets the order |
 
 `doit.py` is a standalone `blessed` experiment and is not part of the program.
 
@@ -136,17 +138,23 @@ Puzzle.value_(val, guess)
 
 ### 5.6 Next: the obvious next move
 
-`next_()` runs a list of checks in order and stops at the first one that acts:
+`next_()` asks the puzzle's `PuzzleSolver` for the next move. The solver applies the rules listed in `rules/order.py`, in that order, and stops at the first one that acts:
 
-1. **Conflicts:** if any cell carries a conflict mark, it warns "Resolve the conflicts first." and does nothing else.
-2. **Dead end:** if an empty cell has no possible values, it moves the cursor there and warns "Dead end - try undoing until this square shows at least one possible value." It suggests undoing rather than rewinding, because a rewind could go back further than needed.
-3. **Single value:** it fills in a cell whose only possible value is left, as a `SOLVED` value, and moves the cursor there.
+1. **`ConflictsRule`:** if any cell carries a conflict mark, it warns "Resolve the conflicts first." and stops.
+2. **`DeadEndRule`:** if an empty cell has no possible values, it moves the cursor there and warns "Dead end - try undoing until this square shows at least one possible value." It suggests undoing rather than rewinding, because a rewind could go back further than needed.
+3. **`SingleValueRule`:** it fills in a cell whose only possible value is left, as a `SOLVED` value, and moves the cursor there.
 
-If none acts, it warns "No obvious next move. You'll have to make a guess."
+If none acts, `next_()` warns "No obvious next move. You'll have to make a guess."
 
-- **Finding the cell:** each check asks every block for its matching cells (`cells_in_conflict()`, `dead_end_cells()`, `single_value_cells()`), and `__first_cell()` picks the smallest (row, col), which is the first one left to right and top to bottom. Only the blocks look inside cells, as section 4.2 requires.
+- **Rules** live in `rules/`, one file each. Each is a `Rule` subclass with `apply(puzzle) -> Outcome`, where `Outcome` is `NONE` (nothing to do), `MOVED` (a cell was filled in) or `STOPPED` (something blocks solving, and the rule warned about it). Rules that stop solving come before rules that make moves. A test checks that every rule in `rules/` is listed in `rules/order.py`.
+- **The puzzle's interface for the solver** is all a rule uses: `first_cell_where(condition)` returns the first cell, left to right and top to bottom, for which the condition holds (it asks every block's `cells_where()`, so only blocks look inside cells, as section 4.2 requires); `select(cell)` moves the cursor; `enter_solved_value(cell, value)` enters a value.
 - **Making the move:** a `SOLVED` value goes through the same path as a typed value, so it is recorded in `History` with `SOLVED` as its primary attribute. `u` and `r` treat it like any other non-guess entry, and undoing a change restores the steel blue. It also picks up the current guess shading.
-- **Adding rules:** a new rule is another check in `next_()`'s list, placed before the final warning. `auto_()` can repeat `next_()`'s checks until none acts.
+- **Adding a rule** means a new file in `rules/` and one line in `rules/order.py`; nothing else changes. `auto_()` can call `PuzzleSolver.next_move()` while it returns `MOVED`. Rules that need whole rows, columns or boxes (rather than single cells) will need a new solver interface, to be designed with the first such rule.
+- **Rules and several layouts (planned, not built yet):** today every layout uses the shared list in `rules/order.py`. The intended direction:
+  - **Shared rules stay shared** by working through units the layout supplies (the groups of cells that must each hold every value once: rows, columns and boxes, or a jigsaw's regions, an X-Sudoku's diagonals, and so on), the way `related_cells` already comes from the blocks.
+  - **Layout-specific rules** (such as Killer Sudoku cage sums) live with their layout, for example in a `puzzles/<layout>/` package, rather than in the shared `rules/` folder.
+  - **A layout chooses its rules** through a `RULES` class attribute that defaults to the shared order; a variant lists shared and its own rules together, in order, and `Puzzle` passes `self.RULES` to its `PuzzleSolver`.
+  - Build this when the first layout that needs its own rules arrives.
 
 ### 5.7 Layouts and the catalog
 
@@ -182,6 +190,6 @@ The full list is in `CLAUDE.md`. The main points:
 
 ## 8. Next steps
 
-1. **Auto:** add `auto_` to `Puzzle`, repeating `next_()`'s checks until none acts.
+1. **Auto:** add `auto_` to `Puzzle`, calling `PuzzleSolver.next_move()` while it returns `MOVED`.
 2. **More rules for next:** for example, a value that fits only one cell in a row, column or box.
 3. **Redo**, if wanted.

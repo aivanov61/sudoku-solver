@@ -21,6 +21,7 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, ".")
 
+from cell import Cell
 from rectangular_block import RectangularBlock
 
 
@@ -60,18 +61,11 @@ class TestRectangularBlock(TestCase):
             next(related)
         self.parent.cells_in_row_or_col.assert_not_called()
 
-    def test_single_value_cells_yields_only_cells_with_one_possible_value(self):
+    def test_cells_where_yields_only_cells_matching_the_condition(self):
         self.__leave_only(self.block.cell(1, 7), {4})
-        self.assertEqual([(c.row, c.col) for c in self.block.single_value_cells()], [(1, 7)])
-
-    def test_dead_end_cells_yields_only_empty_cells_without_possible_values(self):
         self.__leave_only(self.block.cell(2, 6), set())
-        self.assertEqual([(c.row, c.col) for c in self.block.dead_end_cells()], [(2, 6)])
-
-    def test_cells_in_conflict_yields_only_marked_cells(self):
-        self.parent.cells_in_row_or_col.return_value = [self.__other_cell(value=5)]
-        self.block.cell(0, 8).set(5)
-        self.assertEqual([(c.row, c.col) for c in self.block.cells_in_conflict()], [(0, 8)])
+        self.assertEqual([(c.row, c.col) for c in self.block.cells_where(Cell.single_possible_value)], [(1, 7)])
+        self.assertEqual([(c.row, c.col) for c in self.block.cells_where(Cell.is_dead_end)], [(2, 6)])
 
     def test_cells_in_row_or_col_yields_block_cells_in_that_row_or_col(self):
         cells = self.block.cells_in_row_or_col(1, 7)
