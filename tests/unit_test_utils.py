@@ -117,6 +117,8 @@ class UnitTestUtils:
             self.__execute_test(t)
         print("[ ALL TESTS COMPLETED ]")
 
+    # Private functions
+
     def __execute_test(self, t):
         print("\n[ SETUP ]")
         self.setup()

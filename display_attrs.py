@@ -78,6 +78,8 @@ class DisplayAttrs:
         fg, bg = DisplayAttrs.__get_fg_bg(_attrs)
         return f"on_{bg}" if bg else "normal"
 
+    # Private functions
+
     def __get_fg_bg(_attrs):
         primary = DisplayAttrs.__get_attrs(_attrs, DisplayAttrs.ATTRS_PRIMARY)
         optional = DisplayAttrs.__get_attrs(_attrs, DisplayAttrs.ATTRS_OPTIONAL)

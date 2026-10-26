@@ -172,6 +172,8 @@ class Display:
             except:
                 return False
 
+    # Private functions
+
     def __draw_edge_line(is_edge, border, attrs):
         """Draw the top or bottom line of a cell; is_edge tells whether it lies on the block's outer edge"""
         left = Display.__border_char(is_edge or border.is_left(), Display.bigplus, attrs)

@@ -33,14 +33,6 @@ class TestRectangularBlock(TestCase):
         self.block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
         return super().setUp()
 
-    def __setup_parent(self):
-        """
-        Mock 'parent' needs to provide:
-        1. cells_in_row_or_col() - the puzzle's cells in a given row or column
-        """
-        self.parent = MagicMock()
-        self.parent.cells_in_row_or_col.return_value = []
-
     def test_block_can_render(self):
         block1 = RectangularBlock(self.parent, 0, 0, self.BLOCK_ROWS, self.BLOCK_COLS)
         block2 = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
@@ -135,10 +127,6 @@ class TestRectangularBlock(TestCase):
         self.block.cell(0, 8).set(5)
         self.assertEqual([(c.row, c.col) for c in self.block.cells_in_conflict()], [(0, 8)])
 
-    def __leave_only(self, cell, values):
-        for value in set(self.block.values()) - values:
-            cell.remove_possible(value)
-
     def test_cells_in_row_or_col_yields_block_cells_in_that_row_or_col(self):
         cells = self.block.cells_in_row_or_col(1, 7)
         self.assertEqual({(cell.row, cell.col) for cell in cells}, {(1, 6), (1, 7), (1, 8), (0, 7), (2, 7)})
@@ -150,11 +138,25 @@ class TestRectangularBlock(TestCase):
     def test_cells_in_row_or_col_yields_nothing_when_block_is_not_in_line(self):
         self.assertEqual(list(self.block.cells_in_row_or_col(5, 0)), [])
 
+    # Private functions
+
+    def __setup_parent(self):
+        """
+        Mock 'parent' needs to provide:
+        1. cells_in_row_or_col() - the puzzle's cells in a given row or column
+        """
+        self.parent = MagicMock()
+        self.parent.cells_in_row_or_col.return_value = []
+
     def __other_cell(self, value=None):
         """A cell outside this block, in row 8 of column 7"""
         cell = MagicMock(row=8, col=7)
         cell.value.return_value = value
         return cell
+
+    def __leave_only(self, cell, values):
+        for value in set(self.block.values()) - values:
+            cell.remove_possible(value)
 
 if __name__ == "__main__":
     main()

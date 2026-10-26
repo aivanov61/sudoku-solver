@@ -34,14 +34,6 @@ class TestPuzzle3x3(TestCase):
             self.puzzle = Puzzle3x3()
         return super().setUp()
 
-    def __cell(self, row, col):
-        """Access to the puzzle's private cell lookup"""
-        return self.puzzle._Puzzle3x3__cell(row, col)
-
-    def __is_affected_by(self, row, col, origin_row, origin_col) -> bool:
-        same_box = row // 3 == origin_row // 3 and col // 3 == origin_col // 3
-        return row == origin_row or col == origin_col or same_box
-
     def test_cell_returns_cell_at_puzzle_position(self):
         cell = self.__cell(4, 7)
         self.assertEqual((cell.row, cell.col), (4, 7))
@@ -208,10 +200,6 @@ class TestPuzzle3x3(TestCase):
         self.assertFalse(self.puzzle.is_playing)
         confirm.assert_not_called()
 
-    def __rewind(self):
-        with patch("display.Display.confirm", return_value=True):
-            self.puzzle.rewind_()
-
     def test_next_fills_in_a_cell_with_a_single_possible_value(self):
         self.__fill_row(0, 0, range(1, 9))
         self.puzzle.play_()
@@ -280,19 +268,6 @@ class TestPuzzle3x3(TestCase):
         with patch("display.Display.warn") as warn:
             self.puzzle.next_()
         self.assertIn("No obvious next move. You'll have to make a guess.", warn.call_args.args[0])
-
-    def __fill_row(self, row, start_col, values):
-        for col, value in enumerate(values, start_col):
-            self.__cell(row, col).set(value)
-
-    def __enter(self, row, col, value, guess=False):
-        self.puzzle.selected_cell = (row, col)
-        self.puzzle.value_(value, guess)
-
-    def __assert_all_cells_have_all_values(self):
-        for row in range(self.SIZE):
-            for col in range(self.SIZE):
-                self.assertEqual(self.__cell(row, col).possible_values(), self.ALL_VALUES, (row, col))
 
     def test_cell_already_holding_the_value_is_marked_conflicted(self):
         self.__cell(4, 4).set(5)
@@ -374,6 +349,33 @@ class TestPuzzle3x3(TestCase):
         self.__cell(4, 0).set(5)
         self.__cell(4, 0).set(7)
         self.assertNotIn(DisplayAttrs.CONFLICTING, self.__cell(4, 0).attr())
+
+    # Private functions
+
+    def __cell(self, row, col):
+        """Access to the puzzle's private cell lookup"""
+        return self.puzzle._Puzzle3x3__cell(row, col)
+
+    def __is_affected_by(self, row, col, origin_row, origin_col) -> bool:
+        same_box = row // 3 == origin_row // 3 and col // 3 == origin_col // 3
+        return row == origin_row or col == origin_col or same_box
+
+    def __assert_all_cells_have_all_values(self):
+        for row in range(self.SIZE):
+            for col in range(self.SIZE):
+                self.assertEqual(self.__cell(row, col).possible_values(), self.ALL_VALUES, (row, col))
+
+    def __enter(self, row, col, value, guess=False):
+        self.puzzle.selected_cell = (row, col)
+        self.puzzle.value_(value, guess)
+
+    def __rewind(self):
+        with patch("display.Display.confirm", return_value=True):
+            self.puzzle.rewind_()
+
+    def __fill_row(self, row, start_col, values):
+        for col, value in enumerate(values, start_col):
+            self.__cell(row, col).set(value)
 
 
 if __name__ == "__main__":

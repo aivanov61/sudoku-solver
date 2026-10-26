@@ -36,16 +36,6 @@ class TestCell(TestCase):
     def x(self):
         return {"row": 0, "col": 0}
 
-    def __setup_parent(self):
-        """
-        Mock 'parent' needs to provide:
-        1. values() - range of legal values
-        2. is_held_by_related_cell() - whether another related cell already holds the value
-        """
-        self.parent = MagicMock()
-        self.parent.values.return_value = range(1, self.MAX_VALUE)
-        self.parent.is_held_by_related_cell.return_value = False
-
     def test_cell_initial_value_is_not_set(self):
         self.assertIsNone(self.cell.value())
 
@@ -216,6 +206,18 @@ class TestCell(TestCase):
 
     def test_cell_can_render(self):
         self.cell.render()
+
+    # Private functions
+
+    def __setup_parent(self):
+        """
+        Mock 'parent' needs to provide:
+        1. values() - range of legal values
+        2. is_held_by_related_cell() - whether another related cell already holds the value
+        """
+        self.parent = MagicMock()
+        self.parent.values.return_value = range(1, self.MAX_VALUE)
+        self.parent.is_held_by_related_cell.return_value = False
 
 
 if __name__ == "__main__":

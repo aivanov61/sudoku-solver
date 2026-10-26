@@ -41,6 +41,8 @@ class Main:
         Display.move_to_status_line()
         print("\n")
 
+    # Private functions
+
     def __splash(self):
         Copyright.splash()
         try:

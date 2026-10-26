@@ -32,14 +32,6 @@ class TestCellSolver(TestCase):
         self.solver = CellSolver(self.parent)
         return super().setUp()
 
-    def __setup_parent(self):
-        """
-        Mock 'parent' needs to provide:
-        1. values() - range of legal values
-        """
-        self.parent = MagicMock()
-        self.parent.values.return_value = range(1, self.MAX_VALUE)
-
     def test_all_values_are_initially_possible(self):
         self.assertEqual(self.solver.possible_values(), set(range(1, self.MAX_VALUE)))
 
@@ -72,6 +64,16 @@ class TestCellSolver(TestCase):
     def test_clear_possible_removes_all_values(self):
         self.solver.clear_possible()
         self.assertEqual(self.solver.possible_values(), set())
+
+    # Private functions
+
+    def __setup_parent(self):
+        """
+        Mock 'parent' needs to provide:
+        1. values() - range of legal values
+        """
+        self.parent = MagicMock()
+        self.parent.values.return_value = range(1, self.MAX_VALUE)
 
 
 if __name__ == "__main__":

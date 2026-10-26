@@ -34,6 +34,8 @@ class Input:
                 return "force_quit_"
         return cmd
 
+    # Private functions
+
     def __decode_inkey(keystroke):
         if keystroke == "":
             return "timeout"

@@ -91,6 +91,8 @@ class TestDisplayConfirm(TestCase):
     def test_interrupted_prompt_declines(self):
         self.assertFalse(self.__confirm_with(KeyboardInterrupt()))
 
+    # Private functions
+
     def __confirm_with(self, key):
         with patch("display.echo"), patch.object(Display, "term") as term:
             term.inkey.side_effect = [key]
