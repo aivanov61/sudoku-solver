@@ -40,6 +40,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | `1`–`9` | Enter a value |
 | Shifted `1`–`9` (`!` `@` `#` `$` `%` `^` `&` `*` `(` on a US keyboard) | Enter a **guess** (see below) |
 | `u` | Undo your last entry |
+| `r` | Rewind: undo everything entered after your most recent guess, keeping the guess (or undo everything, if there's no guess) |
 | `ESC` | Go back to setup mode (only once everything has been undone) |
 | `?` | Show all commands, including ones not listed on the status line |
 | `q` or `CTRL-C` | Quit |
@@ -50,7 +51,7 @@ You can't change the puzzle's given numbers during play. To fix a typo in the se
 
 When you're stuck and need to try a value, enter it as a guess with a shifted digit. Guesses are shown in green on a gray background.
 
-Every value you enter after a guess gets the same gray background, so you can see everything that depends on it. Each new guess makes the gray a shade lighter. If a guess turns out wrong, press `u` repeatedly to undo back to it. After ten nested guesses there are no lighter shades left, and the program warns you and reuses the last one.
+Every value you enter after a guess gets the same gray background, so you can see everything that depends on it. Each new guess makes the gray a shade lighter. If a guess turns out wrong, press `r` to rewind: everything entered after the guess is undone, and the cursor lands on the guessed cell so you can type a different guess over it. Pressing `r` again also undoes that guess and rewinds to the guess before it. After ten nested guesses there are no lighter shades left, and the program warns you and reuses the last one.
 
 ## Conflicts
 
@@ -69,7 +70,7 @@ If you enter a value that's already in the same row, column or box, the cell tur
 
 ## Current limitations
 
-- **Rewind (`r`), auto (`a`) and next (`n`)** are listed in the help but not available yet. Pressing them shows a "does not support" warning.
+- **Auto (`a`) and next (`n`)** are listed in the help but not available yet. Pressing them shows a "does not support" warning.
 - There's no redo, and puzzles can't be saved.
 
 ## Troubleshooting

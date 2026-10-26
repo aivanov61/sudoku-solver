@@ -55,5 +55,8 @@ class History:
     def undo() -> Entry:
         return History._history.pop()
 
+    def last() -> Entry:
+        return History._history[-1]
+
     def is_empty() -> bool:
         return len(History._history) == 0

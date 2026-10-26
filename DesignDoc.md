@@ -17,7 +17,8 @@ The code is also meant as an example of clean, object-oriented Python built with
 | Undo | Working |
 | Possible values | Removed from the row, column and box when a value is entered, and given back when it is deleted, undone or changed, unless another related cell still holds it. An emptied cell works out its whole set again. |
 | Conflict marking | The cell just entered is marked `CONFLICTING` (bold red on bright yellow), and every related cell already holding the value is marked `CONFLICTED` (its usual color on yellow). Marks clear when the value is deleted, changed or undone, once no related cell still holds it. |
-| Rewind (`r`), auto (`a`), next (`n`) | **Not implemented.** The keys are defined in `Commands`, but `Puzzle3x3` has no `rewind_`, `auto_` or `next_` method, so `Main` shows "This puzzle does not support…". |
+| Rewind (`r`) | Working |
+| Auto (`a`), next (`n`) | **Not implemented.** The keys are defined in `Commands`, but `Puzzle3x3` has no `auto_` or `next_` method, so `Main` shows "This puzzle does not support…". |
 | Redo | Not implemented. |
 
 ## 3. Running and testing
@@ -122,6 +123,7 @@ Puzzle3x3.value_(val, guess)
 
 - `History` is a class-level list of `Entry(cell, valueinfo, previous_valueinfo)`. `ValueInfo` stores the value and its primary attribute (`INITIAL`, `GUESS` or `None`).
 - `undo_()` pops the last entry, moves the cursor to that cell and restores the previous value with `cell.update()`. With nothing to undo, it warns "Cannot undo initialized puzzle. ESC will re-enter initialization mode."
+- `rewind_()` undoes at least one entry, then keeps undoing until the most recent remaining entry is a guess (primary attribute `GUESS`), or until the history is empty. The guess stays on the board and the cursor moves to it, ready for a different value to be typed over it. Pressing `r` again undoes that guess and rewinds to the one before. It uses `History.last()` to look at the most recent entry without removing it. With nothing to undo, it gives the same warning as `undo_()`.
 - **Guess shading:** each guess raises `_bg_level` by 10. Every value entered afterwards, guess or not, gets that gray background, which shows what depends on the guess. Undoing a guess lowers the level by 10. Above `MAX_GRAY_LEVEL` (100), the program warns and keeps reusing the last shade.
 
 ## 6. Display
@@ -149,5 +151,5 @@ The full list is in `CLAUDE.md`. The main points:
 
 ## 8. Next steps
 
-1. **Rewind, auto and next:** add `rewind_`, `auto_` and `next_` to `Puzzle3x3`. Rewind needs the guess points already stored in `History`. Auto and next need solving logic in `CellSolver`, starting with cells that have a single possible value.
+1. **Auto and next:** add `auto_` and `next_` to `Puzzle3x3`. They need solving logic in `CellSolver`, starting with cells that have a single possible value.
 2. **Redo**, if wanted.

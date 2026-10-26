@@ -147,11 +147,10 @@ class Puzzle3x3:
         self.__selected_cell().update(None)
 
     def undo_(self) -> None:
-        (
-            self.__undo_history()
-            if not History.is_empty()
-            else Display.warn("Cannot undo initialized puzzle.  ESC will re-enter initialization mode. ", wait=True)
-        )
+        self.__undo_history() if not History.is_empty() else self.__warn_nothing_to_undo()
+
+    def rewind_(self) -> None:
+        self.__rewind_history() if not History.is_empty() else self.__warn_nothing_to_undo()
 
     # Private functions
 
@@ -203,8 +202,8 @@ class Puzzle3x3:
 
     def __undo_history(self) -> None:
         entry = History.undo()
-        self.selected_cell = (entry.cell.row, entry.cell.col)
-        entry.valueinfo.prim_attr == DisplayAttrs.GUESS and self.__decrement_bg_level()
+        self.__select_cell_of(entry)
+        self.__is_guess(entry) and self.__decrement_bg_level()
         prev_val = entry.previous_valueinfo.value if entry.previous_valueinfo else None
         prev_attr = (
             self.__attributes(entry.previous_valueinfo.prim_attr == DisplayAttrs.GUESS)
@@ -213,5 +212,21 @@ class Puzzle3x3:
         )
         entry.cell.update(prev_val, prev_attr)
 
+    def __select_cell_of(self, entry) -> None:
+        self.selected_cell = (entry.cell.row, entry.cell.col)
+
+    def __is_guess(self, entry) -> bool:
+        return entry.valueinfo.prim_attr == DisplayAttrs.GUESS
+
     def __decrement_bg_level(self) -> None:
         self._bg_level = max(self._bg_level - self.BG_LEVEL_DELTA, 0)
+
+    def __warn_nothing_to_undo(self) -> None:
+        Display.warn("Cannot undo initialized puzzle.  ESC will re-enter initialization mode. ", wait=True)
+
+    def __rewind_history(self) -> None:
+        """Undo at least one entry, then keep undoing until the most recent entry is a guess or none are left"""
+        self.__undo_history()
+        while not History.is_empty() and not self.__is_guess(History.last()):
+            self.__undo_history()
+        History.is_empty() or self.__select_cell_of(History.last())
