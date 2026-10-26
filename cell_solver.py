@@ -32,6 +32,10 @@ class CellSolver:
         """Return the set of possible values for the cell."""
         return self._possible_values
 
+    def add_possible(self, value) -> None:
+        """Add a value to the set of possible values for the cell."""
+        self._possible_values.add(value)
+
     def remove_possible(self, value) -> None:
         """Remove a value from the set of possible values for the cell."""
         self._possible_values.discard(value)

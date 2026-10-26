@@ -78,7 +78,8 @@ are not common commands.  To see these, use the **HELP** key (?).
 Follow the Sudoku rules to solve the puzzle:
 - The bottom line of each cell shows the values still possible for it (or `.....`
 when more than 5 are possible).  Entering a value removes it from the possible
-values of every cell in its row, column and box.
+values of every cell in its row, column and box, and deleting, changing or
+undoing it gives the value back.
 - If you enter a number that is already in the same row, column or box, the cell
 turns bold red on yellow.
 - Enter a SHIFTED digit to make a guess.  Guesses, and every value entered after
@@ -87,9 +88,7 @@ to undo back to it.
 
 *[Not completed]*
 Rewind (r), auto-play (a) and next (n) are listed in the help but not implemented
-yet.  Possible values are not given back when a value is deleted, undone or
-changed, and the cell that a conflicting number clashes with is not highlighted
-yet.
+yet, and the cell that a conflicting number clashes with is not highlighted yet.
 
 See [UserGuide.md](UserGuide.md) for the full list of keys and colors.
 

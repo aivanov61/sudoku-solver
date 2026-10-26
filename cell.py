@@ -69,6 +69,16 @@ class Cell:
         self._attrs = attrs
         value != self._value and self.__smart_update(value)
 
+    def add_possible(self, value) -> None:
+        """Add back a possible value, unless the cell has a value or a related cell holds it"""
+        if (
+            not self._value
+            and value not in self.possible_values()
+            and not self._parent.is_held_by_related_cell(self.row, self.col, value)
+        ):
+            self._solver.add_possible(value)
+            self.__draw_possible_values()
+
     def remove_possible(self, value) -> None:
         """Remove a possible value and redraw the possible values if they changed"""
         if value in self.possible_values():
@@ -97,9 +107,15 @@ class Cell:
         """
         The brains of the cell.  It will update the cell taking into account any logic/analysis required.
         """
-        if value and self._parent.is_conflicting(self.row, self.col, value):
+        if value and self._parent.is_held_by_related_cell(self.row, self.col, value):
             self._attrs = (*self._attrs, DisplayAttrs.CONFLICTING)
         old_value, self._value = self._value, value
         old_value and self._parent.add_possible(self.row, self.col, old_value)
         value and self._parent.remove_possible(self.row, self.col, value)
         value and self.clear_possible()
+        value or self.__restore_possible()
+
+    def __restore_possible(self) -> None:
+        """Add back every value that no related cell holds"""
+        for value in self._parent.values():
+            self.add_possible(value)

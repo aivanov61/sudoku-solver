@@ -43,6 +43,11 @@ class TestCellSolver(TestCase):
     def test_all_values_are_initially_possible(self):
         self.assertEqual(self.solver.possible_values(), set(range(1, self.MAX_VALUE)))
 
+    def test_add_possible_adds_value_back(self):
+        self.solver.remove_possible(5)
+        self.solver.add_possible(5)
+        self.assertEqual(self.solver.possible_values(), set(range(1, self.MAX_VALUE)))
+
     def test_remove_possible_removes_only_that_value(self):
         self.solver.remove_possible(5)
         self.assertEqual(self.solver.possible_values(), set(range(1, self.MAX_VALUE)) - {5})

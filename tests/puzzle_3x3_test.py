@@ -70,6 +70,45 @@ class TestPuzzle3x3(TestCase):
                 if not self.__is_affected_by(row, col, 4, 4):
                     self.assertEqual(self.__cell(row, col).possible_values(), self.ALL_VALUES)
 
+    def test_deleting_value_gives_it_back_to_row_column_and_box(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 4).set(None)
+        self.__assert_all_cells_have_all_values()
+
+    def test_changing_value_gives_old_value_back_and_removes_new_one(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 4).set(7)
+        self.assertEqual(self.__cell(4, 0).possible_values(), self.ALL_VALUES - {7})
+        self.assertEqual(self.__cell(4, 4).possible_values(), set())
+
+    def test_deleted_value_stays_blocked_where_a_duplicate_still_holds_it(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.__cell(4, 0).set(None)
+        self.assertNotIn(5, self.__cell(4, 8).possible_values())
+        self.assertNotIn(5, self.__cell(4, 0).possible_values())
+        self.assertIn(5, self.__cell(0, 0).possible_values())
+
+    def test_emptied_cell_regains_only_values_not_held_by_related_cells(self):
+        self.__cell(0, 0).set(3)
+        self.__cell(4, 8).set(5)
+        self.__cell(4, 0).set(9)
+        self.__cell(4, 0).set(None)
+        self.assertEqual(self.__cell(4, 0).possible_values(), self.ALL_VALUES - {3, 5})
+
+    def test_undo_gives_value_back(self):
+        self.puzzle.play_()
+        self.puzzle.selected_cell = (4, 4)
+        with patch("cell.Display"):
+            self.puzzle.value_(5)
+            self.puzzle.undo_()
+        self.__assert_all_cells_have_all_values()
+
+    def __assert_all_cells_have_all_values(self):
+        for row in range(self.SIZE):
+            for col in range(self.SIZE):
+                self.assertEqual(self.__cell(row, col).possible_values(), self.ALL_VALUES, (row, col))
+
     def test_value_already_in_row_is_conflicting(self):
         self.__cell(4, 4).set(5)
         self.__cell(4, 0).set(5)

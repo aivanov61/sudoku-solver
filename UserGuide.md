@@ -13,7 +13,7 @@ The terminal window needs to be at least **54 columns wide and 29 lines tall**. 
 ## The screen
 
 - **The grid:** 81 cells in nine 3x3 boxes. Thick borders mark the boxes.
-- **Each cell** shows its value in the middle line and, along its bottom line, the values still possible for it, in small digits. When more than 5 values are possible, you'll see `.....` instead.
+- **Each cell** shows its value in the middle line and, along its bottom line, the values still possible for it, in small digits. They update as you enter, change, delete or undo values. When more than 5 values are possible, you'll see `.....` instead.
 - **The cursor** sits on the selected cell. That's where your next entry goes.
 - **The status line** under the grid lists the main keys for the current mode. Warnings also appear there in yellow.
 
@@ -68,7 +68,6 @@ If you enter a value that's already in the same row, column or box, the cell tur
 
 ## Current limitations
 
-- **Possible values aren't restored.** Entering a value removes it from the possible values of its row, column and box. But deleting, undoing or changing that value doesn't give it back to those cells.
 - **Only the new cell is marked in a conflict.** The value it clashes with isn't highlighted.
 - **Rewind (`r`), auto (`a`) and next (`n`)** are listed in the help but not available yet. Pressing them shows a "does not support" warning.
 - There's no redo, and puzzles can't be saved.

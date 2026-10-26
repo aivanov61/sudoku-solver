@@ -40,11 +40,11 @@ class TestCell(TestCase):
         """
         Mock 'parent' needs to provide:
         1. values() - range of legal values
-        2. is_conflicting() - whether another related cell already holds the value
+        2. is_held_by_related_cell() - whether another related cell already holds the value
         """
         self.parent = MagicMock()
         self.parent.values.return_value = range(1, self.MAX_VALUE)
-        self.parent.is_conflicting.return_value = False
+        self.parent.is_held_by_related_cell.return_value = False
 
     def test_cell_initial_value_is_not_set(self):
         self.assertIsNone(self.cell.value())
@@ -60,15 +60,55 @@ class TestCell(TestCase):
         self.cell.set(8)
         self.assertEqual(self.cell.possible_values(), set())
 
-    def test_cell_value_is_conflicting_when_parent_reports_conflict(self):
-        self.parent.is_conflicting.return_value = True
+    def test_cell_value_is_conflicting_when_a_related_cell_holds_it(self):
+        self.parent.is_held_by_related_cell.return_value = True
         self.cell.set(8)
-        self.parent.is_conflicting.assert_called_once_with(0, 0, 8)
+        self.parent.is_held_by_related_cell.assert_called_once_with(0, 0, 8)
         self.assertIn(DisplayAttrs.CONFLICTING, self.cell.attr())
 
-    def test_cell_value_is_not_conflicting_when_parent_reports_no_conflict(self):
+    def test_cell_value_is_not_conflicting_when_no_related_cell_holds_it(self):
         self.cell.set(8)
         self.assertNotIn(DisplayAttrs.CONFLICTING, self.cell.attr())
+
+    def test_cell_changing_value_gives_old_value_back_to_parent(self):
+        self.cell.set(8)
+        self.cell.set(4)
+        self.parent.add_possible.assert_called_once_with(0, 0, 8)
+
+    def test_cell_emptied_cell_regains_values_not_held_by_related_cells(self):
+        self.cell.set(8)
+        self.parent.is_held_by_related_cell.side_effect = lambda row, col, value: value == 3
+        self.cell.set(None)
+        self.assertEqual(self.cell.possible_values(), set(range(1, self.MAX_VALUE)) - {3})
+
+    def test_cell_add_possible_restores_value(self):
+        self.cell.remove_possible(5)
+        self.cell.add_possible(5)
+        self.assertIn(5, self.cell.possible_values())
+
+    def test_cell_add_possible_ignores_value_held_by_related_cell(self):
+        self.cell.remove_possible(5)
+        self.parent.is_held_by_related_cell.return_value = True
+        self.cell.add_possible(5)
+        self.parent.is_held_by_related_cell.assert_called_once_with(0, 0, 5)
+        self.assertNotIn(5, self.cell.possible_values())
+
+    def test_cell_add_possible_ignores_value_when_cell_has_a_value(self):
+        self.cell.set(8)
+        self.cell.add_possible(5)
+        self.assertEqual(self.cell.possible_values(), set())
+
+    @patch("cell.Display.draw_cell_possible_values")
+    def test_cell_draws_possible_values_when_value_added(self, draw):
+        self.cell.remove_possible(5)
+        draw.reset_mock()
+        self.cell.add_possible(5)
+        draw.assert_called_once_with(0, 0, self.cell.possible_values(), self.cell.attr())
+
+    @patch("cell.Display.draw_cell_possible_values")
+    def test_cell_does_not_draw_when_added_value_was_already_possible(self, draw):
+        self.cell.add_possible(5)
+        draw.assert_not_called()
 
     def test_cell_remove_possible_updates_solver(self):
         self.cell.remove_possible(5)

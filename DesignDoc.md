@@ -14,8 +14,8 @@ The code is also meant as an example of clean, object-oriented Python built with
 |---|---|
 | Entering initial values, moving around, help, quit | Working |
 | Guesses with gray shading | Working |
-| Undo | Working for values and attributes. Removed possible values are not restored (see below). |
-| Possible values | Removed from the row, column and box when a value is entered. **Never added back:** `add_possible` is a no-op, so deleting, undoing or changing a value leaves stale possible values. |
+| Undo | Working |
+| Possible values | Removed from the row, column and box when a value is entered, and given back when it is deleted, undone or changed, unless another related cell still holds it. An emptied cell works out its whole set again. |
 | Conflict marking | The cell just entered is marked `CONFLICTING` (bold red on yellow). The cell it clashes with is not marked: `CONFLICTED` is defined but never applied. Other cells' marks don't update when related cells change. |
 | Rewind (`r`), auto (`a`), next (`n`) | **Not implemented.** The keys are defined in `Commands`, but `Puzzle3x3` has no `rewind_`, `auto_` or `next_` method, so `Main` shows "This puzzle does not support…". |
 | Redo | Not implemented. |
@@ -58,9 +58,9 @@ Supporting modules:
 
 Each layer talks only to the layer next to it. Requests travel up and are routed back down:
 
-- **A cell** never looks at other cells. It asks its parent block (`values()`, `remove_possible()`, `add_possible()`, `is_conflicting()`).
-- **A block** handles its own box, then passes the request up to the puzzle for the row and column.
-- **The puzzle** knows only its block layout. It forwards the request to *every* block, passing the row and column. Each block decides which of its own cells are affected. The puzzle never reads or changes cells for these requests, because in other Sudoku layouts the blocks may not form a regular grid, and only a block knows which of its cells lie in a given row or column.
+- **A cell** never looks at other cells. It asks its parent block (`values()`, `remove_possible()`, `add_possible()`, `is_held_by_related_cell()`).
+- **A block** answers each request by visiting the cell's *related cells* (every other cell in the same box, row or column, once each) through the private generator `__related_cells(row, col)`. It yields its own box cells first, then the row and column cells it gets from the puzzle, skipping any in its own box. `add_possible`, `remove_possible` and `is_held_by_related_cell` are each a short loop over it, and `is_held_by_related_cell` stops at the first match.
+- **The puzzle** knows only its block layout. Its single method for blocks, `cells_in_row_or_col(row, col)`, yields from every block's `cells_in_row_or_col`. Each block decides which of its own cells are in the row or column. The puzzle passes those cells along but never reads or changes them, because in other Sudoku layouts the blocks may not form a regular grid, and only a block knows which of its cells lie in a given row or column.
 - **The one exception** is the selected cell. The cursor moves by row and column, and a Sudoku's outer edge is always rectangular, so `Puzzle3x3` finds the selected cell itself (`__selected_cell` → `__cell` → `__block`). Revisit this if a puzzle with a non-rectangular outer edge is ever designed.
 
 Each class groups its methods under comments naming who calls them, for example `# Interface required for cell instances` in `RectangularBlock` and `# Interface required for blocks` in `Puzzle3x3`.
@@ -95,18 +95,19 @@ Puzzle3x3.value_(val, guess)
        ├─ play mode → History.add(Entry(cell, new value, previous value))
        └─ Cell.update(val, attrs)
             └─ Cell.set()  →  __smart_update(value)
-                 ├─ parent.is_conflicting(row, col, value)? → add CONFLICTING
-                 ├─ old value → parent.add_possible(...)        (no-op today)
-                 ├─ new value → parent.remove_possible(...)
-                 │     block:  every cell in the box removes it
-                 │     puzzle: every block removes it from its cells in that row or column
-                 └─ new value → cell.clear_possible()
+                 ├─ parent.is_held_by_related_cell(row, col, value)? → add CONFLICTING
+                 ├─ assign the new value (before notifying, so related cells see the board as it now is)
+                 ├─ old value → parent.add_possible(...)     each related cell takes it back if it is empty
+                 │                                          and none of its own related cells holds it
+                 ├─ new value → parent.remove_possible(...)  each related cell removes it
+                 ├─ new value → cell.clear_possible()
+                 └─ no value  → the cell adds back every value no related cell holds
 ```
 
 - A cell redraws its possible values only when they actually change. That way, cells reached twice (by the box and by the row or column) don't flicker.
 - `update()` then redraws the cell: only its value and possible values if its attributes are unchanged, or the whole cell if they changed.
 
-**Conflicts** are worked out from the values on the board, never from a cell's possible values. The block checks its box, then the puzzle asks every block about the row and column. A cell's own position is always skipped, so its current value never counts against it.
+**Conflicts** are worked out from the values on the board, never from a cell's possible values. The block checks its box, then the puzzle asks every block about the row and column. A cell's own position is always skipped, so its current value never counts against it. The same check decides whether a value can be given back: a cell regains a value only if `is_held_by_related_cell` says no related cell holds it, so a duplicate left on the board keeps the value blocked.
 
 ### 5.4 Modes
 
@@ -138,12 +139,12 @@ The full list is in `CLAUDE.md`. The main points:
 - **TDD:** write a failing test, make it pass, then refactor. Before starting a new feature, look for refactoring that would make the feature easier to add.
 - **Private methods** use the `__` prefix. Tests that need one call the mangled name through a single helper in the test class, rather than making the method public.
 - **Method order:** a called method is placed as soon after its caller as possible, within its own section (interface or private).
+- **Constants first:** class constants go at the top of the class, except constants built from a nested class and long data tables (such as `Display`'s drawing characters), which go at the end.
 - **Layer boundaries** are as described in section 4.2.
 - **Testing by hand:** the program is run and watched before every commit, because the tests can't show what the terminal looks like.
 
 ## 8. Next steps
 
-1. **`add_possible`:** when a value is removed or replaced, give back the possible value to the cells in its row, column and box that no longer have it ruled out. A block will need to ask whether a value is still used in a cell's row, column or box, which is the same kind of query as `is_conflicting`.
-2. **`CONFLICTED` marking:** mark the cell a new value clashes with, and clear both marks when the clash goes away.
-3. **Rewind, auto and next:** add `rewind_`, `auto_` and `next_` to `Puzzle3x3`. Rewind needs the guess points already stored in `History`. Auto and next need solving logic in `CellSolver`, starting with cells that have a single possible value.
-4. **Redo**, if wanted.
+1. **`CONFLICTED` marking:** mark the cell a new value clashes with, and clear both marks when the clash goes away. This can loop over the same related cells as the other requests.
+2. **Rewind, auto and next:** add `rewind_`, `auto_` and `next_` to `Puzzle3x3`. Rewind needs the guess points already stored in `History`. Auto and next need solving logic in `CellSolver`, starting with cells that have a single possible value.
+3. **Redo**, if wanted.

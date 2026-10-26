@@ -47,6 +47,20 @@ class TestRectangularBlock(TestCase):
         block1.render()
         block2.render()
 
+    def test_add_possible_gives_value_back_to_every_other_cell_in_block(self):
+        self.block.remove_possible(1, 7, 5)
+        self.block.add_possible(1, 7, 5)
+        for row in range(self.BLOCK_ROWS):
+            for col in range(6, 6 + self.BLOCK_COLS):
+                if (row, col) != (1, 7):
+                    self.assertIn(5, self.block.cell(row, col).possible_values())
+
+    def test_add_possible_gives_value_back_to_row_and_col_cells_given_by_parent(self):
+        other_cell = self.__other_cell()
+        self.parent.cells_in_row_or_col.return_value = [other_cell]
+        self.block.add_possible(1, 7, 5)
+        other_cell.add_possible.assert_called_once_with(5)
+
     def test_remove_possible_removes_value_from_every_other_cell_in_block(self):
         self.block.remove_possible(1, 7, 5)
         for row in range(self.BLOCK_ROWS):
@@ -72,23 +86,23 @@ class TestRectangularBlock(TestCase):
             self.block.remove_possible(1, 7, 5)
         remove_possible.assert_called_once_with(5)
 
-    def test_value_is_conflicting_when_another_cell_in_block_holds_it(self):
+    def test_value_is_held_when_another_cell_in_block_holds_it(self):
         self.block.cell(0, 6).set(5)
         self.parent.cells_in_row_or_col.reset_mock()
-        self.assertTrue(self.block.is_conflicting(2, 8, 5))
+        self.assertTrue(self.block.is_held_by_related_cell(2, 8, 5))
         self.parent.cells_in_row_or_col.assert_not_called()
 
-    def test_value_in_the_same_cell_is_not_conflicting(self):
+    def test_value_in_the_same_cell_is_not_held_by_a_related_cell(self):
         self.block.cell(0, 6).set(5)
-        self.assertFalse(self.block.is_conflicting(0, 6, 5))
+        self.assertFalse(self.block.is_held_by_related_cell(0, 6, 5))
 
-    def test_value_is_conflicting_when_a_row_or_col_cell_given_by_parent_holds_it(self):
+    def test_value_is_held_when_a_row_or_col_cell_given_by_parent_holds_it(self):
         self.parent.cells_in_row_or_col.return_value = [self.__other_cell(value=5)]
-        self.assertTrue(self.block.is_conflicting(1, 7, 5))
+        self.assertTrue(self.block.is_held_by_related_cell(1, 7, 5))
 
-    def test_value_is_not_conflicting_when_no_related_cell_holds_it(self):
+    def test_value_is_not_held_when_no_related_cell_holds_it(self):
         self.parent.cells_in_row_or_col.return_value = [self.__other_cell(value=3)]
-        self.assertFalse(self.block.is_conflicting(1, 7, 5))
+        self.assertFalse(self.block.is_held_by_related_cell(1, 7, 5))
 
     def test_cells_in_row_or_col_yields_block_cells_in_that_row_or_col(self):
         cells = self.block.cells_in_row_or_col(1, 7)

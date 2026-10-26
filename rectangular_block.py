@@ -66,13 +66,14 @@ class RectangularBlock:
         return range(1, self.rows * self.cols + 1)
 
     def add_possible(self, row, col, value) -> None:
-        pass
+        for cell in self.__related_cells(row, col):
+            cell.add_possible(value)
 
     def remove_possible(self, row, col, value) -> None:
         for cell in self.__related_cells(row, col):
             cell.remove_possible(value)
 
-    def is_conflicting(self, row, col, value) -> bool:
+    def is_held_by_related_cell(self, row, col, value) -> bool:
         return any(cell.value() == value for cell in self.__related_cells(row, col))
 
     # Private functions
