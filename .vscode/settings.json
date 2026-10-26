@@ -13,5 +13,7 @@
     ],
     "cSpell.words": [
         "valueinfo"
-    ]
+    ],
+    "workbench.editorAssociations": { "*.md": "default", "*.markdown": "default" }
 }
+
