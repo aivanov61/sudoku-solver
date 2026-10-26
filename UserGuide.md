@@ -54,7 +54,7 @@ Every value you enter after a guess gets the same gray background, so you can se
 
 ## Conflicts
 
-If you enter a value that's already in the same row, column or box, the cell turns **bold red on yellow**. Replace it with a value that fits, and the cell goes back to normal.
+If you enter a value that's already in the same row, column or box, the cell turns **bold red on bright yellow**, and each cell it clashes with gets a **yellow background**. Replace, delete or undo the clashing value, and the cells go back to normal. A cell that clashes with more than one other cell stays marked until all of its clashes are gone.
 
 ## Colors at a glance
 
@@ -63,12 +63,12 @@ If you enter a value that's already in the same row, column or box, the cell tur
 | Purple on lavender | A given number from setup |
 | Orange | A value you entered |
 | Green on gray | A guess; gray backgrounds also mark values entered after a guess |
-| Bold red on yellow | Conflicts with a value in the same row, column or box |
+| Bold red on bright yellow | The value you just entered is already in the same row, column or box |
+| Usual color on yellow | Holds a value that a newer entry clashes with |
 | Yellow text on the status line | A warning. If it waits, press any key to continue. |
 
 ## Current limitations
 
-- **Only the new cell is marked in a conflict.** The value it clashes with isn't highlighted.
 - **Rewind (`r`), auto (`a`) and next (`n`)** are listed in the help but not available yet. Pressing them shows a "does not support" warning.
 - There's no redo, and puzzles can't be saved.
 

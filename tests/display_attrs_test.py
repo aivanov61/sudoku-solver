@@ -65,15 +65,15 @@ class TestDisplayRenderAttrs(TestCase):
         out = DisplayAttrs.render((DisplayAttrs.GUESS, dict(level=75)))
         self.assertEqual(out, "green_on_gray75")
 
-    def test_conflicting_value_renders_bold_red_on_yellow(self):
+    def test_conflicting_value_renders_bold_red_on_bright_yellow(self):
         out = DisplayAttrs.render(DisplayAttrs.CONFLICTING)
-        self.assertEqual(out, "bold_red_on_yellow")
+        self.assertEqual(out, "bold_red_on_bright_yellow")
 
         out = DisplayAttrs.render((DisplayAttrs.INITIAL, DisplayAttrs.CONFLICTING))
-        self.assertEqual(out, "bold_red_on_yellow")
+        self.assertEqual(out, "bold_red_on_bright_yellow")
 
         out = DisplayAttrs.render((DisplayAttrs.GUESS, DisplayAttrs.CONFLICTING, dict(level=75)))
-        self.assertEqual(out, "bold_red_on_yellow")
+        self.assertEqual(out, "bold_red_on_bright_yellow")
 
     def test_conflicted_value_renders_primary_on_yellow(self):
         out = DisplayAttrs.render(DisplayAttrs.CONFLICTED)
@@ -109,15 +109,15 @@ class TestDisplayRenderBgAttrs(TestCase):
         out = DisplayAttrs.render_bg((DisplayAttrs.INITIAL, dict(level=60)))
         self.assertEqual(out, "on_lavender")
 
-    def test_conflicting_value_renders_yellow(self):
+    def test_conflicting_value_renders_bright_yellow(self):
         out = DisplayAttrs.render_bg(DisplayAttrs.CONFLICTING)
-        self.assertEqual(out, "on_yellow")
+        self.assertEqual(out, "on_bright_yellow")
 
         out = DisplayAttrs.render_bg((DisplayAttrs.INITIAL, DisplayAttrs.CONFLICTING))
-        self.assertEqual(out, "on_yellow")
+        self.assertEqual(out, "on_bright_yellow")
 
         out = DisplayAttrs.render_bg((DisplayAttrs.GUESS, DisplayAttrs.CONFLICTING, dict(level=75)))
-        self.assertEqual(out, "on_yellow")
+        self.assertEqual(out, "on_bright_yellow")
 
     def test_conflicted_value_renders_yellow(self):
         out = DisplayAttrs.render_bg(DisplayAttrs.CONFLICTED)

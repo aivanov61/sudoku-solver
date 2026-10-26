@@ -81,14 +81,14 @@ when more than 5 are possible).  Entering a value removes it from the possible
 values of every cell in its row, column and box, and deleting, changing or
 undoing it gives the value back.
 - If you enter a number that is already in the same row, column or box, the cell
-turns bold red on yellow.
+turns bold red on bright yellow, and the cells it clashes with get a yellow background.
 - Enter a SHIFTED digit to make a guess.  Guesses, and every value entered after
 them, get a gray background so you can see what depends on the guess.  Use "u"
 to undo back to it.
 
 *[Not completed]*
 Rewind (r), auto-play (a) and next (n) are listed in the help but not implemented
-yet, and the cell that a conflicting number clashes with is not highlighted yet.
+yet.
 
 See [UserGuide.md](UserGuide.md) for the full list of keys and colors.
 

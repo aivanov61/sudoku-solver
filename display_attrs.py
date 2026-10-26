@@ -27,7 +27,7 @@ class DisplayAttrs:
         - INITIAL - FG=Purple, BG=Lavender
         - GUESS - FG=Green, BG=[shade of gray]
     - Additional (optional)
-        - CONFLICTING - FG=BoldRed, BG=Yellow
+        - CONFLICTING - FG=BoldRed, BG=BrightYellow
         - CONFLICTED - FG=[primary], BG=Yellow
     """
 
@@ -35,6 +35,7 @@ class DisplayAttrs:
     GUESS = "guess"
     CONFLICTING = "conflicting"
     CONFLICTED = "conflicted"
+    CONFLICT_ATTRS = (CONFLICTING, CONFLICTED)
 
     DEFAULT_COLOR = "darkorange3"
     MAX_GRAY_LEVEL = 100  # There are no gray levels greater than 100
@@ -52,7 +53,7 @@ class DisplayAttrs:
 
     ATTRS_OPTIONAL = {
         # The following are optional (can be combined with the required ones) but are also mutually exclusive
-        CONFLICTING: FgBgAttr(("bold", "red"), ("yellow",)),
+        CONFLICTING: FgBgAttr(("bold", "red"), ("bright", "yellow")),
         CONFLICTED: FgBgAttr(None, ("yellow",)),
     }
 

@@ -16,7 +16,7 @@ The code is also meant as an example of clean, object-oriented Python built with
 | Guesses with gray shading | Working |
 | Undo | Working |
 | Possible values | Removed from the row, column and box when a value is entered, and given back when it is deleted, undone or changed, unless another related cell still holds it. An emptied cell works out its whole set again. |
-| Conflict marking | The cell just entered is marked `CONFLICTING` (bold red on yellow). The cell it clashes with is not marked: `CONFLICTED` is defined but never applied. Other cells' marks don't update when related cells change. |
+| Conflict marking | The cell just entered is marked `CONFLICTING` (bold red on bright yellow), and every related cell already holding the value is marked `CONFLICTED` (its usual color on yellow). Marks clear when the value is deleted, changed or undone, once no related cell still holds it. |
 | Rewind (`r`), auto (`a`), next (`n`) | **Not implemented.** The keys are defined in `Commands`, but `Puzzle3x3` has no `rewind_`, `auto_` or `next_` method, so `Main` shows "This puzzle does not support…". |
 | Redo | Not implemented. |
 
@@ -94,14 +94,18 @@ Puzzle3x3.value_(val, guess)
   └─ __accept_user_value()
        ├─ play mode → History.add(Entry(cell, new value, previous value))
        └─ Cell.update(val, attrs)
-            └─ Cell.set()  →  __smart_update(value)
-                 ├─ parent.is_held_by_related_cell(row, col, value)? → add CONFLICTING
-                 ├─ assign the new value (before notifying, so related cells see the board as it now is)
-                 ├─ old value → parent.add_possible(...)     each related cell takes it back if it is empty
-                 │                                          and none of its own related cells holds it
-                 ├─ new value → parent.remove_possible(...)  each related cell removes it
-                 ├─ new value → the cell clears its own possible values
-                 └─ no value  → the cell adds back every value no related cell holds
+            └─ Cell.set()
+                 ├─ parent.is_held_by_related_cell(row, col, value)? → add CONFLICTING (even if the value is unchanged)
+                 └─ value changed → __smart_update(value)
+                      ├─ assign the new value (before notifying, so related cells see the board as it now is)
+                      ├─ old value → parent.add_possible(...)              each related cell takes it back if it is empty
+                      │                                                   and none of its own related cells holds it
+                      ├─ old value → parent.clear_resolved_conflicts(...)  each related cell holding it drops its mark
+                      │                                                   if none of its own related cells holds it
+                      ├─ new value → parent.remove_possible(...)           each related cell removes it
+                      ├─ new value → parent.mark_conflicted(...)           each related cell holding it is marked CONFLICTED
+                      ├─ new value → the cell clears its own possible values
+                      └─ no value  → the cell adds back every value no related cell holds
 ```
 
 - A cell redraws its possible values only when they actually change. That way, cells reached twice (by the box and by the row or column) don't flicker.
@@ -124,9 +128,9 @@ Puzzle3x3.value_(val, guess)
 
 - **Cell layout:** each cell is 6 columns by 3 lines. The top line is the border (shared with the cell above), the middle line shows the value, and the bottom line shows the possible values. Box edges use full blocks (`█`); inner lines use `│`, `─` and `┼`.
 - **Possible values** are drawn in increasing order as subscript digits. When there are more than 5, `.....` is shown instead.
-- **Attributes:** `DisplayAttrs` turns mnemonics into `blessed` style names such as `purple_on_lavender` or `bold_red_on_yellow`. There are two kinds:
+- **Attributes:** `DisplayAttrs` turns mnemonics into `blessed` style names such as `purple_on_lavender` or `bold_red_on_bright_yellow`. There are two kinds:
   - *Primary* attributes (at most one per cell): `INITIAL` gives purple on lavender, and `GUESS` gives green on the current gray.
-  - *Optional* attributes: `CONFLICTING` gives bold red on yellow. `CONFLICTED` (the primary color on yellow) is defined but not yet used.
+  - *Optional* attributes: `CONFLICTING` gives bold red on bright yellow. `CONFLICTED` gives the primary color on yellow, so the newest entry stands out from the cells it clashes with. A cell carries at most one of the two; `CONFLICTING` wins.
   - Values with no primary attribute are drawn in `darkorange3`.
   - The gray level travels in the attribute tuple as `{"level": n}`.
 - `Display` is a class with class-level state (`term`, `geom`) and functions called on the class, not on an instance.
@@ -145,6 +149,5 @@ The full list is in `CLAUDE.md`. The main points:
 
 ## 8. Next steps
 
-1. **`CONFLICTED` marking:** mark the cell a new value clashes with, and clear both marks when the clash goes away. This can loop over the same related cells as the other requests.
-2. **Rewind, auto and next:** add `rewind_`, `auto_` and `next_` to `Puzzle3x3`. Rewind needs the guess points already stored in `History`. Auto and next need solving logic in `CellSolver`, starting with cells that have a single possible value.
-3. **Redo**, if wanted.
+1. **Rewind, auto and next:** add `rewind_`, `auto_` and `next_` to `Puzzle3x3`. Rewind needs the guess points already stored in `History`. Auto and next need solving logic in `CellSolver`, starting with cells that have a single possible value.
+2. **Redo**, if wanted.

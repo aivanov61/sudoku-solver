@@ -47,6 +47,24 @@ class TestRectangularBlock(TestCase):
         block1.render()
         block2.render()
 
+    def test_mark_conflicted_is_passed_to_every_related_cell(self):
+        other_cell = self.__other_cell()
+        self.parent.cells_in_row_or_col.return_value = [other_cell]
+        own_cell = self.block.cell(0, 6)
+        with patch.object(own_cell, "mark_conflicted") as mark_conflicted:
+            self.block.mark_conflicted(1, 7, 5)
+        mark_conflicted.assert_called_once_with(5)
+        other_cell.mark_conflicted.assert_called_once_with(5)
+
+    def test_clear_resolved_conflicts_is_passed_to_every_related_cell(self):
+        other_cell = self.__other_cell()
+        self.parent.cells_in_row_or_col.return_value = [other_cell]
+        own_cell = self.block.cell(0, 6)
+        with patch.object(own_cell, "clear_resolved_conflict") as clear_resolved_conflict:
+            self.block.clear_resolved_conflicts(1, 7, 5)
+        clear_resolved_conflict.assert_called_once_with(5)
+        other_cell.clear_resolved_conflict.assert_called_once_with(5)
+
     def test_add_possible_gives_value_back_to_every_other_cell_in_block(self):
         self.block.remove_possible(1, 7, 5)
         self.block.add_possible(1, 7, 5)

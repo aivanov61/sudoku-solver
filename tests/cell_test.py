@@ -110,6 +110,59 @@ class TestCell(TestCase):
         self.cell.add_possible(5)
         draw.assert_not_called()
 
+    def test_cell_re_entering_same_value_keeps_it_conflicting(self):
+        self.parent.is_held_by_related_cell.return_value = True
+        self.cell.set(8)
+        self.cell.set(8)
+        self.assertIn(DisplayAttrs.CONFLICTING, self.cell.attr())
+
+    def test_cell_new_value_asks_parent_to_mark_conflicted_cells(self):
+        self.cell.set(8)
+        self.parent.mark_conflicted.assert_called_once_with(0, 0, 8)
+
+    def test_cell_changing_value_asks_parent_to_clear_resolved_conflicts(self):
+        self.cell.set(8)
+        self.cell.set(4)
+        self.parent.clear_resolved_conflicts.assert_called_once_with(0, 0, 8)
+
+    @patch("cell.Display")
+    def test_cell_mark_conflicted_marks_cell_holding_the_value(self, display):
+        self.cell.set(8, (DisplayAttrs.INITIAL,))
+        self.cell.mark_conflicted(8)
+        self.assertEqual(self.cell.attr(), (DisplayAttrs.INITIAL, DisplayAttrs.CONFLICTED))
+        display.draw_cell.assert_called_once()
+
+    @patch("cell.Display")
+    def test_cell_mark_conflicted_ignores_other_values(self, display):
+        self.cell.set(8)
+        self.cell.mark_conflicted(5)
+        self.assertNotIn(DisplayAttrs.CONFLICTED, self.cell.attr())
+        display.draw_cell.assert_not_called()
+
+    @patch("cell.Display")
+    def test_cell_mark_conflicted_does_not_mark_a_conflicting_cell_again(self, display):
+        self.parent.is_held_by_related_cell.return_value = True
+        self.cell.set(8)
+        self.cell.mark_conflicted(8)
+        self.assertEqual(self.cell.attr(), (DisplayAttrs.CONFLICTING,))
+
+    @patch("cell.Display")
+    def test_cell_clear_resolved_conflict_clears_marks_when_no_related_cell_holds_value(self, display):
+        self.parent.is_held_by_related_cell.return_value = True
+        self.cell.set(8, (DisplayAttrs.GUESS,))
+        self.cell.mark_conflicted(8)
+        self.parent.is_held_by_related_cell.return_value = False
+        self.cell.clear_resolved_conflict(8)
+        self.assertEqual(self.cell.attr(), (DisplayAttrs.GUESS,))
+
+    @patch("cell.Display")
+    def test_cell_clear_resolved_conflict_keeps_mark_while_a_related_cell_holds_value(self, display):
+        self.cell.set(8)
+        self.cell.mark_conflicted(8)
+        self.parent.is_held_by_related_cell.return_value = True
+        self.cell.clear_resolved_conflict(8)
+        self.assertIn(DisplayAttrs.CONFLICTED, self.cell.attr())
+
     def test_cell_remove_possible_updates_solver(self):
         self.cell.remove_possible(5)
         self.assertNotIn(5, self.cell.possible_values())

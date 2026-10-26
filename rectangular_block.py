@@ -76,6 +76,14 @@ class RectangularBlock:
     def is_held_by_related_cell(self, row, col, value) -> bool:
         return any(cell.value() == value for cell in self.__related_cells(row, col))
 
+    def mark_conflicted(self, row, col, value) -> None:
+        for cell in self.__related_cells(row, col):
+            cell.mark_conflicted(value)
+
+    def clear_resolved_conflicts(self, row, col, value) -> None:
+        for cell in self.__related_cells(row, col):
+            cell.clear_resolved_conflict(value)
+
     # Private functions
 
     def __initialize_cells(self):

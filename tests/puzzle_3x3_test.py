@@ -109,6 +109,51 @@ class TestPuzzle3x3(TestCase):
             for col in range(self.SIZE):
                 self.assertEqual(self.__cell(row, col).possible_values(), self.ALL_VALUES, (row, col))
 
+    def test_cell_already_holding_the_value_is_marked_conflicted(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.assertIn(DisplayAttrs.CONFLICTED, self.__cell(4, 4).attr())
+
+    def test_unrelated_cell_holding_the_value_is_not_marked(self):
+        self.__cell(0, 0).set(5)
+        self.__cell(4, 4).set(5)
+        self.assertNotIn(DisplayAttrs.CONFLICTED, self.__cell(0, 0).attr())
+
+    def test_deleting_conflicting_value_clears_conflicted_mark(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.__cell(4, 0).set(None)
+        self.assertEqual(self.__cell(4, 4).attr(), ())
+
+    def test_deleting_conflicted_value_clears_conflicting_mark(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.__cell(4, 4).set(None)
+        self.assertEqual(self.__cell(4, 0).attr(), ())
+
+    def test_replacing_conflicting_value_clears_conflicted_mark(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.__cell(4, 0).set(7)
+        self.assertEqual(self.__cell(4, 4).attr(), ())
+
+    def test_cell_stays_conflicted_while_another_clash_remains(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.__cell(0, 4).set(5)
+        self.__cell(4, 0).set(None)
+        self.assertIn(DisplayAttrs.CONFLICTED, self.__cell(4, 4).attr())
+
+    def test_undo_clears_conflict_marks(self):
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.puzzle.selected_cell = (4, 4)
+            self.puzzle.value_(5)
+            self.puzzle.selected_cell = (4, 0)
+            self.puzzle.value_(5)
+            self.puzzle.undo_()
+        self.assertEqual(self.__cell(4, 4).attr(), ())
+
     def test_value_already_in_row_is_conflicting(self):
         self.__cell(4, 4).set(5)
         self.__cell(4, 0).set(5)
