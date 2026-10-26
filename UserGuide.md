@@ -30,7 +30,8 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | `Delete` | Clear the selected cell |
 | `ESC` | Finish setup and start playing |
 | `?` | Show all commands |
-| `q` or `CTRL-C` | Quit |
+| `q` | Quit (asks you to confirm) |
+| `CTRL-C` | Quit at once, without asking |
 
 ### Play mode: solving
 
@@ -40,10 +41,13 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | `1`–`9` | Enter a value |
 | Shifted `1`–`9` (`!` `@` `#` `$` `%` `^` `&` `*` `(` on a US keyboard) | Enter a **guess** (see below) |
 | `u` | Undo your last entry |
-| `r` | Rewind: undo everything entered after your most recent guess, keeping the guess (or undo everything, if there's no guess) |
+| `r` | Rewind: undo everything entered after your most recent guess, keeping the guess (or undo everything, if there's no guess). Asks you to confirm, since it can't be undone. |
 | `ESC` | Go back to setup mode (only once everything has been undone) |
 | `?` | Show all commands, including ones not listed on the status line |
-| `q` or `CTRL-C` | Quit |
+| `q` | Quit (asks you to confirm) |
+| `CTRL-C` | Quit at once, without asking |
+
+When the program asks you to confirm, press `y` to go ahead. Any other key cancels.
 
 You can't change the puzzle's given numbers during play. To fix a typo in the setup, undo all your moves, press `ESC` to go back to setup mode, correct it and press `ESC` again.
 

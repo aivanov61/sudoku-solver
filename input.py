@@ -30,10 +30,8 @@ class Input:
             try:
                 with Display.term.cbreak():
                     cmd = Input.__decode_inkey(Display.term.inkey(timeout=timeout))
-            except Exception as e:  # Any exception just quit
-                return "quit_"
-            except:  # Everything else that is bad, including CTRL-C (KeyboardInterrupt), just quit
-                return "quit_"
+            except:  # Anything bad, including CTRL-C (KeyboardInterrupt), quits without asking
+                return "force_quit_"
         return cmd
 
     def __decode_inkey(keystroke):

@@ -179,5 +179,5 @@ Get terminal input and decode it using the commands given. It relies on commands
 given in a specific format (see Commands below).  It provides a single function:
 
 - get_cmd() - Wait for, and get, keyboard input.  It handles exceptions and CTRL-C
-(keyboard interrupt) and returns a valid command.  Keyboard input that is not
+(keyboard interrupt), which force an immediate quit, and returns a valid command.  Keyboard input that is not
 recognized is ignored.

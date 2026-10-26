@@ -17,9 +17,11 @@
 
 import sys
 from unittest import main, TestCase
+from unittest.mock import patch
 
 sys.path.insert(0, ".")
 
+from display import Display
 from input import Input
 
 
@@ -28,6 +30,18 @@ class TestInput(TestCase):
         print('Hit a valid command key, like "?" or CTRL-C, to continue; timeout=2 seconds')
         cmd = Input.get_cmd(timeout=2.0)
         print(f'cmd="{cmd}"')
+
+
+class TestInputForcedQuit(TestCase):
+    def test_ctrl_c_is_a_forced_quit(self):
+        with patch.object(Display, "term") as term:
+            term.inkey.side_effect = KeyboardInterrupt()
+            self.assertEqual(Input.get_cmd(), "force_quit_")
+
+    def test_input_error_is_a_forced_quit(self):
+        with patch.object(Display, "term") as term:
+            term.inkey.side_effect = OSError()
+            self.assertEqual(Input.get_cmd(), "force_quit_")
 
 
 if __name__ == "__main__":

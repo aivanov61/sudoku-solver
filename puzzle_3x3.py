@@ -39,6 +39,7 @@ class Puzzle3x3:
     And the following methods:
         render() -
         display_status() -
+        force_quit_() - stop playing at once, without asking (CTRL-C)
 
     In addition, the puzzle should support all the commands available in commands.py.  Function
     names for commands have underscore (_) as a suffix to eliminate conflicts with reserved words.
@@ -90,6 +91,9 @@ class Puzzle3x3:
     # Interface methods for commands (corresponding to commands in Commands)
 
     def quit_(self) -> None:
+        Display.confirm("Really quit?") and self.force_quit_()
+
+    def force_quit_(self) -> None:
         self.is_playing = False
 
     def help_(self) -> None:
@@ -150,7 +154,10 @@ class Puzzle3x3:
         self.__undo_history() if not History.is_empty() else self.__warn_nothing_to_undo()
 
     def rewind_(self) -> None:
-        self.__rewind_history() if not History.is_empty() else self.__warn_nothing_to_undo()
+        if History.is_empty():
+            self.__warn_nothing_to_undo()
+        elif Display.confirm("Rewind cannot be undone.  Really rewind?"):
+            self.__rewind_history()
 
     # Private functions
 

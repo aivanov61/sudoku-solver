@@ -61,7 +61,7 @@ class Commands:
         "quit": {
             "keys": "qQ",
             "short": "q/CTRL-C",
-            "long": 'Use "q" or CTRL-C to quit the Sudoku puzzle',
+            "long": 'Use "q" to quit the Sudoku puzzle (asks first) or CTRL-C to quit at once',
         },
     }
 
@@ -87,7 +87,7 @@ class Commands:
         "rewind": {
             "keys": "rR",
             "short": "r",
-            "long": 'Use "r" to rewind to the most recent guess (to choose a new guess)',
+            "long": 'Use "r" to rewind to the most recent guess (to choose a new guess) - asks first',
         },
         "auto": {
             "keys": "aA",

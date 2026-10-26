@@ -80,7 +80,7 @@ class Main:
         self.__handle_possible_forced_quit(cmd)
 
     def __handle_possible_forced_quit(self, cmd):
-        if not cmd == "quit_":
+        if cmd not in ("quit_", "force_quit_"):
             return
         Display.move_to_status_line()
         print("\n" + Display.term.clear_eol + "FORCING quit")

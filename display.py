@@ -162,6 +162,16 @@ class Display:
         except:
             pass
 
+    def confirm(msg) -> bool:
+        """Ask a yes/no question on the status line; only "y" or "Y" confirms"""
+        with Display.term.location(*Display.status_line_location()):
+            echo(Display.term.clear_eol + Display.term.yellow(msg + " (y/n) "))
+            try:
+                with Display.term.cbreak():
+                    return Display.term.inkey() in ("y", "Y")
+            except:
+                return False
+
     def __draw_top_line(border, attrs):
         ulcorner = (
             Attrs.outer_border(Display.fullblock, attrs)

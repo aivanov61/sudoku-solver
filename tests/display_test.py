@@ -77,5 +77,25 @@ class TestDisplayPossibleValues(TestCase):
         self.assertIn("".join(str(v).translate(Display.small_nums) for v in (1, 5, 9)), drawn)
 
 
+class TestDisplayConfirm(TestCase):
+    def test_y_confirms(self):
+        self.assertTrue(self.__confirm_with("y"))
+
+    def test_capital_y_confirms(self):
+        self.assertTrue(self.__confirm_with("Y"))
+
+    def test_any_other_key_declines(self):
+        self.assertFalse(self.__confirm_with("n"))
+        self.assertFalse(self.__confirm_with("q"))
+
+    def test_interrupted_prompt_declines(self):
+        self.assertFalse(self.__confirm_with(KeyboardInterrupt()))
+
+    def __confirm_with(self, key):
+        with patch("display.echo"), patch.object(Display, "term") as term:
+            term.inkey.side_effect = [key]
+            return Display.confirm("Really?")
+
+
 if __name__ == "__main__":
     main()

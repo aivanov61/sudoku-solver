@@ -111,7 +111,7 @@ class TestPuzzle3x3(TestCase):
             self.__enter(1, 1, 2, guess=True)
             self.__enter(2, 2, 3)
             self.__enter(3, 3, 4)
-            self.puzzle.rewind_()
+            self.__rewind()
         self.assertEqual([self.__cell(i, i).value() for i in range(4)], [1, 2, None, None])
         self.assertEqual(self.puzzle.selected_cell, (1, 1))
 
@@ -122,12 +122,12 @@ class TestPuzzle3x3(TestCase):
             self.__enter(1, 1, 2)
             self.__enter(2, 2, 3, guess=True)
             self.__enter(3, 3, 4)
-            self.puzzle.rewind_()
+            self.__rewind()
             self.assertEqual([self.__cell(i, i).value() for i in range(4)], [1, 2, 3, None])
-            self.puzzle.rewind_()
+            self.__rewind()
             self.assertEqual([self.__cell(i, i).value() for i in range(4)], [1, None, None, None])
             self.assertEqual(self.puzzle.selected_cell, (0, 0))
-            self.puzzle.rewind_()
+            self.__rewind()
         self.assertEqual([self.__cell(i, i).value() for i in range(4)], [None, None, None, None])
 
     def test_rewind_without_a_guess_undoes_everything(self):
@@ -135,7 +135,7 @@ class TestPuzzle3x3(TestCase):
         with patch("cell.Display"):
             self.__enter(0, 0, 1)
             self.__enter(1, 1, 2)
-            self.puzzle.rewind_()
+            self.__rewind()
         self.assertEqual([self.__cell(i, i).value() for i in range(2)], [None, None])
 
     def test_rewind_keeps_the_guess_shading_while_the_guess_stays(self):
@@ -143,7 +143,7 @@ class TestPuzzle3x3(TestCase):
         with patch("cell.Display"):
             self.__enter(1, 1, 2, guess=True)
             self.__enter(2, 2, 3)
-            self.puzzle.rewind_()
+            self.__rewind()
             self.__enter(4, 4, 5)
         self.assertEqual(self.__cell(4, 4).attr(), (dict(level=10),))
 
@@ -151,15 +151,45 @@ class TestPuzzle3x3(TestCase):
         self.puzzle.play_()
         with patch("cell.Display"):
             self.__enter(1, 1, 2, guess=True)
-            self.puzzle.rewind_()
+            self.__rewind()
             self.__enter(4, 4, 5)
         self.assertEqual(self.__cell(4, 4).attr(), ())
 
-    def test_rewind_with_nothing_to_undo_warns(self):
+    def test_rewind_with_nothing_to_undo_warns_without_asking(self):
         self.puzzle.play_()
-        with patch("display.Display.warn") as warn:
+        with patch("display.Display.warn") as warn, patch("display.Display.confirm") as confirm:
             self.puzzle.rewind_()
         warn.assert_called_once()
+        confirm.assert_not_called()
+
+    def test_rewind_does_nothing_unless_confirmed(self):
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.__enter(1, 1, 2, guess=True)
+            self.__enter(2, 2, 3)
+            with patch("display.Display.confirm", return_value=False):
+                self.puzzle.rewind_()
+        self.assertEqual(self.__cell(2, 2).value(), 3)
+
+    def test_quit_stops_playing_when_confirmed(self):
+        with patch("display.Display.confirm", return_value=True):
+            self.puzzle.quit_()
+        self.assertFalse(self.puzzle.is_playing)
+
+    def test_quit_keeps_playing_unless_confirmed(self):
+        with patch("display.Display.confirm", return_value=False):
+            self.puzzle.quit_()
+        self.assertTrue(self.puzzle.is_playing)
+
+    def test_force_quit_stops_playing_without_asking(self):
+        with patch("display.Display.confirm") as confirm:
+            self.puzzle.force_quit_()
+        self.assertFalse(self.puzzle.is_playing)
+        confirm.assert_not_called()
+
+    def __rewind(self):
+        with patch("display.Display.confirm", return_value=True):
+            self.puzzle.rewind_()
 
     def __enter(self, row, col, value, guess=False):
         self.puzzle.selected_cell = (row, col)
