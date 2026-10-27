@@ -36,6 +36,8 @@ class TestCell(TestCase):
     def x(self):
         return {"row": 0, "col": 0}
 
+    # Values
+
     def test_cell_initial_value_is_not_set(self):
         self.assertIsNone(self.cell.value())
 
@@ -50,15 +52,7 @@ class TestCell(TestCase):
         self.cell.set(8)
         self.assertEqual(self.cell.possible_values(), set())
 
-    def test_cell_value_is_conflicting_when_a_related_cell_holds_it(self):
-        self.__related_cell(value=8)
-        self.cell.set(8)
-        self.parent.related_cells.assert_called_with(0, 0)
-        self.assertIn(DisplayAttrs.CONFLICTING, self.cell.attr())
-
-    def test_cell_value_is_not_conflicting_when_no_related_cell_holds_it(self):
-        self.cell.set(8)
-        self.assertNotIn(DisplayAttrs.CONFLICTING, self.cell.attr())
+    # Possible values
 
     def test_cell_new_value_is_removed_from_related_cells(self):
         related = self.__related_cell()
@@ -93,6 +87,12 @@ class TestCell(TestCase):
         self.cell.add_possible(5)
         self.assertEqual(self.cell.possible_values(), set())
 
+    def test_cell_remove_possible_updates_solver(self):
+        self.cell.remove_possible(5)
+        self.assertNotIn(5, self.cell.possible_values())
+
+    # Drawing
+
     @patch("cell.Display.draw_cell_possible_values")
     def test_cell_draws_possible_values_when_value_added(self, draw):
         self.cell.remove_possible(5)
@@ -104,6 +104,45 @@ class TestCell(TestCase):
     def test_cell_does_not_draw_when_added_value_was_already_possible(self, draw):
         self.cell.add_possible(5)
         draw.assert_not_called()
+
+    @patch("cell.Display.draw_cell_possible_values")
+    def test_cell_draws_possible_values_when_value_removed(self, draw):
+        self.cell.remove_possible(5)
+        draw.assert_called_once_with(0, 0, self.cell.possible_values(), self.cell.attr())
+
+    @patch("cell.Display.draw_cell_possible_values")
+    def test_cell_does_not_draw_when_removed_value_was_not_possible(self, draw):
+        self.cell.remove_possible(5)
+        draw.reset_mock()
+        self.cell.remove_possible(5)
+        draw.assert_not_called()
+
+    @patch("cell.Display.draw_cell_possible_values")
+    def test_cell_draws_empty_possible_values_when_value_is_set(self, draw):
+        self.cell.set(8)
+        draw.assert_called_once_with(0, 0, set(), self.cell.attr())
+
+    @patch("cell.Display.draw_cell_possible_values")
+    def test_cell_does_not_redraw_possible_values_when_value_changes(self, draw):
+        self.cell.set(8)
+        draw.reset_mock()
+        self.cell.set(4)
+        draw.assert_not_called()
+
+    def test_cell_can_render(self):
+        self.cell.render()
+
+    # Conflicts
+
+    def test_cell_value_is_conflicting_when_a_related_cell_holds_it(self):
+        self.__related_cell(value=8)
+        self.cell.set(8)
+        self.parent.related_cells.assert_called_with(0, 0)
+        self.assertIn(DisplayAttrs.CONFLICTING, self.cell.attr())
+
+    def test_cell_value_is_not_conflicting_when_no_related_cell_holds_it(self):
+        self.cell.set(8)
+        self.assertNotIn(DisplayAttrs.CONFLICTING, self.cell.attr())
 
     def test_cell_re_entering_same_value_keeps_it_conflicting(self):
         self.__related_cell(value=8)
@@ -160,6 +199,17 @@ class TestCell(TestCase):
         self.cell.clear_resolved_conflict(8)
         self.assertIn(DisplayAttrs.CONFLICTED, self.cell.attr())
 
+    def test_cell_is_marked_in_conflict_when_conflicting(self):
+        self.__related_cell(value=8)
+        self.cell.set(8)
+        self.assertTrue(self.cell.is_marked_in_conflict())
+
+    def test_cell_is_not_marked_in_conflict_by_default(self):
+        self.cell.set(8)
+        self.assertFalse(self.cell.is_marked_in_conflict())
+
+    # Questions from the solver
+
     def test_cell_single_possible_value_comes_from_solver(self):
         for value in range(1, self.MAX_VALUE - 1):
             self.cell.remove_possible(value)
@@ -173,46 +223,6 @@ class TestCell(TestCase):
     def test_cell_with_a_value_is_not_a_dead_end(self):
         self.cell.set(8)
         self.assertFalse(self.cell.is_dead_end())
-
-    def test_cell_is_marked_in_conflict_when_conflicting(self):
-        self.__related_cell(value=8)
-        self.cell.set(8)
-        self.assertTrue(self.cell.is_marked_in_conflict())
-
-    def test_cell_is_not_marked_in_conflict_by_default(self):
-        self.cell.set(8)
-        self.assertFalse(self.cell.is_marked_in_conflict())
-
-    def test_cell_remove_possible_updates_solver(self):
-        self.cell.remove_possible(5)
-        self.assertNotIn(5, self.cell.possible_values())
-
-    @patch("cell.Display.draw_cell_possible_values")
-    def test_cell_draws_possible_values_when_value_removed(self, draw):
-        self.cell.remove_possible(5)
-        draw.assert_called_once_with(0, 0, self.cell.possible_values(), self.cell.attr())
-
-    @patch("cell.Display.draw_cell_possible_values")
-    def test_cell_does_not_draw_when_removed_value_was_not_possible(self, draw):
-        self.cell.remove_possible(5)
-        draw.reset_mock()
-        self.cell.remove_possible(5)
-        draw.assert_not_called()
-
-    @patch("cell.Display.draw_cell_possible_values")
-    def test_cell_draws_empty_possible_values_when_value_is_set(self, draw):
-        self.cell.set(8)
-        draw.assert_called_once_with(0, 0, set(), self.cell.attr())
-
-    @patch("cell.Display.draw_cell_possible_values")
-    def test_cell_does_not_redraw_possible_values_when_value_changes(self, draw):
-        self.cell.set(8)
-        draw.reset_mock()
-        self.cell.set(4)
-        draw.assert_not_called()
-
-    def test_cell_can_render(self):
-        self.cell.render()
 
     # Private functions
 

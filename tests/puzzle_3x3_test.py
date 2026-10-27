@@ -37,6 +37,8 @@ class TestPuzzle3x3(TestCase):
             self.puzzle = Puzzle(Board3x3())
         return super().setUp()
 
+    # Cursor movement
+
     def test_arrow_commands_move_the_selected_cell(self):
         self.puzzle.selected_cell = (4, 4)
         self.puzzle.up_()
@@ -57,6 +59,8 @@ class TestPuzzle3x3(TestCase):
         self.puzzle.down_()
         self.puzzle.right_()
         self.assertEqual(self.puzzle.selected_cell, (8, 8))
+
+    # Entering values
 
     def test_setting_value_clears_all_possible_values_of_that_cell(self):
         self.__cell(4, 4).set(5)
@@ -101,6 +105,99 @@ class TestPuzzle3x3(TestCase):
         self.__cell(4, 0).set(9)
         self.__cell(4, 0).set(None)
         self.assertEqual(self.__cell(4, 0).possible_values(), self.ALL_VALUES - {3, 5})
+
+    def test_guess_on_a_given_is_refused_without_deepening_the_shading(self):
+        with patch("cell.Display"), patch("display.Display.warn"):
+            self.__enter(0, 0, 5)
+            self.puzzle.play_()
+            self.__enter(0, 0, 3, guess=True)
+            self.__enter(1, 1, 4)
+        self.assertEqual(self.__cell(1, 1).attr(), ())
+
+    # Conflicts
+
+    def test_cell_already_holding_the_value_is_marked_conflicted(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.assertIn(DisplayAttrs.CONFLICTED, self.__cell(4, 4).attr())
+
+    def test_unrelated_cell_holding_the_value_is_not_marked(self):
+        self.__cell(0, 0).set(5)
+        self.__cell(4, 4).set(5)
+        self.assertNotIn(DisplayAttrs.CONFLICTED, self.__cell(0, 0).attr())
+
+    def test_deleting_conflicting_value_clears_conflicted_mark(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.__cell(4, 0).set(None)
+        self.assertEqual(self.__cell(4, 4).attr(), ())
+
+    def test_deleting_conflicted_value_clears_conflicting_mark(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.__cell(4, 4).set(None)
+        self.assertEqual(self.__cell(4, 0).attr(), ())
+
+    def test_replacing_conflicting_value_clears_conflicted_mark(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.__cell(4, 0).set(7)
+        self.assertEqual(self.__cell(4, 4).attr(), ())
+
+    def test_cell_stays_conflicted_while_another_clash_remains(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.__cell(0, 4).set(5)
+        self.__cell(4, 0).set(None)
+        self.assertIn(DisplayAttrs.CONFLICTED, self.__cell(4, 4).attr())
+
+    def test_undo_clears_conflict_marks(self):
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.puzzle.selected_cell = (4, 4)
+            self.puzzle.value_(5)
+            self.puzzle.selected_cell = (4, 0)
+            self.puzzle.value_(5)
+            self.puzzle.undo_()
+        self.assertEqual(self.__cell(4, 4).attr(), ())
+
+    def test_value_already_in_row_is_conflicting(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(4, 0).attr())
+
+    def test_value_already_in_column_is_conflicting(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(0, 4).set(5)
+        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(0, 4).attr())
+
+    def test_value_already_in_box_is_conflicting(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(3, 3).set(5)
+        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(3, 3).attr())
+
+    def test_value_directly_above_in_another_block_is_conflicting(self):
+        self.__cell(0, 8).set(7)
+        self.__cell(6, 8).set(7)
+        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(6, 8).attr())
+
+    def test_value_in_block_above_but_not_in_same_column_is_not_conflicting(self):
+        self.__cell(0, 6).set(5)
+        self.__cell(6, 8).set(5)
+        self.assertNotIn(DisplayAttrs.CONFLICTING, self.__cell(6, 8).attr())
+
+    def test_replacing_value_with_unused_value_is_not_conflicting(self):
+        self.__cell(4, 4).set(3)
+        self.__cell(4, 4).set(7)
+        self.assertNotIn(DisplayAttrs.CONFLICTING, self.__cell(4, 4).attr())
+
+    def test_replacing_conflicting_value_with_unused_value_clears_conflict(self):
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.__cell(4, 0).set(7)
+        self.assertNotIn(DisplayAttrs.CONFLICTING, self.__cell(4, 0).attr())
+
+    # Undo and rewind
 
     def test_undo_gives_value_back(self):
         self.puzzle.play_()
@@ -177,21 +274,7 @@ class TestPuzzle3x3(TestCase):
                 self.puzzle.rewind_()
         self.assertEqual(self.__cell(2, 2).value(), 3)
 
-    def test_quit_stops_playing_when_confirmed(self):
-        with patch("display.Display.confirm", return_value=True):
-            self.puzzle.quit_()
-        self.assertFalse(self.puzzle.is_playing)
-
-    def test_quit_keeps_playing_unless_confirmed(self):
-        with patch("display.Display.confirm", return_value=False):
-            self.puzzle.quit_()
-        self.assertTrue(self.puzzle.is_playing)
-
-    def test_force_quit_stops_playing_without_asking(self):
-        with patch("display.Display.confirm") as confirm:
-            self.puzzle.force_quit_()
-        self.assertFalse(self.puzzle.is_playing)
-        confirm.assert_not_called()
+    # Setup and play modes
 
     def test_play_is_refused_while_there_are_conflicts(self):
         self.__cell(4, 4).set(5)
@@ -210,6 +293,30 @@ class TestPuzzle3x3(TestCase):
         self.assertIn("no possible values left", self.__status())
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
         self.assertTrue(self.puzzle._initializing)
+
+    def test_play_commands_are_refused_in_setup_mode(self):
+        self.__fill_row(0, 0, range(1, 9))
+        for command in (self.puzzle.undo_, self.puzzle.rewind_, self.puzzle.auto_, self.puzzle.next_):
+            with patch("cell.Display"), patch("display.Display.warn") as warn, patch("display.Display.confirm") as confirm:
+                command()
+            self.assertIn("only while playing", warn.call_args.args[0])
+            confirm.assert_not_called()
+        self.assertIsNone(self.__cell(0, 8).value())
+
+    def test_render_draws_the_setup_commands_beside_the_puzzle(self):
+        with patch("display.Display.draw_command_panel") as draw, patch("display.Display.clear_screen"):
+            with patch("cell.Display"), patch("puzzle.echo"):
+                self.puzzle.render()
+        draw.assert_called_once_with("SETUP", Commands.panel())
+
+    def test_switching_modes_redraws_the_commands(self):
+        with patch("display.Display.draw_command_panel") as draw, patch("puzzle.echo"):
+            self.puzzle.play_()
+            self.assertEqual(draw.call_args.args[0], "PLAY")
+            self.puzzle.init_()
+            self.assertEqual(draw.call_args.args[0], "SETUP")
+
+    # Dead ends
 
     def test_entering_a_value_that_leaves_a_dead_end_shows_it_without_waiting_and_moves_to_it(self):
         self.__fill_row(0, 0, range(1, 9))
@@ -253,14 +360,26 @@ class TestPuzzle3x3(TestCase):
         self.assertNotIn("try undoing until this square shows at least one possible value", self.__status())
         self.assertEqual(self.puzzle.selected_cell, (4, 4))
 
-    def test_play_commands_are_refused_in_setup_mode(self):
-        self.__fill_row(0, 0, range(1, 9))
-        for command in (self.puzzle.undo_, self.puzzle.rewind_, self.puzzle.auto_, self.puzzle.next_):
-            with patch("cell.Display"), patch("display.Display.warn") as warn, patch("display.Display.confirm") as confirm:
-                command()
-            self.assertIn("only while playing", warn.call_args.args[0])
-            confirm.assert_not_called()
-        self.assertIsNone(self.__cell(0, 8).value())
+    def test_restoring_a_dead_end_shows_it_and_moves_to_it(self):
+        with patch("cell.Display"):
+            self.__enter_row(0, 0, range(1, 9))
+            self.puzzle.play_()
+            self.__enter(5, 8, 9)
+            self.puzzle.selected_cell = (4, 4)
+        restored = self.__restored_puzzle()
+        self.assertIn("try undoing until this square shows at least one possible value", self.__status_of(restored))
+        self.assertEqual(restored.selected_cell, (0, 8))
+
+    def test_restoring_a_dead_end_in_setup_says_to_change_the_setup(self):
+        with patch("cell.Display"):
+            self.__enter_row(0, 0, range(1, 9))
+            self.__enter(5, 8, 9)
+            self.puzzle.selected_cell = (4, 4)
+        restored = self.__restored_puzzle()
+        self.assertIn("change the setup before playing", self.__status_of(restored))
+        self.assertEqual(restored.selected_cell, (0, 8))
+
+    # Next
 
     def test_first_next_moves_to_the_cell_and_shows_why_without_filling_it(self):
         self.__fill_row(0, 0, range(1, 9))
@@ -305,22 +424,6 @@ class TestPuzzle3x3(TestCase):
             self.puzzle.command_received("next_")
             self.puzzle.next_()
         self.assertEqual(self.__cell(0, 8).value(), 9)
-
-    def test_status_line_is_blank_when_there_is_nothing_to_report(self):
-        self.assertEqual(self.__status(), Display.term.clear_eol)
-
-    def test_render_draws_the_setup_commands_beside_the_puzzle(self):
-        with patch("display.Display.draw_command_panel") as draw, patch("display.Display.clear_screen"):
-            with patch("cell.Display"), patch("puzzle.echo"):
-                self.puzzle.render()
-        draw.assert_called_once_with("SETUP", Commands.panel())
-
-    def test_switching_modes_redraws_the_commands(self):
-        with patch("display.Display.draw_command_panel") as draw, patch("puzzle.echo"):
-            self.puzzle.play_()
-            self.assertEqual(draw.call_args.args[0], "PLAY")
-            self.puzzle.init_()
-            self.assertEqual(draw.call_args.args[0], "SETUP")
 
     def test_stop_warnings_repeat_on_every_next(self):
         self.__fill_row(0, 0, range(1, 9))
@@ -407,6 +510,8 @@ class TestPuzzle3x3(TestCase):
             self.puzzle.next_()
         self.assertIn("No obvious next move. You'll have to make a guess.", warn.call_args.args[0])
 
+    # Auto
+
     def test_auto_makes_moves_until_none_is_obvious(self):
         self.__fill_row(4, 0, range(1, 9))
         self.__fill_row(2, 1, range(1, 9))
@@ -457,6 +562,11 @@ class TestPuzzle3x3(TestCase):
             self.puzzle.auto_()
             self.puzzle.display_status()
         self.assertEqual(echo.call_args.args[0], Display.term.clear_eol)
+
+    # Completion
+
+    def test_status_line_is_blank_when_there_is_nothing_to_report(self):
+        self.assertEqual(self.__status(), Display.term.clear_eol)
 
     def test_status_reports_solved_once_the_last_value_is_entered(self):
         self.__fill_solution(skip=(8, 8))
@@ -534,13 +644,7 @@ class TestPuzzle3x3(TestCase):
         self.assertEqual(self.__cell(8, 8).value(), self.__solution(8, 8))
         warn.assert_not_called()
 
-    def test_guess_on_a_given_is_refused_without_deepening_the_shading(self):
-        with patch("cell.Display"), patch("display.Display.warn"):
-            self.__enter(0, 0, 5)
-            self.puzzle.play_()
-            self.__enter(0, 0, 3, guess=True)
-            self.__enter(1, 1, 4)
-        self.assertEqual(self.__cell(1, 1).attr(), ())
+    # Save and restore
 
     def test_restore_brings_back_the_board_mode_and_cursor(self):
         self.__play_a_few_moves()
@@ -568,105 +672,23 @@ class TestPuzzle3x3(TestCase):
         self.assertTrue(restored._initializing)
         self.assertEqual(self.__cell_of(restored, 0, 0).attr(), (DisplayAttrs.INITIAL,))
 
-    def test_restoring_a_dead_end_shows_it_and_moves_to_it(self):
-        with patch("cell.Display"):
-            self.__enter_row(0, 0, range(1, 9))
-            self.puzzle.play_()
-            self.__enter(5, 8, 9)
-            self.puzzle.selected_cell = (4, 4)
-        restored = self.__restored_puzzle()
-        self.assertIn("try undoing until this square shows at least one possible value", self.__status_of(restored))
-        self.assertEqual(restored.selected_cell, (0, 8))
+    # Quit
 
-    def test_restoring_a_dead_end_in_setup_says_to_change_the_setup(self):
-        with patch("cell.Display"):
-            self.__enter_row(0, 0, range(1, 9))
-            self.__enter(5, 8, 9)
-            self.puzzle.selected_cell = (4, 4)
-        restored = self.__restored_puzzle()
-        self.assertIn("change the setup before playing", self.__status_of(restored))
-        self.assertEqual(restored.selected_cell, (0, 8))
+    def test_quit_stops_playing_when_confirmed(self):
+        with patch("display.Display.confirm", return_value=True):
+            self.puzzle.quit_()
+        self.assertFalse(self.puzzle.is_playing)
 
-    def test_cell_already_holding_the_value_is_marked_conflicted(self):
-        self.__cell(4, 4).set(5)
-        self.__cell(4, 0).set(5)
-        self.assertIn(DisplayAttrs.CONFLICTED, self.__cell(4, 4).attr())
+    def test_quit_keeps_playing_unless_confirmed(self):
+        with patch("display.Display.confirm", return_value=False):
+            self.puzzle.quit_()
+        self.assertTrue(self.puzzle.is_playing)
 
-    def test_unrelated_cell_holding_the_value_is_not_marked(self):
-        self.__cell(0, 0).set(5)
-        self.__cell(4, 4).set(5)
-        self.assertNotIn(DisplayAttrs.CONFLICTED, self.__cell(0, 0).attr())
-
-    def test_deleting_conflicting_value_clears_conflicted_mark(self):
-        self.__cell(4, 4).set(5)
-        self.__cell(4, 0).set(5)
-        self.__cell(4, 0).set(None)
-        self.assertEqual(self.__cell(4, 4).attr(), ())
-
-    def test_deleting_conflicted_value_clears_conflicting_mark(self):
-        self.__cell(4, 4).set(5)
-        self.__cell(4, 0).set(5)
-        self.__cell(4, 4).set(None)
-        self.assertEqual(self.__cell(4, 0).attr(), ())
-
-    def test_replacing_conflicting_value_clears_conflicted_mark(self):
-        self.__cell(4, 4).set(5)
-        self.__cell(4, 0).set(5)
-        self.__cell(4, 0).set(7)
-        self.assertEqual(self.__cell(4, 4).attr(), ())
-
-    def test_cell_stays_conflicted_while_another_clash_remains(self):
-        self.__cell(4, 4).set(5)
-        self.__cell(4, 0).set(5)
-        self.__cell(0, 4).set(5)
-        self.__cell(4, 0).set(None)
-        self.assertIn(DisplayAttrs.CONFLICTED, self.__cell(4, 4).attr())
-
-    def test_undo_clears_conflict_marks(self):
-        self.puzzle.play_()
-        with patch("cell.Display"):
-            self.puzzle.selected_cell = (4, 4)
-            self.puzzle.value_(5)
-            self.puzzle.selected_cell = (4, 0)
-            self.puzzle.value_(5)
-            self.puzzle.undo_()
-        self.assertEqual(self.__cell(4, 4).attr(), ())
-
-    def test_value_already_in_row_is_conflicting(self):
-        self.__cell(4, 4).set(5)
-        self.__cell(4, 0).set(5)
-        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(4, 0).attr())
-
-    def test_value_already_in_column_is_conflicting(self):
-        self.__cell(4, 4).set(5)
-        self.__cell(0, 4).set(5)
-        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(0, 4).attr())
-
-    def test_value_already_in_box_is_conflicting(self):
-        self.__cell(4, 4).set(5)
-        self.__cell(3, 3).set(5)
-        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(3, 3).attr())
-
-    def test_value_directly_above_in_another_block_is_conflicting(self):
-        self.__cell(0, 8).set(7)
-        self.__cell(6, 8).set(7)
-        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(6, 8).attr())
-
-    def test_value_in_block_above_but_not_in_same_column_is_not_conflicting(self):
-        self.__cell(0, 6).set(5)
-        self.__cell(6, 8).set(5)
-        self.assertNotIn(DisplayAttrs.CONFLICTING, self.__cell(6, 8).attr())
-
-    def test_replacing_value_with_unused_value_is_not_conflicting(self):
-        self.__cell(4, 4).set(3)
-        self.__cell(4, 4).set(7)
-        self.assertNotIn(DisplayAttrs.CONFLICTING, self.__cell(4, 4).attr())
-
-    def test_replacing_conflicting_value_with_unused_value_clears_conflict(self):
-        self.__cell(4, 4).set(5)
-        self.__cell(4, 0).set(5)
-        self.__cell(4, 0).set(7)
-        self.assertNotIn(DisplayAttrs.CONFLICTING, self.__cell(4, 0).attr())
+    def test_force_quit_stops_playing_without_asking(self):
+        with patch("display.Display.confirm") as confirm:
+            self.puzzle.force_quit_()
+        self.assertFalse(self.puzzle.is_playing)
+        confirm.assert_not_called()
 
     # Private functions
 
