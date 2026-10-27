@@ -19,6 +19,7 @@ import sys
 
 sys.path.insert(0, ".")
 
+from game.board import Board
 from game.border import Border
 from game.cell import Cell
 
@@ -39,7 +40,7 @@ class RectangularBlock:
     ]
     # fmt: on
 
-    def __init__(self, parent, row, col, rows=0, cols=0):
+    def __init__(self, parent: Board, row: int, col: int, rows: int = 0, cols: int = 0):
         self.parent = parent
         self.block_row = row
         self.block_col = col

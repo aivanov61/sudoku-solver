@@ -15,6 +15,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from game.rectangular_block import RectangularBlock
+
 
 class CellSolver:
     """
@@ -25,7 +30,7 @@ class CellSolver:
     For now, it only contains the `_possible_values` attribute.
     """
 
-    def __init__(self, cell_parent):
+    def __init__(self, cell_parent: "RectangularBlock"):
         self._possible_values = set(cell_parent.values())
 
     def possible_values(self) -> set:

@@ -18,10 +18,15 @@
 import os
 import sys
 
+from typing import TYPE_CHECKING
+
 sys.path.insert(0, ".")
 
 from game.save_file import SavedPuzzle, SaveFile, SaveFileError
-from game.user_interface import Message, MessageKind
+from game.user_interface import Message, MessageKind, UserInterface
+
+if TYPE_CHECKING:
+    from game.puzzle import Puzzle
 
 
 class GameFile:
@@ -34,7 +39,7 @@ class GameFile:
 
     DEFAULT_FILE_NAME = "sudoku"
 
-    def __init__(self, puzzle, ui):
+    def __init__(self, puzzle: "Puzzle", ui: UserInterface):
         self.__puzzle = puzzle
         self.__ui = ui
         self.__file_name = self.DEFAULT_FILE_NAME  # the file name last saved or restored, as typed, without its extension

@@ -15,9 +15,14 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from typing import TYPE_CHECKING
+
 from game.border import Border
 from game.cell_attrs import CellAttrs
 from game.cell_solver import CellSolver
+
+if TYPE_CHECKING:
+    from game.rectangular_block import RectangularBlock
 
 
 class Cell:
@@ -34,7 +39,7 @@ class Cell:
     1. Trigger recalculation of other puzzle cell values when this cell value changes
     """
 
-    def __init__(self, parent, row=0, col=0, borders=Border()):
+    def __init__(self, parent: "RectangularBlock", row: int = 0, col: int = 0, borders: Border = Border()):
         self._value = None
         self._solver = CellSolver(parent)  # Use the Solver class
         self._attrs = tuple()

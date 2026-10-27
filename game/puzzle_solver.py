@@ -17,11 +17,16 @@
 
 import sys
 
+from typing import TYPE_CHECKING
+
 sys.path.insert(0, ".")
 
 from game.rules.order import RULES
 from game.rules.rule import Move, Outcome
 from game.user_interface import Message, MessageKind
+
+if TYPE_CHECKING:
+    from game.puzzle import Puzzle
 
 
 class PuzzleSolver:
@@ -32,7 +37,7 @@ class PuzzleSolver:
     first_cell_where(), plus select(), enter_solved_value() and is_complete().
     """
 
-    def __init__(self, puzzle, rules=RULES):
+    def __init__(self, puzzle: "Puzzle", rules=RULES):
         self.__puzzle = puzzle
         self.__rules = [rule() for rule in rules]
         self.__pending_move = None  # a move pointed out by next(), made by the following next()

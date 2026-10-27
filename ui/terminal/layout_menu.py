@@ -20,7 +20,7 @@ import sys
 sys.path.insert(0, ".")
 
 from game.puzzle_catalog import PuzzleLayout
-from ui.terminal.display import echo
+from ui.terminal.display import Display, echo
 
 
 class LayoutMenu:
@@ -35,7 +35,7 @@ class LayoutMenu:
     MAX_DIGITS = 9  # always fits in a 32-bit integer; more digits make the number "too big"
     TOO_BIG_MARK = "..."
 
-    def __init__(self, layouts, display):
+    def __init__(self, layouts: list, display: Display):
         self.__layouts = layouts
         self.__display = display
         self.__page = 0

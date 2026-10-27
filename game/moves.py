@@ -17,11 +17,17 @@
 
 import sys
 
+from typing import TYPE_CHECKING
+
 sys.path.insert(0, ".")
 
 from game.cell import Cell
 from game.cell_attrs import CellAttrs
 from game.history import History, Entry
+from game.user_interface import UserInterface
+
+if TYPE_CHECKING:
+    from game.puzzle import Puzzle
 
 
 class Moves:
@@ -34,7 +40,7 @@ class Moves:
     The puzzle provides is_initializing(); the user interface hears of every change of guess depth.
     """
 
-    def __init__(self, puzzle, ui):
+    def __init__(self, puzzle: "Puzzle", ui: UserInterface):
         self.__puzzle = puzzle
         self.__ui = ui
         self.__guess_depth = 0

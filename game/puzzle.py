@@ -20,6 +20,7 @@ import sys
 sys.path.insert(0, ".")
 
 from game.actions import Action, Mode, OFFERED_ACTIONS
+from game.board import Board
 from game.cell import Cell
 from game.cell_attrs import CellAttrs
 from game.completion_report import CompletionReport
@@ -28,7 +29,7 @@ from game.moves import Moves
 from game.puzzle_solver import PuzzleSolver
 from game.rules.dead_end_rule import DeadEndRule
 from game.save_file import SavedPuzzle
-from game.user_interface import Message, MessageKind
+from game.user_interface import Message, MessageKind, UserInterface
 
 
 class Puzzle:
@@ -56,7 +57,7 @@ class Puzzle:
     interface (see user_interface.py).
     """
 
-    def __init__(self, board, ui):
+    def __init__(self, board: Board, ui: UserInterface):
         # Public attributes required for all puzzles
         self.selected_cell = (0, 0)  # row, col (NOT x, y)
         self.is_playing = True

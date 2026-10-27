@@ -62,7 +62,7 @@ class Display:
     PANEL_NAME_WIDTH = 8
     MIN_WIDTH = 80
 
-    def __init__(self, term=None):
+    def __init__(self, term: Terminal = None):
         self.term = term or Terminal()  # the blessed terminal to draw on
         self.geom = {"h_cells": None, "v_cells": None}
 

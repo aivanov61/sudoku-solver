@@ -21,10 +21,11 @@ sys.path.insert(0, ".")
 
 from game.actions import Action
 from game.cell_attrs import CellAttrs
+from game.puzzle import Puzzle
 from game.user_interface import Message, MessageKind
 from ui.error_log import ErrorLog
 from ui.terminal.commands import Commands
-from ui.terminal.display import echo
+from ui.terminal.display import Display, echo
 from ui.terminal.display_attrs import DisplayAttrs
 from ui.terminal.input import Input
 
@@ -35,7 +36,7 @@ class TerminalUI:
     panel, and shows the game's messages and asks its questions on the status line.
     """
 
-    def __init__(self, display, v_cells, h_cells):
+    def __init__(self, display: Display, v_cells: int, h_cells: int):
         display.geometry(v_cells, h_cells)
         display.validate_screen_size()
         self.__display = display
@@ -47,7 +48,7 @@ class TerminalUI:
 
     # Interface required for Main
 
-    def play(self, game) -> None:
+    def play(self, game: Puzzle) -> None:
         """Show the game, then hand it the action for each key, until the game is over"""
         game.render()
         while game.is_playing:
@@ -108,7 +109,7 @@ class TerminalUI:
 
     # Private functions
 
-    def __carry_out(self, game, command, digit) -> None:
+    def __carry_out(self, game: Puzzle, command, digit) -> None:
         """Show the help screen, or hand the action to the game, surviving an action that breaks"""
         if command == Commands.HELP:
             self.__show_help()
@@ -125,7 +126,7 @@ class TerminalUI:
         print(Commands.long_help(self.__offered))
         self.__display.hit_any_key_to_continue()
 
-    def __report_broken(self, game, command, error) -> None:
+    def __report_broken(self, game: Puzzle, command, error) -> None:
         """
         Log the error, say what broke, why and where until a key is hit, then show the whole game again,
         as the message may have scrolled the screen; a broken quit stops the game instead
@@ -139,7 +140,7 @@ class TerminalUI:
         else:
             game.render()
 
-    def __force_quit(self, game) -> None:
+    def __force_quit(self, game: Puzzle) -> None:
         self.__display.move_to_status_line()
         print("\n" + self.__display.term.clear_eol + "FORCING quit")
         game.force_quit_()

@@ -34,7 +34,7 @@ class Board(ABC):
     every block, because in other layouts the blocks may not form a regular grid.
     """
 
-    def __init__(self, v_cells, h_cells):
+    def __init__(self, v_cells: int, h_cells: int):
         self.v_cells = v_cells
         self.h_cells = h_cells
         self.__listener = lambda cell: None  # hears of every change to a cell

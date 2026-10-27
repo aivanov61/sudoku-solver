@@ -17,9 +17,14 @@
 
 import sys
 
+from typing import TYPE_CHECKING
+
 sys.path.insert(0, ".")
 
 from game.user_interface import Message, MessageKind
+
+if TYPE_CHECKING:
+    from game.puzzle import Puzzle
 
 
 class CompletionReport:
@@ -29,7 +34,7 @@ class CompletionReport:
     The puzzle provides is_complete() and has_conflicts().
     """
 
-    def __init__(self, puzzle):
+    def __init__(self, puzzle: "Puzzle"):
         self.__puzzle = puzzle
         self.__reported = None  # the completion last reported
         self.__unseen = None  # a reported completion the player has not yet answered with a command

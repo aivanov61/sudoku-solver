@@ -269,6 +269,7 @@ The full list is in `CLAUDE.md`. The main points:
 - **Method order:** a called method is placed as soon after its caller as possible, within its own section (interface or private).
 - **Constants first:** class constants go at the top of the class, except constants built from a nested class and long data tables (such as `Display`'s drawing characters), which go at the end.
 - **Layer boundaries** are as described in section 4.2.
+- **Typed collaborators:** every parameter that receives a collaborator is annotated with its class, so the IDE can find the calls made on it (injected objects are otherwise untyped). Imports that would be circular are made under `if TYPE_CHECKING:` with the name quoted, e.g. `puzzle: "Puzzle"`. A collaborator typed as the `UserInterface` port leads to the port's methods, not to `TerminalUI`'s, by design.
 - **Testing by hand:** the program is run and watched before every commit, because the tests can't show what the terminal looks like.
 
 ## 8. Next steps

@@ -17,6 +17,7 @@
 
 from game.actions import Action
 from ui.terminal.commands import Commands
+from ui.terminal.display import Display
 
 
 class Input:
@@ -24,7 +25,7 @@ class Input:
     Get keys from the display's terminal and decode them into commands (see Commands)
     """
 
-    def __init__(self, display):
+    def __init__(self, display: Display):
         self.__display = display
 
     def get_cmd(self, offered, timeout=None) -> tuple:
