@@ -30,7 +30,6 @@ The code is also meant as an example of clean, object-oriented Python built with
 - **Terminal size:** at least 80 columns × 29 lines (9 cells × 6 columns plus the command panel; 9 cells × 3 lines, plus 2 for the status line). `Display.min_width()` asks for the grid plus the panel, but never less than 80. The minimum protects the grid and the panel only: status-line messages are not limited to the width, so on a terminal exactly 80 wide a few long warnings (with "Hit any key to continue") wrap onto the next line and leave leftover text there. That is expected, not a bug; wider windows, such as a default 120-column console, never show it.
 - **Tests:** `py -m pytest` from the project folder, or run one file directly, for example `py game/tests/cell_test.py`. The tests use `unittest` and pytest runs them unchanged. Each folder of code has its tests in a `tests/` folder beside it (`game/tests/`, `game/rules/tests/`, `ui/terminal/tests/`); the top-level `tests/` holds the tests that cover both packages. The test folders are packages, so shared helpers are imported as, for example, `game.tests.recording_ui`. Note:
   - `ui/terminal/tests/display_test.py::TestDisplay` draws on the real terminal and pauses for a second after each test. `ui/terminal/tests/input_test.py` waits up to two seconds for a key press. Both are meant for watching by hand. Select the other files or classes to skip them.
-  - `tests/unit_test_utils.py` holds an older helper that no test uses.
 
 ## 4. Architecture
 
