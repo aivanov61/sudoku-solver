@@ -17,7 +17,7 @@
 
 import sys
 from unittest import main, TestCase
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, ".")
 
@@ -29,6 +29,7 @@ class TestPuzzleSolver(TestCase):
     def setUp(self):
         self.consulted = []
         self.puzzle = MagicMock()
+        self.puzzle.is_complete.return_value = False
         return super().setUp()
 
     def test_move_of_the_first_rule_that_has_one_is_found(self):
@@ -51,6 +52,64 @@ class TestPuzzleSolver(TestCase):
         PuzzleSolver(self.puzzle, []).make_move(Move(Outcome.MOVED, "hint", cell, 3))
         self.puzzle.enter_solved_value.assert_called_once_with(cell, 3)
 
+    def test_first_next_points_out_the_move_without_making_it(self):
+        cell = MagicMock()
+        solver = self.__solver_with([Move(Outcome.MOVED, "why", cell, 3)])
+        solver.next()
+        self.puzzle.select.assert_called_once_with(cell)
+        self.puzzle.enter_solved_value.assert_not_called()
+        self.assertEqual(solver.pending_hint(), "why")
+
+    def test_second_next_makes_the_move_pointed_out(self):
+        cell = MagicMock()
+        solver = self.__solver_with([Move(Outcome.MOVED, "why", cell, 3)])
+        solver.next()
+        solver.next()
+        self.puzzle.enter_solved_value.assert_called_once_with(cell, 3)
+        self.assertIsNone(solver.pending_hint())
+
+    def test_cancelled_move_is_pointed_out_again_by_the_next_next(self):
+        move = Move(Outcome.MOVED, "why", MagicMock(), 3)
+        solver = self.__solver_with([move, move])
+        solver.next()
+        solver.cancel_pending_move()
+        self.assertIsNone(solver.pending_hint())
+        solver.next()
+        self.puzzle.enter_solved_value.assert_not_called()
+        self.assertEqual(solver.pending_hint(), "why")
+
+    def test_next_warns_about_a_move_that_stops_solving_and_selects_its_cell(self):
+        cell = MagicMock()
+        solver = self.__solver_with([Move(Outcome.STOPPED, "dead end", cell)])
+        with patch("display.Display.warn") as warn:
+            solver.next()
+        self.assertEqual(warn.call_args.args[0], "dead end")
+        self.puzzle.select.assert_called_once_with(cell)
+        self.assertIsNone(solver.pending_hint())
+
+    def test_next_with_no_move_says_to_guess(self):
+        with patch("display.Display.warn") as warn:
+            self.__solver_with([]).next()
+        self.assertIn("make a guess", warn.call_args.args[0])
+
+    def test_auto_makes_every_move_then_warns_why_it_stopped(self):
+        first, second = MagicMock(), MagicMock()
+        moves = [Move(Outcome.MOVED, "why", first, 1), Move(Outcome.MOVED, "why", second, 2)]
+        with patch("display.Display.warn") as warn:
+            self.__solver_with(moves).auto()
+        self.assertEqual(self.puzzle.enter_solved_value.call_count, 2)
+        self.puzzle.select.assert_called_with(second)
+        self.assertIn("make a guess", warn.call_args.args[0])
+
+    def test_auto_that_completes_the_puzzle_ends_without_a_warning(self):
+        def complete(cell, value):
+            self.puzzle.is_complete.return_value = True
+
+        self.puzzle.enter_solved_value.side_effect = complete
+        with patch("display.Display.warn") as warn:
+            self.__solver_with([Move(Outcome.MOVED, "why", MagicMock(), 1)]).auto()
+        warn.assert_not_called()
+
     # Private functions
 
     def __rule(self, name, move):
@@ -63,6 +122,16 @@ class TestPuzzleSolver(TestCase):
                 return move
 
         return FakeRule
+
+    def __solver_with(self, moves):
+        """A solver whose only rule returns the given moves one at a time, then None"""
+        moves = list(moves)
+
+        class ScriptedRule(Rule):
+            def find(self, puzzle):
+                return moves.pop(0) if moves else None
+
+        return PuzzleSolver(self.puzzle, [ScriptedRule])
 
 
 if __name__ == "__main__":

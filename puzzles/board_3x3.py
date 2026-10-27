@@ -19,13 +19,16 @@ import sys
 
 sys.path.insert(0, ".")
 
-from puzzle import Puzzle
+from board import Board
 from rectangular_block import RectangularBlock
 
 
-class Puzzle3x3(Puzzle):
+class Board3x3(Board):
     """
     The standard 9x9 Sudoku layout: nine 3x3 blocks, three across and three down.
+
+    The blocks are built with the board as their parent. They form a regular grid, so a cell's block
+    is found by dividing its row and column by the block size.
     """
 
     NAME = "Standard 9x9"
@@ -42,7 +45,7 @@ class Puzzle3x3(Puzzle):
             for block_row in range(self.V_BLOCKS)
         ]
 
-    # Interface required for Puzzle
+    # Interface required for Board
 
     def _blocks(self):
         return (block for blocks in self.__block_grid for block in blocks)

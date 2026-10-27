@@ -19,39 +19,29 @@ import os
 import sys
 import tempfile
 from unittest import main, TestCase
-from unittest.mock import patch
 
 sys.path.insert(0, ".")
 
-from commands import Commands
 from puzzle_catalog import PuzzleCatalog
-from puzzles.puzzle_3x3 import Puzzle3x3
+from puzzles.board_3x3 import Board3x3
 
 
 class TestPuzzleCatalog(TestCase):
     PACKAGE = "catalog_test_puzzles"
-    EXTRA_COMMAND = {"extra": {"keys": "xX", "panel": [("x", "extra")], "long": "A command only some layouts support"}}
     LAYOUTS = {
         "complete.py": (
-            "from puzzles.puzzle_3x3 import Puzzle3x3\n"
-            "class Complete(Puzzle3x3):\n"
+            "from puzzles.board_3x3 import Board3x3\n"
+            "class Complete(Board3x3):\n"
             "    NAME = 'Complete'\n"
-            "    def extra_(self):\n"
-            "        pass\n"
-        ),
-        "partial.py": (
-            "from puzzles.puzzle_3x3 import Puzzle3x3\n"
-            "class Partial(Puzzle3x3):\n"
-            "    NAME = 'Partial'\n"
         ),
         "no_hooks.py": (
-            "from puzzle import Puzzle\n"
-            "class NoHooks(Puzzle):\n"
+            "from board import Board\n"
+            "class NoHooks(Board):\n"
             "    NAME = 'No hooks'\n"
         ),
         "intermediate.py": (
-            "from puzzle import Puzzle\n"
-            "class Intermediate(Puzzle):\n"
+            "from board import Board\n"
+            "class Intermediate(Board):\n"
             "    pass\n"
         ),
         "bad.py": "this is not python\n",
@@ -66,21 +56,18 @@ class TestPuzzleCatalog(TestCase):
             with open(os.path.join(package_dir, file_name), "w") as file:
                 file.write(source)
         sys.path.insert(0, self.temp_dir.name)
-        self.extra_command = patch.dict(Commands.PLAY_COMMANDS, self.EXTRA_COMMAND)
-        self.extra_command.start()
         return super().setUp()
 
     def tearDown(self):
-        self.extra_command.stop()
         sys.path.remove(self.temp_dir.name)
         for module_name in [name for name in sys.modules if name.startswith(self.PACKAGE)]:
             del sys.modules[module_name]
         self.temp_dir.cleanup()
         return super().tearDown()
 
-    def test_real_layouts_include_the_standard_puzzle(self):
+    def test_real_layouts_include_the_standard_board(self):
         layouts = PuzzleCatalog.available()
-        self.assertEqual([layout.puzzle_class for layout in layouts], [Puzzle3x3])
+        self.assertEqual([layout.board_class for layout in layouts], [Board3x3])
 
     def test_layouts_are_listed_by_name_with_their_notes(self):
         self.assertEqual(
@@ -88,8 +75,7 @@ class TestPuzzleCatalog(TestCase):
             [
                 "bad.py (broken: could not be loaded)",
                 "Complete",
-                "No hooks (broken: missing _block_at, _blocks; not fully functional, missing: extra)",
-                "Partial (not fully functional, missing: extra)",
+                "No hooks (broken: missing _block_at, _blocks)",
             ],
         )
 
@@ -99,11 +85,12 @@ class TestPuzzleCatalog(TestCase):
     def test_layout_missing_a_hook_is_broken(self):
         self.assertTrue(self.__layout("No hooks").is_broken())
 
-    def test_layout_missing_only_commands_is_not_broken(self):
-        self.assertFalse(self.__layout("Partial").is_broken())
+    def test_complete_layout_is_not_broken_and_has_no_notes(self):
+        self.assertFalse(self.__layout("Complete").is_broken())
+        self.assertFalse(self.__layout("Complete").has_notes())
 
     def test_layout_class_is_available_for_loaded_layouts(self):
-        self.assertEqual(self.__layout("Complete").puzzle_class.__name__, "Complete")
+        self.assertEqual(self.__layout("Complete").board_class.__name__, "Complete")
 
     # Private functions
 
@@ -112,11 +99,6 @@ class TestPuzzleCatalog(TestCase):
 
     def __layout(self, name):
         return next(layout for layout in PuzzleCatalog.available(self.PACKAGE) if layout.name == name)
-
-
-class TestStandardPuzzleCatalog(TestCase):
-    def test_standard_puzzle_supports_every_command(self):
-        self.assertFalse(PuzzleCatalog.available()[0].has_notes())
 
 
 if __name__ == "__main__":

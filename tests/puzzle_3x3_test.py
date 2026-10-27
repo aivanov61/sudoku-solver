@@ -15,9 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-import os
 import sys
-import tempfile
 from unittest import main, TestCase
 from unittest.mock import patch
 
@@ -26,8 +24,8 @@ sys.path.insert(0, ".")
 from commands import Commands
 from display import Display
 from display_attrs import DisplayAttrs
-from puzzles.puzzle_3x3 import Puzzle3x3
-from save_file import SavedPuzzle, SaveFile
+from puzzle import Puzzle
+from puzzles.board_3x3 import Board3x3
 
 
 class TestPuzzle3x3(TestCase):
@@ -36,17 +34,8 @@ class TestPuzzle3x3(TestCase):
 
     def setUp(self):
         with patch("display.Display.validate_screen_size"):
-            self.puzzle = Puzzle3x3()
-        self.temp_dir = tempfile.TemporaryDirectory()
+            self.puzzle = Puzzle(Board3x3())
         return super().setUp()
-
-    def tearDown(self):
-        self.temp_dir.cleanup()
-        return super().tearDown()
-
-    def test_cell_returns_cell_at_puzzle_position(self):
-        cell = self.__cell(4, 7)
-        self.assertEqual((cell.row, cell.col), (4, 7))
 
     def test_arrow_commands_move_the_selected_cell(self):
         self.puzzle.selected_cell = (4, 4)
@@ -68,12 +57,6 @@ class TestPuzzle3x3(TestCase):
         self.puzzle.down_()
         self.puzzle.right_()
         self.assertEqual(self.puzzle.selected_cell, (8, 8))
-
-    def test_cells_in_row_or_col_yields_each_cell_in_that_row_and_col_once(self):
-        cells = list(self.puzzle.cells_in_row_or_col(4, 4))
-        positions = [(cell.row, cell.col) for cell in cells]
-        self.assertEqual(len(positions), len(set(positions)))
-        self.assertEqual(set(positions), {(4, i) for i in range(self.SIZE)} | {(i, 4) for i in range(self.SIZE)})
 
     def test_setting_value_clears_all_possible_values_of_that_cell(self):
         self.__cell(4, 4).set(5)
@@ -518,7 +501,6 @@ class TestPuzzle3x3(TestCase):
 
     def test_restore_brings_back_the_board_mode_and_cursor(self):
         self.__play_a_few_moves()
-        self.__save()
         restored = self.__restored_puzzle()
         self.assertFalse(restored._initializing)
         self.assertEqual(restored.selected_cell, (2, 2))
@@ -528,7 +510,6 @@ class TestPuzzle3x3(TestCase):
 
     def test_restored_moves_can_be_undone(self):
         self.__play_a_few_moves()
-        self.__save()
         restored = self.__restored_puzzle()
         with patch("cell.Display"):
             restored.undo_()
@@ -540,88 +521,9 @@ class TestPuzzle3x3(TestCase):
     def test_restore_in_setup_mode_stays_in_setup_mode(self):
         with patch("cell.Display"):
             self.__enter(0, 0, 1)
-        self.__save()
         restored = self.__restored_puzzle()
         self.assertTrue(restored._initializing)
         self.assertEqual(self.__cell_of(restored, 0, 0).attr(), (DisplayAttrs.INITIAL,))
-
-    def test_restore_replaces_every_value_after_confirming(self):
-        self.__cell(0, 0).set(1)
-        self.__save()
-        self.__cell(4, 4).set(5)
-        with patch("display.Display.confirm", return_value=True) as confirm:
-            self.__open()
-        confirm.assert_called_once()
-        self.assertIsNone(self.__cell(4, 4).value())
-
-    def test_declining_the_restore_keeps_the_board(self):
-        self.__cell(0, 0).set(1)
-        self.__save()
-        self.__cell(4, 4).set(5)
-        with patch("display.Display.confirm", return_value=False):
-            self.__open()
-        self.assertEqual(self.__cell(4, 4).value(), 5)
-
-    def test_restore_onto_an_empty_board_does_not_ask(self):
-        self.__cell(0, 0).set(1)
-        self.__save()
-        self.__cell(0, 0).set(None)
-        with patch("display.Display.confirm") as confirm:
-            self.__open()
-        confirm.assert_not_called()
-
-    def test_restore_refuses_a_file_from_another_layout(self):
-        SaveFile.write(self.__path(), SavedPuzzle("Other layout", True, (0, 0), [(0, 0, 1)], []))
-        with patch("display.Display.warn") as warn:
-            self.__open()
-        self.assertIn('"Other layout"', warn.call_args.args[0])
-        self.assertIsNone(self.__cell(0, 0).value())
-
-    def test_restore_warns_about_a_file_it_cannot_read(self):
-        self.__cell(4, 4).set(5)
-        with patch("display.Display.warn") as warn:
-            self.__open()
-        self.assertIn("Cannot find", warn.call_args.args[0])
-        self.assertEqual(self.__cell(4, 4).value(), 5)
-
-    def test_saving_over_an_existing_file_asks_first(self):
-        self.__cell(0, 0).set(1)
-        self.__save()
-        self.__cell(4, 4).set(5)
-        with patch("display.Display.confirm", return_value=False) as confirm:
-            self.__save()
-        confirm.assert_called_once()
-        self.assertEqual(SaveFile.read(self.__path()).givens, [])
-
-    def test_saving_an_empty_board_warns_instead_of_asking_for_a_file(self):
-        with patch("display.Display.ask") as ask, patch("display.Display.warn") as warn:
-            self.puzzle.save_()
-        ask.assert_not_called()
-        self.assertIn("Nothing to save", warn.call_args.args[0])
-
-    def test_bare_file_name_is_saved_in_the_saved_games_folder_and_offered_as_typed(self):
-        self.__cell(0, 0).set(1)
-        with patch.object(SaveFile, "FOLDER", os.path.join(self.temp_dir.name, "saved_games")):
-            with patch("display.Display.ask", return_value="game.json"), patch("display.Display.warn") as warn:
-                self.puzzle.save_()
-            self.assertTrue(os.path.exists(os.path.join(SaveFile.FOLDER, "game.json")))
-            self.assertIn(os.path.join(SaveFile.FOLDER, "game.json"), warn.call_args.args[0])
-            with patch("display.Display.ask", return_value=None) as ask:
-                self.puzzle.open_()
-        self.assertEqual(ask.call_args.args[1], "game.json")
-
-    def test_cancelled_save_writes_nothing(self):
-        self.__cell(4, 4).set(5)
-        with patch("display.Display.ask", return_value=None):
-            self.puzzle.save_()
-        self.assertFalse(os.path.exists(self.__path()))
-
-    def test_the_last_file_name_used_is_offered_next_time(self):
-        self.__cell(0, 0).set(1)
-        self.__save()
-        with patch("display.Display.ask", return_value=None) as ask:
-            self.puzzle.open_()
-        self.assertEqual(ask.call_args.args[1], self.__path())
 
     def test_cell_already_holding_the_value_is_marked_conflicted(self):
         self.__cell(4, 4).set(5)
@@ -707,7 +609,7 @@ class TestPuzzle3x3(TestCase):
     # Private functions
 
     def __cell(self, row, col):
-        """Access to the puzzle's private cell lookup"""
+        """The cell at a position on the puzzle's board"""
         return self.__cell_of(self.puzzle, row, col)
 
     def __is_affected_by(self, row, col, origin_row, origin_col) -> bool:
@@ -738,28 +640,18 @@ class TestPuzzle3x3(TestCase):
             self.__enter(1, 1, 3, guess=True)
             self.__enter(2, 2, 4)
 
-    def __path(self) -> str:
-        return os.path.join(self.temp_dir.name, "puzzle.json")
-
-    def __save(self):
-        with patch("display.Display.ask", return_value=self.__path()), patch("display.Display.warn"):
-            self.puzzle.save_()
-
-    def __open(self):
-        with patch("display.Display.ask", return_value=self.__path()), patch.object(self.puzzle, "render"):
-            self.puzzle.open_()
-
     def __restored_puzzle(self):
-        """A new puzzle with the saved file restored into it"""
+        """A new puzzle with this puzzle's saved state restored into it"""
+        saved = self.puzzle.saved_state()
         with patch("display.Display.validate_screen_size"):
-            restored = Puzzle3x3()
-        with patch("display.Display.ask", return_value=self.__path()), patch("cell.Display"):
-            with patch.object(restored, "render"):
-                restored.open_()
+            restored = Puzzle(Board3x3())
+        with patch("cell.Display"), patch.object(restored, "render"):
+            restored.restore(saved)
         return restored
 
     def __cell_of(self, puzzle, row, col):
-        return puzzle._Puzzle__cell(row, col)
+        """Access to the puzzle's private board"""
+        return puzzle._Puzzle__board.cell(row, col)
 
     def __rewind(self):
         with patch("display.Display.confirm", return_value=True):

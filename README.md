@@ -123,12 +123,16 @@ of functions which are often in different files (I've been using VSCode lately)
 When looking at the code for this Sudoku puzzle solver, this list will give you
 some guidance:
 - sudoku.py - plays the game, handles the flow; `Main` class, has entry point run()
-- puzzle.py - the generic puzzle: values, history, undo/rewind, next; `Puzzle` class
-- puzzles/puzzle_3x3.py - the standard layout of nine 3x3 blocks; `Puzzle3x3` class
+- puzzle.py - the generic puzzle: the commands, modes and cursor; `Puzzle` class
+- moves.py - enters values and keeps them for undo/rewind and guess shading; `Moves` class
+- completion_report.py - tells the player when the puzzle is complete; `CompletionReport` class
+- game_file.py - the save and restore commands; `GameFile` class
+- board.py - the grid of cells, found through the blocks; `Board` class, the base class for layouts
+- puzzles/board_3x3.py - the standard layout of nine 3x3 blocks; `Board3x3` class
 (new layouts go in the puzzles folder)
 - puzzle_catalog.py - finds the available layouts; `PuzzleCatalog` class
 - layout_menu.py - lets the player choose a layout; `LayoutMenu` class
-- puzzle_solver.py - finds the next obvious move by applying the solving rules; `PuzzleSolver` class
+- puzzle_solver.py - finds and makes the next obvious move (n) or all of them (a) by applying the solving rules; `PuzzleSolver` class
 - rules/ - one solving rule per file (`Rule` subclasses); rules/order.py sets the order they are applied in
 - rectangular_block.py - creates/manages a rectangular block of 3x3 cells; `RectangularBlock` class.
 - cell.py - creates/manages an individual cell; `Cell` class

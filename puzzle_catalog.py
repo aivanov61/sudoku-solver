@@ -24,22 +24,20 @@ from dataclasses import dataclass, field
 
 sys.path.insert(0, ".")
 
-from commands import Commands
-from puzzle import Puzzle
+from board import Board
 
 
 @dataclass
 class PuzzleLayout:
-    """A puzzle layout found by the catalog, with anything that keeps it from working fully"""
+    """A puzzle layout found by the catalog, with anything that keeps it from working"""
 
     name: str
-    puzzle_class: type = None
+    board_class: type = None
     missing_hooks: list = field(default_factory=list)
-    missing_commands: list = field(default_factory=list)
 
     def is_broken(self) -> bool:
         """Return True if the layout cannot be started at all"""
-        return self.puzzle_class is None or bool(self.missing_hooks)
+        return self.board_class is None or bool(self.missing_hooks)
 
     def has_notes(self) -> bool:
         return any(self.__notes())
@@ -52,19 +50,17 @@ class PuzzleLayout:
     # Private functions
 
     def __notes(self):
-        if self.puzzle_class is None:
+        if self.board_class is None:
             yield "broken: could not be loaded"
         if self.missing_hooks:
             yield "broken: missing " + ", ".join(self.missing_hooks)
-        if self.missing_commands:
-            yield "not fully functional, missing: " + ", ".join(self.missing_commands)
 
 
 class PuzzleCatalog:
     """
     Find the puzzle layouts in the puzzles package.
 
-    A layout is a Puzzle subclass that has its own NAME.  Classes without a NAME, such as base classes
+    A layout is a Board subclass that has its own NAME.  Classes without a NAME, such as base classes
     shared by several layouts, are not listed.
     """
 
@@ -84,22 +80,12 @@ class PuzzleCatalog:
         except Exception:
             return [PuzzleLayout(f"{module_name}.py")]
         classes = [obj for obj in vars(module).values() if PuzzleCatalog.__is_layout(obj, module)]
-        return [PuzzleCatalog.__layout(puzzle_class) for puzzle_class in classes]
+        return [PuzzleCatalog.__layout(board_class) for board_class in classes]
 
     def __is_layout(obj, module) -> bool:
-        """A layout is a Puzzle subclass defined in the module itself, with its own NAME"""
-        is_puzzle = inspect.isclass(obj) and issubclass(obj, Puzzle)
-        return is_puzzle and obj.__module__ == module.__name__ and "NAME" in vars(obj)
+        """A layout is a Board subclass defined in the module itself, with its own NAME"""
+        is_board = inspect.isclass(obj) and issubclass(obj, Board)
+        return is_board and obj.__module__ == module.__name__ and "NAME" in vars(obj)
 
-    def __layout(puzzle_class) -> PuzzleLayout:
-        missing_hooks = sorted(puzzle_class.__abstractmethods__)
-        missing_commands = PuzzleCatalog.__missing_commands(puzzle_class)
-        return PuzzleLayout(puzzle_class.NAME, puzzle_class, missing_hooks, missing_commands)
-
-    def __missing_commands(puzzle_class) -> list:
-        all_commands = {**Commands.COMMON_CMDS, **Commands.INIT_COMMANDS, **Commands.PLAY_COMMANDS}
-        return [command for command in all_commands if not hasattr(puzzle_class, PuzzleCatalog.__method_name(command))]
-
-    def __method_name(command) -> str:
-        """Return the puzzle method for a command; digits ("#") are entered through value_()"""
-        return "value_" if command == "#" else f"{command}_"
+    def __layout(board_class) -> PuzzleLayout:
+        return PuzzleLayout(board_class.NAME, board_class, sorted(board_class.__abstractmethods__))

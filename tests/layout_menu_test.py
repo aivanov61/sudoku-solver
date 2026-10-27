@@ -33,7 +33,7 @@ class TestLayoutMenu(TestCase):
     BACKSPACE = Keystroke("\b", code=263, name="KEY_BACKSPACE")
 
     def setUp(self):
-        playable = [PuzzleLayout(f"Layout {n}", puzzle_class=object) for n in range(2, 6)]
+        playable = [PuzzleLayout(f"Layout {n}", board_class=object) for n in range(2, 6)]
         self.layouts = [PuzzleLayout("bad.py")] + playable
         return super().setUp()
 

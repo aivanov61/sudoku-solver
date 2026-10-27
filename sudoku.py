@@ -24,6 +24,7 @@ from commands import Commands
 from display import Display
 from input import Input
 from layout_menu import LayoutMenu
+from puzzle import Puzzle
 from puzzle_catalog import PuzzleCatalog
 
 
@@ -36,7 +37,7 @@ class Main:
         layouts = PuzzleCatalog.available()
         self.__splash(self.__startup_note(layouts))
         layout = self.__chosen_layout(layouts)
-        layout and self.__start(layout.puzzle_class())
+        layout and self.__start(Puzzle(layout.board_class()))
 
     # Private functions
 

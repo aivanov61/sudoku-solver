@@ -15,33 +15,27 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-import os
 import sys
-
-from abc import ABC, abstractmethod
 
 sys.path.insert(0, ".")
 
-from history import History, Entry
-
 from commands import Commands
 from cell import Cell
+from completion_report import CompletionReport
 from display import Display, echo
 from display_attrs import DisplayAttrs
+from game_file import GameFile
+from moves import Moves
 from puzzle_solver import PuzzleSolver
-from rules.rule import Outcome
-from save_file import SavedPuzzle, SaveFile, SaveFileError
+from save_file import SavedPuzzle
 
 
-class Puzzle(ABC):
+class Puzzle:
     """
-    The generic Sudoku puzzle: everything that does not depend on how the blocks are laid out.
+    The game played on a board: the commands, the setup and play modes, the cursor and the screen.
 
-    A layout is a subclass (in the puzzles folder) that provides:
-        NAME - the name shown to the player
-        __init__() - calls super().__init__(v_cells, h_cells) with the overall size, then builds its blocks
-        _blocks() - yield every block
-        _block_at(row, col) - return the block holding the cell at a puzzle row and column
+    The board (a layout's Board subclass, from the puzzles folder) holds the cells; the puzzle reaches
+    them only through it.
 
     Main relies on the following attributes:
         selected_cell - (row: int, col: int) - a tuple that represents the currently selected cell
@@ -55,60 +49,49 @@ class Puzzle(ABC):
 
     In addition, the puzzle should support all the commands available in commands.py.  Function
     names for commands have underscore (_) as a suffix to eliminate conflicts with reserved words.
+
+    The puzzle hands parts of its work to helpers: Moves (entering values, undo and guess shading),
+    PuzzleSolver (next and auto), CompletionReport (telling the player the puzzle is complete) and
+    GameFile (save and restore).
     """
 
-    BG_LEVEL_DELTA = 10
-    DEFAULT_FILE_NAME = "sudoku.json"
-
-    def __init__(self, v_cells, h_cells):
+    def __init__(self, board):
         # Public attributes required for all puzzles
         self.selected_cell = (0, 0)  # row, col (NOT x, y)
         self.is_playing = True
 
-        History.clear()
-        Display.geometry({"h_cells": h_cells, "v_cells": v_cells})
+        Display.geometry({"h_cells": board.h_cells, "v_cells": board.v_cells})
         Display.validate_screen_size()
 
         self._initializing = True
-        self._bg_level = 0
+        self.__board = board
+        self.__moves = Moves(self)
         self.__solver = PuzzleSolver(self)
-        self.__pending_move = None  # a move shown as a hint by "n", made by the next "n"
-        self.__reported_completion = None  # the completion last reported on the status line
-        self.__unseen_completion = None  # a completion shown on the status line until the next command
-        self.__file_name = self.DEFAULT_FILE_NAME  # the file name last saved or restored, as typed
+        self.__report = CompletionReport(self)
+        self.__game_file = GameFile(self)
 
     # Interface required for Main
 
     def render(self) -> None:
         Display.clear_screen()
-        for block in self._blocks():
-            block.render()
+        self.__board.render()
         self.__draw_commands()
         self.display_status()
 
     def display_status(self) -> None:
-        """Show a newly changed completion, or the pending move's hint, if any; otherwise leave the status line blank"""
+        """Show a newly changed completion, or why the move "n" pointed out is right, if any; otherwise leave it blank"""
         Display.move_to_status_line()
-        pending = self.__pending_move
-        hint = Display.styled(pending.hint, (DisplayAttrs.SOLVED,)) if pending else ""
-        status = self.__completion_message() or hint
+        hint = self.__solver.pending_hint()
+        status = self.__report.message() or (Display.styled(hint, (DisplayAttrs.SOLVED,)) if hint else "")
         echo(status + Display.term.clear_eol)
 
     def command_received(self, cmd) -> None:
         """Any command ends the completion report; any command other than "n" cancels the move a previous "n" pointed out"""
-        self.__unseen_completion = None
-        if cmd != "next_":
-            self.__pending_move = None
+        self.__report.seen()
+        cmd == "next_" or self.__solver.cancel_pending_move()
 
     def force_quit_(self) -> None:
         self.is_playing = False
-
-    # Interface required for blocks
-
-    def cells_in_row_or_col(self, row, col):
-        """Yield the cells in the given row or column, as identified by each block"""
-        for block in self._blocks():
-            yield from block.cells_in_row_or_col(row, col)
 
     # Interface required for Main: one method per command in Commands
 
@@ -126,7 +109,7 @@ class Puzzle(ABC):
         (
             Display.warn("Cannot change an initial value while playing. ", wait=True)
             if not self._initializing and DisplayAttrs.INITIAL in cell.attr()
-            else self.__enter(val, DisplayAttrs.GUESS if guess else None, cell)
+            else self.__moves.enter(cell, val, DisplayAttrs.GUESS if guess else None)
         )
 
     def up_(self) -> None:
@@ -142,20 +125,10 @@ class Puzzle(ABC):
         self.__move(0, 1)
 
     def play_(self) -> None:
-        if self.__setup_blocks_playing():
-            return
-        self._initializing = False
-        Commands.use(Commands.PLAY_COMMANDS)
-        self.__draw_commands()
-        self.display_status()
+        self.__setup_blocks_playing() or self.__switch_mode(initializing=False)
 
     def init_(self) -> None:
-        if self.__check_for_active_play():
-            return
-        self._initializing = True
-        Commands.use(Commands.INIT_COMMANDS)
-        self.__draw_commands()
-        self.display_status()
+        self.__check_for_active_play() or self.__switch_mode(initializing=True)
 
     def del_(self) -> None:
         if not self._initializing:
@@ -166,177 +139,113 @@ class Puzzle(ABC):
     def undo_(self) -> None:
         if self.__refused_while_initializing():
             return
-        self.__undo_history() if not History.is_empty() else self.__warn_nothing_to_undo()
+        self.select(self.__moves.undo()) if not self.__moves.is_empty() else self.__warn_nothing_to_undo()
 
     def rewind_(self) -> None:
         if self.__refused_while_initializing():
             return
-        if History.is_empty():
+        if self.__moves.is_empty():
             self.__warn_nothing_to_undo()
         elif Display.confirm("Rewind cannot be undone.  Really rewind?"):
-            self.__rewind_history()
+            self.select(self.__moves.rewind())
 
     def next_(self) -> None:
         """Point out the next move and why; the next "n" makes it"""
-        if self.__refused_while_initializing():
-            return
-        if self.__is_complete():
-            self.__warn_already_complete()
-        elif self.__pending_move:
-            self.__make_pending_move()
-        else:
-            self.__point_out_next_move()
+        self.__solving_refused() or self.__solver.next()
 
     def auto_(self) -> None:
         """Make every obvious move, one after another, until the puzzle is complete, a guess is needed or something blocks solving"""
-        if self.__refused_while_initializing():
-            return
-        if self.__is_complete():
-            self.__warn_already_complete()
-            return
-        move = self.__solver.find_move()
-        while move and move.outcome is Outcome.MOVED:
-            self.select(move.cell)
-            self.__solver.make_move(move)
-            move = self.__solver.find_move()
-        self.__is_complete() or self.__warn_why_solving_stopped(move)
+        self.__solving_refused() or self.__solver.auto()
 
     def save_(self) -> None:
-        if not self.__has_values():
-            Display.warn("Nothing to save - the board is empty. ", wait=True)
-            return
-        name = Display.ask("Save to file:", self.__file_name)
-        path = name and SaveFile.located(name)
-        if not path or os.path.exists(path) and not Display.confirm(f"{path} already exists.  Replace it?"):
-            return
-        try:
-            SaveFile.write(path, self.__saved_puzzle())
-        except OSError as error:
-            Display.warn(f"Cannot save to {path}: {error.strerror}. ", wait=True)
-            return
-        self.__file_name = name
-        Display.warn(f"Saved to {path}. ", wait=True)
+        self.__game_file.save()
 
     def open_(self) -> None:
-        """Replace the puzzle with one saved to a file, asking first if that would lose any values"""
-        name = Display.ask("Restore from file:", self.__file_name)
-        saved = name and self.__read_save_file(SaveFile.located(name))
-        if not saved or self.__has_values() and not Display.confirm("Restoring replaces every value.  Really restore?"):
-            return
-        self.__file_name = name
-        self.__restore(saved)
-        self.render()
+        self.__game_file.restore()
 
-    # Interface required for the solver
+    # Interface required for the solver and the other helpers
 
     def first_cell_where(self, condition) -> Cell:
         """Return the first cell, left to right and top to bottom, for which condition(cell) is true, or None"""
-        return next(iter(self.__cells_where(condition)), None)
+        return self.__board.first_cell_where(condition)
 
     def select(self, cell) -> None:
         self.selected_cell = (cell.row, cell.col)
 
     def enter_solved_value(self, cell, value) -> None:
         """Enter a value found by the solver, the same way as a typed value but marked SOLVED"""
-        self.__enter(value, DisplayAttrs.SOLVED, cell)
+        self.__moves.enter(cell, value, DisplayAttrs.SOLVED)
 
-    # Interface required from layout subclasses
+    def is_initializing(self) -> bool:
+        return self._initializing
 
-    @abstractmethod
-    def _blocks(self):
-        """Yield every block of the layout"""
+    def is_complete(self) -> bool:
+        """True while playing once every cell holds a value"""
+        return not self._initializing and self.__board.is_full()
 
-    @abstractmethod
-    def _block_at(self, row, col):
-        """Return the block that holds the cell at the given puzzle row and column"""
+    def has_conflicts(self) -> bool:
+        return self.__board.has_conflicts()
+
+    def has_values(self) -> bool:
+        return self.__board.has_values()
+
+    def layout_name(self) -> str:
+        return self.__board.NAME
+
+    def saved_state(self) -> SavedPuzzle:
+        """Everything needed to restore the puzzle: its layout, mode, cursor, givens and recorded moves"""
+        board = self.__board
+        return SavedPuzzle(board.NAME, self._initializing, self.selected_cell, board.givens(), self.__moves.recorded())
+
+    def restore(self, saved) -> None:
+        """Empty the board, enter the givens in setup mode, then replay the moves in the saved mode"""
+        self.__clear_board()
+        for row, col, value in saved.givens:
+            self.__moves.enter(self.__board.cell(row, col), value)
+        self.__use_mode(saved.initializing)
+        for row, col, value, prim_attr in saved.moves:
+            self.__moves.enter(self.__board.cell(row, col), value, prim_attr)
+        self.selected_cell = saved.selected_cell
+        self.render()
 
     # Private functions
 
     def __draw_commands(self) -> None:
         Display.draw_command_panel("SETUP" if self._initializing else "PLAY", Commands.panel())
 
-    def __completion_message(self) -> str:
-        """Report the puzzle's completion when it changes: solved in steel blue, or with errors in yellow"""
-        completion = self.__completion()
-        if completion != self.__reported_completion:
-            self.__reported_completion = completion
-            self.__unseen_completion = completion
-        return {
-            None: None,
-            "solved": Display.styled("The puzzle is solved. ", (DisplayAttrs.SOLVED,)),
-            "errors": Display.term.yellow("Complete, with errors - undo or change values to fix them. "),
-        }[self.__unseen_completion]
-
-    def __completion(self) -> str:
-        """None until the puzzle is complete, then 'solved' or 'errors'"""
-        if not self.__is_complete():
-            return None
-        return "errors" if self.__has_errors() else "solved"
-
-    def __is_complete(self) -> bool:
-        """True while playing once every cell holds a value"""
-        return not self._initializing and self.first_cell_where(lambda cell: cell.value() is None) is None
-
-    def __has_errors(self) -> bool:
-        return self.first_cell_where(Cell.is_marked_in_conflict) is not None
-
     def __selected_cell(self) -> Cell:
-        return self.__cell(*self.selected_cell)
-
-    def __cell(self, row, col) -> Cell:
-        return self._block_at(row, col).cell(row, col)
-
-    def __enter(self, val, prim_attr, cell) -> None:
-        """Enter a value with its primary attribute (None for a typed value); a guess while playing deepens the shading"""
-        prim_attr == DisplayAttrs.GUESS and not self._initializing and self.__increment_bg_level()
-        self.__accept_user_value(val, self.__attributes(prim_attr), cell)
-
-    def __increment_bg_level(self) -> None:
-        self._bg_level += self.BG_LEVEL_DELTA
-        self._bg_level > DisplayAttrs.MAX_GRAY_LEVEL and Display.warn(
-            "No more shades of gray left - repeating last shade. ", wait=True
-        )
-
-    def __attributes(self, prim_attr) -> tuple:
-        """Primary attribute: INITIAL while initializing, else prim_attr (if any); plus background shading"""
-        attr = [DisplayAttrs.INITIAL] if self._initializing else [prim_attr] if prim_attr else []
-        attr += [dict(level=self._bg_level)] if self._bg_level else []
-        return tuple(attr)
-
-    def __accept_user_value(self, val, attr: tuple, cell: Cell) -> None:
-        self._initializing or self.__add_history(cell, val, attr)
-        cell.update(val, attr)
-
-    def __add_history(self, cell, val, attr) -> None:
-        new_info = Entry.ValueInfo(val, self.__prim_attr(attr))
-        prev_val = cell.value()
-        prev_info = Entry.ValueInfo(prev_val, self.__prim_attr(cell.attr())) if prev_val else None
-        History.add(Entry(cell, new_info, prev_info))
-
-    def __prim_attr(self, attr) -> str:
-        return next((prim_attr for prim_attr in DisplayAttrs.ATTRS_PRIMARY if prim_attr in attr), None)
+        return self.__board.cell(*self.selected_cell)
 
     def __move(self, d_row, d_col) -> None:
-        """Move the selected cell, stopping at the edges of the puzzle"""
+        """Move the selected cell, stopping at the edges of the board"""
         row, col = self.selected_cell
-        row = min(max(row + d_row, 0), Display.geom["v_cells"] - 1)
-        col = min(max(col + d_col, 0), Display.geom["h_cells"] - 1)
+        row = min(max(row + d_row, 0), self.__board.v_cells - 1)
+        col = min(max(col + d_col, 0), self.__board.h_cells - 1)
         self.selected_cell = (row, col)
 
     def __setup_blocks_playing(self) -> bool:
         """Warn if the setup has conflicts, or a dead end (moving to it), which would block solving"""
-        if self.__has_errors():
+        if self.__board.has_conflicts():
             Display.warn("Resolve the conflicts before playing. ", wait=True)
             return True
-        dead_end = self.first_cell_where(Cell.is_dead_end)
+        dead_end = self.__board.first_dead_end()
         if dead_end is None:
             return False
         self.select(dead_end)
         Display.warn("This square has no possible values left - change the setup before playing. ", wait=True)
         return True
 
+    def __switch_mode(self, initializing) -> None:
+        self.__use_mode(initializing)
+        self.__draw_commands()
+        self.display_status()
+
+    def __use_mode(self, initializing) -> None:
+        self._initializing = initializing
+        Commands.use(Commands.INIT_COMMANDS if initializing else Commands.PLAY_COMMANDS)
+
     def __check_for_active_play(self) -> bool:
-        is_actively_playing = not History.is_empty()
+        is_actively_playing = not self.__moves.is_empty()
         is_actively_playing and Display.warn(
             "Cannot initialize puzzle while playing - undo everything first. ", wait=True
         )
@@ -347,108 +256,20 @@ class Puzzle(ABC):
         self._initializing and Display.warn("This works only while playing - ESC starts playing. ", wait=True)
         return self._initializing
 
-    def __undo_history(self) -> None:
-        entry = History.undo()
-        self.select(entry.cell)
-        self.__is_guess(entry) and self.__decrement_bg_level()
-        prev_val = entry.previous_valueinfo.value if entry.previous_valueinfo else None
-        prev_attr = (
-            self.__attributes(entry.previous_valueinfo.prim_attr)
-            if entry.previous_valueinfo
-            else ()
-        )
-        entry.cell.update(prev_val, prev_attr)
-
-    def __is_guess(self, entry) -> bool:
-        return entry.valueinfo.prim_attr == DisplayAttrs.GUESS
-
-    def __decrement_bg_level(self) -> None:
-        self._bg_level = max(self._bg_level - self.BG_LEVEL_DELTA, 0)
-
     def __warn_nothing_to_undo(self) -> None:
         Display.warn("Cannot undo initialized puzzle.  ESC will re-enter initialization mode. ", wait=True)
 
-    def __rewind_history(self) -> None:
-        """Undo at least one entry, then keep undoing until the most recent entry is a guess or none are left"""
-        self.__undo_history()
-        while not History.is_empty() and not self.__is_guess(History.last()):
-            self.__undo_history()
-        History.is_empty() or self.select(History.last().cell)
-
-    def __warn_already_complete(self) -> None:
-        Display.warn(
-            "The puzzle is already complete, with errors - undo or change values to fix them. "
-            if self.__has_errors()
-            else "The puzzle is already solved. ",
-            wait=True,
-        )
-
-    def __make_pending_move(self) -> None:
-        move, self.__pending_move = self.__pending_move, None
-        self.__solver.make_move(move)
-
-    def __point_out_next_move(self) -> None:
-        """Move to the next move's cell and show its hint (made by the next "n"), or warn why there is none"""
-        move = self.__solver.find_move()
-        if move and move.outcome is Outcome.MOVED:
-            self.select(move.cell)
-            self.__pending_move = move
-        else:
-            self.__warn_why_solving_stopped(move)
-
-    def __warn_why_solving_stopped(self, move) -> None:
-        """Warn with a STOPPED move's hint, moving to its cell if it has one; with no move, a guess is needed"""
-        if move is None:
-            Display.warn("No obvious next move. You'll have to make a guess. ", wait=True)
-            return
-        move.cell is None or self.select(move.cell)
-        Display.warn(move.hint, wait=True)
-
-    def __has_values(self) -> bool:
-        return self.first_cell_where(lambda cell: cell.value() is not None) is not None
-
-    def __saved_puzzle(self) -> SavedPuzzle:
-        is_given = lambda cell: DisplayAttrs.INITIAL in cell.attr()
-        givens = [(cell.row, cell.col, cell.value()) for cell in self.__cells_where(is_given)]
-        moves = [
-            (entry.cell.row, entry.cell.col, entry.valueinfo.value, entry.valueinfo.prim_attr)
-            for entry in History.entries()
-        ]
-        return SavedPuzzle(self.NAME, self._initializing, self.selected_cell, givens, moves)
-
-    def __cells_where(self, condition) -> list:
-        """Return the cells for which condition(cell) is true, left to right and top to bottom"""
-        cells = (cell for block in self._blocks() for cell in block.cells_where(condition))
-        return sorted(cells, key=lambda cell: (cell.row, cell.col))
-
-    def __read_save_file(self, path) -> SavedPuzzle:
-        """Return the puzzle saved in the file, or None after warning why it cannot be restored here"""
-        try:
-            saved = SaveFile.read(path)
-        except SaveFileError as error:
-            Display.warn(str(error), wait=True)
-            return None
-        if saved.layout != self.NAME:
-            Display.warn(f'{path} holds a "{saved.layout}" puzzle - rerun and choose that layout. ', wait=True)
-            return None
-        return saved
-
-    def __restore(self, saved) -> None:
-        """Empty the board, enter the givens in setup mode, then replay the moves in the saved mode"""
-        self.__clear_board()
-        for row, col, value in saved.givens:
-            self.__enter(value, None, self.__cell(row, col))
-        self._initializing = saved.initializing
-        Commands.use(Commands.INIT_COMMANDS if saved.initializing else Commands.PLAY_COMMANDS)
-        for row, col, value, prim_attr in saved.moves:
-            self.__enter(value, prim_attr, self.__cell(row, col))
-        self.selected_cell = saved.selected_cell
+    def __solving_refused(self) -> bool:
+        """Warn, returning True, if "n" or "a" cannot solve: in setup mode, or once the puzzle is complete"""
+        if self.__refused_while_initializing():
+            return True
+        is_complete = self.is_complete()
+        is_complete and self.__report.warn_already_complete()
+        return is_complete
 
     def __clear_board(self) -> None:
-        """Empty every cell and forget the history and shading, back in setup mode"""
-        for cell in self.__cells_where(lambda cell: cell.value() is not None):
-            cell.update(None)
-        History.clear()
-        self._bg_level = 0
+        """Empty every cell and forget the moves and the last completion report, back in setup mode"""
+        self.__board.clear()
+        self.__moves.clear()
+        self.__report.reset()
         self._initializing = True
-        self.__reported_completion = None

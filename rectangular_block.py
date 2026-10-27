@@ -47,7 +47,7 @@ class RectangularBlock:
         self.cols = cols
         self.__initialize_cells()
 
-    # Interface required for puzzles
+    # Interface required for boards
 
     def render(self) -> None:
         for cell in self.__cells():
