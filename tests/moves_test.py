@@ -22,7 +22,6 @@ from unittest.mock import MagicMock
 sys.path.insert(0, ".")
 
 from display_attrs import DisplayAttrs
-from history import History
 from moves import Moves
 
 
@@ -91,10 +90,10 @@ class TestMoves(TestCase):
         self.assertEqual(self.moves.recorded(), [(0, 1, 4, None)])
         later.update.assert_called_with(4, ())
 
-    def test_a_new_moves_starts_with_an_empty_history(self):
+    def test_each_moves_keeps_its_own_history(self):
         self.moves.enter(self.__cell(), 1)
-        Moves(self.puzzle)
-        self.assertTrue(History.is_empty())
+        self.assertTrue(Moves(self.puzzle).is_empty())
+        self.assertFalse(self.moves.is_empty())
 
     # Private functions
 

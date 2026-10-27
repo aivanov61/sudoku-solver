@@ -44,23 +44,24 @@ class History:
     Keep and manage history of entries
     """
 
-    _history: list[Entry] = []
+    def __init__(self):
+        self.__entries: list[Entry] = []
 
-    def clear():
-        History._history.clear()
+    def clear(self):
+        self.__entries.clear()
 
-    def add(entry: Entry):
-        History._history.append(entry)
+    def add(self, entry: Entry):
+        self.__entries.append(entry)
 
-    def undo() -> Entry:
-        return History._history.pop()
+    def undo(self) -> Entry:
+        return self.__entries.pop()
 
-    def last() -> Entry:
-        return History._history[-1]
+    def last(self) -> Entry:
+        return self.__entries[-1]
 
-    def is_empty() -> bool:
-        return len(History._history) == 0
+    def is_empty(self) -> bool:
+        return len(self.__entries) == 0
 
-    def entries() -> list[Entry]:
+    def entries(self) -> list[Entry]:
         """Return every entry, oldest first"""
-        return list(History._history)
+        return list(self.__entries)

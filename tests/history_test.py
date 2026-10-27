@@ -32,75 +32,66 @@ cell_parent.values.return_value = range(1, CELL_MAX_VALUE)
 
 class TestHistory(TestCase):
     def setUp(self):
-        History.clear()
+        self.history = History()
         return super().setUp()
 
     def test_add_history_adds_entries_to_the_end_of_history(self):
-        _h = History._history
-
         # Add first entry (a simple, normal value)
         c1 = Cell(cell_parent, 0, 0)
         v1 = 1
         e1 = history.Entry(c1, history.Entry.ValueInfo(v1))
-        History.add(e1)
+        self.history.add(e1)
 
-        self.assertEqual(len(_h), 1)
-        self.assertEqual(_h[-1].cell, c1)
-        self.assertEqual(_h[-1].valueinfo.value, v1)
-        self.assertEqual(_h[-1].valueinfo.prim_attr, None)
+        self.assertEqual(self.history.entries(), [e1])
+        self.assertEqual(e1.valueinfo.prim_attr, None)
 
         # Add second entry (a guessed value)
         c2 = Cell(cell_parent, 1, 1)
         t2 = history.Entry.ValueInfo.GUESS
         v2 = 2
         e2 = history.Entry(c2, history.Entry.ValueInfo(v2, t2))
-        History.add(e2)
+        self.history.add(e2)
 
-        self.assertEqual(len(_h), 2)
-        self.assertEqual(_h[-1].cell, c2)
-        self.assertEqual(_h[-1].valueinfo.value, v2)
-        self.assertEqual(_h[-1].valueinfo.prim_attr, t2)
-
-        # Make sure first entry remains intact
-        self.assertEqual(_h[0].cell, c1)
-        self.assertEqual(_h[0].valueinfo.value, v1)
-        self.assertEqual(_h[0].valueinfo.prim_attr, None)
+        # The first entry remains intact, before the second
+        self.assertEqual(self.history.entries(), [e1, e2])
+        self.assertEqual(e2.valueinfo.prim_attr, t2)
 
     def test_undo_history_removes_and_returns_the_last_entry(self):
-        _h = History._history
+        e1 = history.Entry(Cell(cell_parent, 0, 0), history.Entry.ValueInfo(1))
+        e2 = history.Entry(Cell(cell_parent, 1, 1), history.Entry.ValueInfo(2))
+        self.history.add(e1)
+        self.history.add(e2)
 
-        c1 = Cell(cell_parent, 0, 0)
-        v1 = 1
-        e1 = history.Entry(c1, history.Entry.ValueInfo(v1))
-        History.add(e1)
-
-        c2 = Cell(cell_parent, 1, 1)
-        v2 = 2
-        e2 = history.Entry(c2, history.Entry.ValueInfo(v2))
-        History.add(e2)
-
-        u2 = History.undo()
-        self.assertEqual(len(_h), 1)
-        self.assertEqual(u2, e2)
-
+        self.assertEqual(self.history.undo(), e2)
+        self.assertEqual(self.history.entries(), [e1])
 
     def test_last_returns_the_last_entry_without_removing_it(self):
         e1 = history.Entry(Cell(cell_parent, 0, 0), history.Entry.ValueInfo(1))
         e2 = history.Entry(Cell(cell_parent, 1, 1), history.Entry.ValueInfo(2))
-        History.add(e1)
-        History.add(e2)
+        self.history.add(e1)
+        self.history.add(e2)
 
-        self.assertEqual(History.last(), e2)
-        self.assertEqual(len(History._history), 2)
+        self.assertEqual(self.history.last(), e2)
+        self.assertEqual(self.history.entries(), [e1, e2])
 
     def test_entries_lists_the_entries_oldest_first_without_removing_them(self):
         e1 = history.Entry(Cell(cell_parent, 0, 0), history.Entry.ValueInfo(1))
         e2 = history.Entry(Cell(cell_parent, 1, 1), history.Entry.ValueInfo(2))
-        History.add(e1)
-        History.add(e2)
+        self.history.add(e1)
+        self.history.add(e2)
 
-        self.assertEqual(History.entries(), [e1, e2])
-        self.assertEqual(len(History._history), 2)
+        self.assertEqual(self.history.entries(), [e1, e2])
+        self.assertEqual(self.history.entries(), [e1, e2])
+
+    def test_clear_removes_every_entry(self):
+        self.history.add(history.Entry(Cell(cell_parent, 0, 0), history.Entry.ValueInfo(1)))
+        self.history.clear()
+        self.assertTrue(self.history.is_empty())
+
+    def test_each_history_keeps_its_own_entries(self):
+        self.history.add(history.Entry(Cell(cell_parent, 0, 0), history.Entry.ValueInfo(1)))
+        self.assertTrue(History().is_empty())
+        self.assertFalse(self.history.is_empty())
 
 
 if __name__ == "__main__":

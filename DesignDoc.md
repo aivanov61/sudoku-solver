@@ -54,7 +54,7 @@ Supporting modules:
 | `display.py` | `Display`, `Border` | All terminal drawing, through `blessed` |
 | `display_attrs.py` | `DisplayAttrs` | Turns attribute mnemonics into `blessed` style names |
 | `history.py` | `History`, `Entry` | The undo stack |
-| `moves.py` | `Moves` | Enters values, records them in `History` for undo and rewind, and keeps the guess shading |
+| `moves.py` | `Moves` | Enters values, records them in its own `History` for undo and rewind, and keeps the guess shading |
 | `save_file.py` | `SaveFile`, `SavedPuzzle`, `SaveFileError` | Writes and reads the versioned save file |
 | `copyright.py` | `Copyright` | The GPL splash text |
 | `puzzle.py` | `Puzzle` | The game, played on a board: commands, modes, cursor and screen. Hands work to the helpers below |
@@ -92,7 +92,7 @@ Every cell stores its **puzzle-wide** `row` and `col` (0–8), set by `Rectangul
 1. Ask `PuzzleCatalog` for the available layouts.
 2. Show the GPL splash; continue after 5 seconds or any key. With a single layout that is broken, or with no layouts at all, a yellow note under the splash says so.
 3. Pick the layout: with several, `LayoutMenu` lets the player choose (see 5.7); with one, it is used directly. If the player quits the menu, or the only layout is broken or missing, exit here.
-4. Create the board, then the puzzle: `Puzzle(layout.board_class())`. The board's `__init__` builds its blocks (9 blocks of 9 cells for `Board3x3`); `Puzzle.__init__` sets the display geometry from the board's size, checks the screen size and creates its helpers (`Moves` clears `History`).
+4. Create the board, then the puzzle: `Puzzle(layout.board_class())`. The board's `__init__` builds its blocks (9 blocks of 9 cells for `Board3x3`); `Puzzle.__init__` sets the display geometry from the board's size, checks the screen size and creates its helpers (`Moves` creates its own, empty `History`).
 5. `render()` draws the whole grid, the command panel and the status line.
 6. Loop while `puzzle.is_playing`: re-check the screen size (redraw if it was resized), move the cursor to the selected cell, read a command and handle it.
 
@@ -142,8 +142,8 @@ Puzzle.value_(val, guess)
 
 ### 5.5 Undo and guess shading
 
-- `History` is a class-level list of `Entry(cell, valueinfo, previous_valueinfo)`. `ValueInfo` stores the value and its primary attribute (`INITIAL`, `GUESS` or `None`).
-- `Moves` (`moves.py`) is the only code that changes `History`; the puzzle's `undo_()` and `rewind_()` call its `undo()` and `rewind()`, which return the cell for the cursor.
+- `History` is a list of `Entry(cell, valueinfo, previous_valueinfo)`; each `Moves` creates and owns one, so there is no shared, global history. `ValueInfo` stores the value and its primary attribute (`INITIAL`, `GUESS` or `None`).
+- `Moves` (`moves.py`) is the only code that uses its `History`; the puzzle's `undo_()` and `rewind_()` call its `undo()` and `rewind()`, which return the cell for the cursor.
 - `undo_()` pops the last entry, moves the cursor to that cell and restores the previous value with `cell.update()`. With nothing to undo, it warns "Cannot undo initialized puzzle. ESC will re-enter initialization mode."
 - `rewind_()` undoes at least one entry, then keeps undoing until the most recent remaining entry is a guess (primary attribute `GUESS`), or until the history is empty. The guess stays on the board and the cursor moves to it, ready for a different value to be typed over it. Pressing `r` again undoes that guess and rewinds to the one before. It uses `History.last()` to look at the most recent entry without removing it. With nothing to undo, it gives the same warning as `undo_()`. Otherwise it asks for confirmation first, since a rewind can't be undone.
 - **Guess shading:** each guess raises the shade kept by `Moves` by `Moves.SHADE_STEP` (10). Every value entered afterwards, guess or not, gets that gray background, which shows what depends on the guess. Undoing a guess lowers the level by 10. Above `MAX_GRAY_LEVEL` (100), the program warns and keeps reusing the last shade.

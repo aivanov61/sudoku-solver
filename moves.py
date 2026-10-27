@@ -27,7 +27,7 @@ from history import History, Entry
 
 class Moves:
     """
-    Enter values into cells and record them in the History, so they can be undone.
+    Enter values into cells and record them in a History, so they can be undone.
 
     Values entered while the puzzle is set up are givens, which are not recorded.  While playing,
     each guess gives itself and every value entered after it a lighter shade of gray.
@@ -40,7 +40,7 @@ class Moves:
     def __init__(self, puzzle):
         self.__puzzle = puzzle
         self.__shade = 0
-        History.clear()
+        self.__history = History()
 
     # Interface required for the puzzle
 
@@ -53,11 +53,11 @@ class Moves:
         cell.update(value, attr)
 
     def is_empty(self) -> bool:
-        return History.is_empty()
+        return self.__history.is_empty()
 
     def undo(self) -> Cell:
         """Undo the most recent move, putting back the cell's previous value, and return the cell"""
-        entry = History.undo()
+        entry = self.__history.undo()
         self.__is_guess(entry) and self.__lighten_shade()
         previous = entry.previous_valueinfo
         value, attr = (previous.value, self.__attributes(previous.prim_attr)) if previous else (None, ())
@@ -67,19 +67,19 @@ class Moves:
     def rewind(self) -> Cell:
         """Undo moves until the most recent one is a guess (at least one) and return its cell, or the last cell undone"""
         cell = self.undo()
-        while not History.is_empty() and not self.__is_guess(History.last()):
+        while not self.__history.is_empty() and not self.__is_guess(self.__history.last()):
             cell = self.undo()
-        return cell if History.is_empty() else History.last().cell
+        return cell if self.__history.is_empty() else self.__history.last().cell
 
     def recorded(self) -> list:
         """Return every recorded move as (row, col, value, prim_attr), oldest first"""
         return [
             (entry.cell.row, entry.cell.col, entry.valueinfo.value, entry.valueinfo.prim_attr)
-            for entry in History.entries()
+            for entry in self.__history.entries()
         ]
 
     def clear(self) -> None:
-        History.clear()
+        self.__history.clear()
         self.__shade = 0
 
     # Private functions
@@ -100,7 +100,7 @@ class Moves:
         new_info = Entry.ValueInfo(value, self.__prim_attr(attr))
         prev_value = cell.value()
         prev_info = Entry.ValueInfo(prev_value, self.__prim_attr(cell.attr())) if prev_value else None
-        History.add(Entry(cell, new_info, prev_info))
+        self.__history.add(Entry(cell, new_info, prev_info))
 
     def __prim_attr(self, attr) -> str:
         return next((prim_attr for prim_attr in DisplayAttrs.ATTRS_PRIMARY if prim_attr in attr), None)
