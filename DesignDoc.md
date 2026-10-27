@@ -85,6 +85,41 @@ Each class groups its methods under comments naming who calls them, for example 
 
 Every cell stores its **puzzle-wide** `row` and `col` (0–8), set by `RectangularBlock.__phys_pos` when the block creates it. All requests between layers use these puzzle-wide positions. That's why a block can pick out "its cells in row 6 or column 8" without knowing where it sits relative to the cell that asked. `RectangularBlock.cell(row, col)` accepts puzzle-wide positions and reduces them with `%`.
 
+### 4.4 Where the architecture is headed: the game apart from the display
+
+**Goal:** the gameplay is generic and independent of how it is shown. The terminal is one user interface; a true GUI should be addable later without changing any gameplay code. The structure for this is *ports and adapters*: the game (the core) talks to the player only through one interface it defines, `UserInterface` (the port), and each way of showing the game is an adapter that implements it (`TerminalUI` today, a GUI later). The work is done step by step; section 8 tracks progress, and until it is finished the rest of this document describes the code as it is.
+
+**The port.** Dialogs stay synchronous: the game asks a question and gets the answer back, which a GUI can do with modal dialogs. A first sketch, to be refined as the steps are done:
+
+```python
+class UserInterface(Protocol):
+    def show_board(self, board_view) -> None: ...          # full draw: shape, block edges, every cell
+    def cells_changed(self, cells) -> None: ...            # redraw just these, after a command
+    def select(self, row, col) -> None: ...
+    def mode_changed(self, mode, actions) -> None: ...     # e.g. the terminal's command panel
+    def status(self, message, kind) -> None: ...           # shown until the next command
+    def inform(self, message, kind) -> None: ...           # must be acknowledged before going on
+    def confirm(self, question) -> bool: ...
+    def ask_file_name(self, purpose, default) -> str | None: ...
+```
+
+**What belongs where:**
+
+| The game (core) | A user interface (adapter) |
+|---|---|
+| Actions: enter a value or a guess, move, undo, rewind, next, auto, save, open, quit, switch mode | Which keys, clicks or menus trigger each action, and the help text describing them |
+| Receiving one action at a time: `game.handle(action)` | The main loop: reading input and calling the game (a GUI toolkit owns its own event loop) |
+| A cell's state: value, kind (given, typed, guess, solved), conflict marks, guess depth, possible values | Colors and shading for each kind and depth, and what to do when it runs out of shades |
+| Which sides of a cell are block edges | How edges are drawn |
+| Which cells changed | Redrawing them |
+| Messages as plain text with a kind (warning, success, hint) and whether they must be acknowledged | Styling messages, and how they are acknowledged |
+| The list of layouts | The layout menu, startup notes and screen-size checks |
+| The save file format | File-name prompts or file dialogs |
+
+**Tests** use a `RecordingUI` that implements the port and records what the game asked it to do, instead of patching `Display` by name. It also serves as the contract any new interface must meet. A test will check that no game module imports a user-interface module.
+
+**Out of scope here:** an event-driven model, in which ports and adapters connect every object rather than just the game and its interface. That would be a separate experiment.
+
 ## 5. Key flows
 
 ### 5.1 Startup and the main loop (`sudoku.py`)
@@ -220,5 +255,13 @@ The full list is in `CLAUDE.md`. The main points:
 
 ## 8. Next steps
 
-1. **More rules for next and auto:** for example, a value that fits only one cell in a row, column or box.
-2. **Redo**, if wanted.
+1. **Separate the game from the display** (section 4.4), one step at a time, each with its own commits, all tests passing and a check by hand:
+   - Done first: each `Moves` owns its `History`, instead of one global history.
+   - **Step 1, messages and dialogs:** the helpers (`Moves`, `PuzzleSolver`, `CompletionReport`) return results instead of warning; the puzzle sends every message, with its kind, and every dialog through one interface object. The terminal adapter wraps today's `Display`.
+   - **Step 2, attributes with meaning only:** the game keeps a cell's kind, conflict marks and guess depth; colors and gray levels move to a terminal style table.
+   - **Step 3, cells stop drawing:** the board reports changed cells through the port, and block edges become layout data instead of a display `Border`.
+   - **Step 4, actions apart from keys:** the game defines its actions; the terminal keeps its key bindings and help text.
+   - **Step 5, the loop moves to the interface:** the terminal adapter reads keys and calls `game.handle(action)`; `Main` just picks the interface and the layout.
+   - **Step 6, packages and the instance:** `game/` and `ui/terminal/` folders, `Display` becomes the `TerminalUI` instance, and a test checks that nothing in `game/` imports `ui/`.
+2. **More rules for next and auto:** for example, a value that fits only one cell in a row, column or box.
+3. **Redo**, if wanted.
