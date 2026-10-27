@@ -19,12 +19,12 @@ import sys
 
 sys.path.insert(0, ".")
 
-from copyright import Copyright
-from display import Display
-from layout_menu import LayoutMenu
-from puzzle import Puzzle
-from puzzle_catalog import PuzzleCatalog
-from terminal_ui import TerminalUI
+from game.puzzle import Puzzle
+from game.puzzle_catalog import PuzzleCatalog
+from ui.terminal.copyright import Copyright
+from ui.terminal.display import Display
+from ui.terminal.layout_menu import LayoutMenu
+from ui.terminal.terminal_ui import TerminalUI
 
 
 class Main:

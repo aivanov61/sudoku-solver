@@ -6,7 +6,7 @@ This document explains how the terminal Sudoku program is built: its layers, how
 
 The program lets a player type in a published 9x9 Sudoku puzzle and then solve it in the terminal. It helps by showing each cell's remaining possible values and by marking conflicting entries. Guesses are shaded so the player can see what depends on them and undo back to them.
 
-The code is also meant as an example of clean, object-oriented Python built with test-driven development. The structure is designed to grow to other Sudoku layouts: each layout is a small subclass of `Board` in the `puzzles/` folder, found automatically by `PuzzleCatalog`, and played by the one generic `Puzzle`. Today only the standard layout of 3x3 boxes exists, in `puzzles/board_3x3.py`.
+The code is also meant as an example of clean, object-oriented Python built with test-driven development. The structure is designed to grow to other Sudoku layouts: each layout is a small subclass of `Board` in the `game/puzzles/` folder, found automatically by `PuzzleCatalog`, and played by the one generic `Puzzle`. Today only the standard layout of 3x3 boxes exists, in `game/puzzles/board_3x3.py`.
 
 ## 2. Current status
 
@@ -28,8 +28,8 @@ The code is also meant as an example of clean, object-oriented Python built with
 - **Requirements:** Python 3 (currently developed on 3.15) and `blessed` 1.20 or later (`pip install -r requirements.txt`).
 - **Run:** `python sudoku.py` from the project folder.
 - **Terminal size:** at least 80 columns × 29 lines (9 cells × 6 columns plus the command panel; 9 cells × 3 lines, plus 2 for the status line). `Display.min_width()` asks for the grid plus the panel, but never less than 80. The minimum protects the grid and the panel only: status-line messages are not limited to the width, so on a terminal exactly 80 wide a few long warnings (with "Hit any key to continue") wrap onto the next line and leave leftover text there. That is expected, not a bug; wider windows, such as a default 120-column console, never show it.
-- **Tests:** `py -m pytest` from the project folder, or run one file directly, for example `py tests/cell_test.py`. The tests use `unittest` and pytest runs them unchanged. Note:
-  - `tests/display_test.py::TestDisplay` draws on the real terminal and pauses for a second after each test. `tests/input_test.py` waits up to two seconds for a key press. Both are meant for watching by hand. Select the other files or classes to skip them.
+- **Tests:** `py -m pytest` from the project folder, or run one file directly, for example `py game/tests/cell_test.py`. The tests use `unittest` and pytest runs them unchanged. Each folder of code has its tests in a `tests/` folder beside it (`game/tests/`, `game/rules/tests/`, `ui/terminal/tests/`); the top-level `tests/` holds the tests that cover both packages. The test folders are packages, so shared helpers are imported as, for example, `game.tests.recording_ui`. Note:
+  - `ui/terminal/tests/display_test.py::TestDisplay` draws on the real terminal and pauses for a second after each test. `ui/terminal/tests/input_test.py` waits up to two seconds for a key press. Both are meant for watching by hand. Select the other files or classes to skip them.
   - `tests/unit_test_utils.py` holds an older helper that no test uses.
 
 ## 4. Architecture
@@ -50,30 +50,32 @@ Supporting modules:
 
 | Module | Class | Role |
 |---|---|---|
-| `actions.py` | `Action`, `Mode`, `OFFERED_ACTIONS` | What the player can ask the game to do, the modes, and which actions each mode offers |
-| `commands.py` | `Commands` | The terminal's key bindings: keys, command panel lines and help text for each action, plus the help screen |
-| `input.py` | `Input` | Reads keystrokes and turns the next bound one into a command |
-| `user_interface.py` | `UserInterface`, `Message`, `MessageKind` | The port through which the game talks to the player (section 4.4) |
-| `terminal_ui.py` | `TerminalUI` | The terminal's implementation of the port: runs the play loop, draws the board, the command panel and the help screen, and shows messages and questions on the status line |
-| `border.py` | `Border` | Which sides of a cell lie on its block's edge (layout data) |
-| `display.py` | `Display` | All terminal drawing, through `blessed` |
-| `cell_attrs.py` | `CellAttrs` | What a cell's attributes mean: how its value got there, conflict marks, guess depth |
-| `display_attrs.py` | `DisplayAttrs` | The terminal's style table: turns a cell's attributes into `blessed` style names |
-| `history.py` | `History`, `Entry` | The undo stack |
-| `moves.py` | `Moves` | Enters values, records them in its own `History` for undo and rewind, and keeps the guess shading |
-| `save_file.py` | `SaveFile`, `SavedPuzzle`, `SaveFileError` | Writes and reads the versioned save file |
-| `copyright.py` | `Copyright` | The GPL splash text |
-| `puzzle.py` | `Puzzle` | The game, played on a board: commands, modes, cursor and screen. Hands work to the helpers below |
-| `board.py` | `Board` | The grid of cells: finds cells through the blocks and answers questions about them; an abstract base class for layouts |
-| `completion_report.py` | `CompletionReport` | Tells the player when the puzzle becomes complete, solved or with errors |
-| `game_file.py` | `GameFile` | The save and restore commands: file name prompt, confirmations and messages |
-| `puzzles/` | one module per layout | e.g. `board_3x3.py` with `Board3x3` |
-| `puzzle_catalog.py` | `PuzzleCatalog`, `PuzzleLayout` | Finds the layouts and reports any that are broken |
-| `layout_menu.py` | `LayoutMenu` | Lets the player choose a layout when there are several |
-| `puzzle_solver.py` | `PuzzleSolver` | Applies the solving rules in order to find the next move; carries out next (`n`) and auto (`a`) |
-| `rules/` | one module per rule, plus `rule.py` and `order.py` | `Rule`, `Outcome` and the rules; `order.py` sets the order |
+| `game/actions.py` | `Action`, `Mode`, `OFFERED_ACTIONS` | What the player can ask the game to do, the modes, and which actions each mode offers |
+| `ui/terminal/commands.py` | `Commands` | The terminal's key bindings: keys, command panel lines and help text for each action, plus the help screen |
+| `ui/terminal/input.py` | `Input` | Reads keystrokes and turns the next bound one into a command |
+| `game/user_interface.py` | `UserInterface`, `Message`, `MessageKind` | The port through which the game talks to the player (section 4.4) |
+| `ui/terminal/terminal_ui.py` | `TerminalUI` | The terminal's implementation of the port: runs the play loop, draws the board, the command panel and the help screen, and shows messages and questions on the status line |
+| `game/border.py` | `Border` | Which sides of a cell lie on its block's edge (layout data) |
+| `ui/terminal/display.py` | `Display` | All terminal drawing, through `blessed` |
+| `game/cell_attrs.py` | `CellAttrs` | What a cell's attributes mean: how its value got there, conflict marks, guess depth |
+| `ui/terminal/display_attrs.py` | `DisplayAttrs` | The terminal's style table: turns a cell's attributes into `blessed` style names |
+| `game/history.py` | `History`, `Entry` | The undo stack |
+| `game/moves.py` | `Moves` | Enters values, records them in its own `History` for undo and rewind, and keeps the guess shading |
+| `game/save_file.py` | `SaveFile`, `SavedPuzzle`, `SaveFileError` | Writes and reads the versioned save file |
+| `ui/terminal/copyright.py` | `Copyright` | The GPL splash text |
+| `game/puzzle.py` | `Puzzle` | The game, played on a board: commands, modes, cursor and screen. Hands work to the helpers below |
+| `game/board.py` | `Board` | The grid of cells: finds cells through the blocks and answers questions about them; an abstract base class for layouts |
+| `game/completion_report.py` | `CompletionReport` | Tells the player when the puzzle becomes complete, solved or with errors |
+| `game/game_file.py` | `GameFile` | The save and restore commands: file name prompt, confirmations and messages |
+| `game/puzzles/` | one module per layout | e.g. `board_3x3.py` with `Board3x3` |
+| `game/puzzle_catalog.py` | `PuzzleCatalog`, `PuzzleLayout` | Finds the layouts and reports any that are broken |
+| `ui/terminal/layout_menu.py` | `LayoutMenu` | Lets the player choose a layout when there are several |
+| `game/puzzle_solver.py` | `PuzzleSolver` | Applies the solving rules in order to find the next move; carries out next (`n`) and auto (`a`) |
+| `game/rules/` | one module per rule, plus `rule.py` and `order.py` | `Rule`, `Outcome` and the rules; `order.py` sets the order |
 
-`doit.py` is a standalone `blessed` experiment and is not part of the program.
+`ui/terminal/keyboard_query.py` is a standalone `blessed` experiment that shows what each key sends; it is not part of the program.
+
+The code is in two packages: `game/` is the game, which knows nothing about how it is shown, and `ui/terminal/` is the terminal user interface. `sudoku.py` (`Main`) stays at the top and puts them together. `tests/package_boundary_test.py` checks that nothing in `game/` imports from `ui` or `blessed`.
 
 ### 4.2 Responsibilities between layers
 
@@ -126,7 +128,7 @@ A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCE
 | The list of layouts | The layout menu, startup notes and screen-size checks |
 | The save file format | File-name prompts or file dialogs |
 
-**Tests** use a `RecordingUI` that implements the port and records what the game asked it to do, instead of patching `Display` by name. It also serves as the contract any new interface must meet. A test will check that no game module imports a user-interface module.
+**Tests** use a `RecordingUI` that implements the port and records what the game asked it to do, instead of patching `Display` by name. It also serves as the contract any new interface must meet. `tests/package_boundary_test.py` checks that no game module imports a user-interface module.
 
 **Out of scope here:** an event-driven model, in which ports and adapters connect every object rather than just the game and its interface. That would be a separate experiment.
 
@@ -199,7 +201,7 @@ Puzzle.value_(val) / guess_(val)   (guess_ is refused in setup mode, like the ot
 
 `n` teaches as it goes, in two steps. The first press asks the puzzle's `PuzzleSolver` for the next move, moves the cursor to its cell and shows *why* on the status line, in steel blue like the solved values. The second press fills it in. The next press starts over with the following move.
 
-The solver consults the rules listed in `rules/order.py`, in that order, and takes the move of the first one that has one:
+The solver consults the rules listed in `game/rules/order.py`, in that order, and takes the move of the first one that has one:
 
 1. **`ConflictsRule`:** if any cell carries a conflict mark, the move is the warning "Resolve the conflicts first."
 2. **`DeadEndRule`:** if an empty cell has no possible values, the cursor moves there and the warning is "Dead end - try undoing until this square shows at least one possible value." It suggests undoing rather than rewinding, because a rewind could go back further than needed.
@@ -207,7 +209,7 @@ The solver consults the rules listed in `rules/order.py`, in that order, and tak
 
 The first two *stop* solving: every `n` repeats their warning, and there is nothing to fill in. If no rule has a move, `next_()` warns "No obvious next move. You'll have to make a guess."
 
-- **Rules** live in `rules/`, one file each. Each is a `Rule` subclass with `find(puzzle)`, which returns a `Move` or `None` without changing anything. A `Move` holds its `outcome` (`MOVED` for a value to fill in, `STOPPED` for a warning), its `hint` (the explanation or the warning), its `cell` and its `value`. Rules that stop solving come before rules that make moves. A test checks that every rule in `rules/` is listed in `rules/order.py`.
+- **Rules** live in `game/rules/`, one file each. Each is a `Rule` subclass with `find(puzzle)`, which returns a `Move` or `None` without changing anything. A `Move` holds its `outcome` (`MOVED` for a value to fill in, `STOPPED` for a warning), its `hint` (the explanation or the warning), its `cell` and its `value`. Rules that stop solving come before rules that make moves. A test checks that every rule in `rules/` is listed in `game/rules/order.py`.
 - **The solver** has `find_move()` (the first rule's move) and `make_move(move)` (fill in its value through the puzzle). It also carries out the commands: `next()` points out a move, keeping it as its *pending move*, and the following `next()` makes it; `auto()` makes moves until none is obvious. The puzzle's `next_()` and `auto_()` first refuse in setup mode or on a complete puzzle, then call these.
 - **Cancelling:** `handle()` lets the puzzle react to every action before carrying it out. Any action other than `n` drops the pending move (`PuzzleSolver.cancel_pending_move()`), so the following `n` points out a move again instead of filling one in. Keys the program does not recognize are ignored as before and cancel nothing.
 - **The puzzle's interface for the solver:** `first_cell_where(condition)` returns the first cell, left to right and top to bottom, for which the condition holds (it asks every block's `cells_where()`, so only blocks look inside cells, as section 4.2 requires); `select(cell)` moves the cursor; `enter_solved_value(cell, value)` enters a value; `is_complete()` tells `auto()` not to warn once it has filled in the last cell. The other helpers use the same section of the puzzle (`Interface required for the solver and the other helpers`): `is_initializing()`, `has_conflicts()`, `has_values()`, `saved_state()` and `restore(saved)`.
@@ -215,17 +217,17 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 - **Notices:** a dead-end warning does not wait for a key. The puzzle keeps it as a notice (a `WARNING` message), which `display_status()` passes to the user interface's `status()` ahead of the completion report and the `n` hint, until `command_received()` clears it at the next command. (A `Display.warn()` that does not wait would be overwritten at once, because `Main` redraws the status line after every command.)
 - **A complete puzzle:** in play mode, once `first_cell_where` finds no empty cell, `CompletionReport` (`completion_report.py`) gives `display_status()` the message that the puzzle is solved (steel blue), or complete with errors (yellow) if any cell is marked in conflict. The report replaces the status line until the next command, and comes back only when the completion changes (including back to unfinished, after undo or rewind empties a cell). With errors, the advice is to undo or change values. `n` and `a` then only warn that the puzzle is already complete; values can still be typed over. When `a` fills in the last cell it ends without a warning.
 - **Making the move:** a `SOLVED` value goes through the same path as a typed value, so it is recorded in `History` with `SOLVED` as its primary attribute. `u` and `r` treat it like any other non-guess entry, and undoing a change restores the steel blue. It also picks up the current guess shading.
-- **Adding a rule** means a new file in `rules/` and one line in `rules/order.py`; nothing else changes. Rules that need whole rows, columns or boxes (rather than single cells) will need a new solver interface, to be designed with the first such rule.
-- **Rules and several layouts (planned, not built yet):** today every layout uses the shared list in `rules/order.py`. The intended direction:
+- **Adding a rule** means a new file in `game/rules/` and one line in `game/rules/order.py`; nothing else changes. Rules that need whole rows, columns or boxes (rather than single cells) will need a new solver interface, to be designed with the first such rule.
+- **Rules and several layouts (planned, not built yet):** today every layout uses the shared list in `game/rules/order.py`. The intended direction:
   - **Shared rules stay shared** by working through units the layout supplies (the groups of cells that must each hold every value once: rows, columns and boxes, or a jigsaw's regions, an X-Sudoku's diagonals, and so on), the way `related_cells` already comes from the blocks.
-  - **Layout-specific rules** (such as Killer Sudoku cage sums) live with their layout, for example in a `puzzles/<layout>/` package, rather than in the shared `rules/` folder.
+  - **Layout-specific rules** (such as Killer Sudoku cage sums) live with their layout, for example in a `game/puzzles/<layout>/` package, rather than in the shared `rules/` folder.
   - **A layout chooses its rules** through a `RULES` class attribute that defaults to the shared order; a variant lists shared and its own rules together, in order, and `Puzzle` passes `self.RULES` to its `PuzzleSolver`.
   - Build this when the first layout that needs its own rules arrives.
 
 ### 5.7 Layouts and the catalog
 
 - **`Board`** (`board.py`) is an abstract base class (`abc.ABC`) holding everything about cells that does not depend on the block layout. A layout subclass sets `NAME`, calls `super().__init__(v_cells, h_cells)`, builds its blocks with the board as their parent, and implements the two `@abstractmethod` hooks `_blocks()` and `_block_at(row, col)`. Python refuses to create a layout that is missing a hook. `Puzzle` is not a base class: one generic game plays every layout, so every layout has every command.
-- **`PuzzleCatalog.available()`** imports every module in `puzzles/` and returns a `PuzzleLayout` for each `Board` subclass that has its own `NAME` (classes without one, such as shared base classes, are skipped), sorted by name. A new layout is just a new file there.
+- **`PuzzleCatalog.available()`** imports every module in `game/puzzles/` and returns a `PuzzleLayout` for each `Board` subclass that has its own `NAME` (classes without one, such as shared base classes, are skipped), sorted by name. A new layout is just a new file there.
 - **Notes for the player:** a layout is *broken* if its file cannot be loaded or a hook is missing (the class is still abstract). `PuzzleLayout.label()` shows this after the name, e.g. "Jigsaw (broken: missing _block_at)". Detecting it never creates the board, so it has no side effects. A test checks that `Puzzle` has a method for every `Action`.
 - **With one layout**, its note, if any, is shown under the splash screen; a broken layout then exits instead of starting.
 - **With several layouts**, `LayoutMenu` (`layout_menu.py`) lists them all with their notes after the splash. The player types a number and presses ENTER (Backspace corrects it); numbers stay the same on every page. At most 9 digits are kept, so the number always fits in a 32-bit integer; a further digit shows `...` after them and makes the entry too big (ENTER then says "Number too big"), and Backspace removes the `...` before any digit. As many layouts are shown as fit the terminal's height; when they don't all fit, (p)revious and (n)ext turn the page (doing nothing at either end). (q)uit is always offered and asks "Really quit? (y/n)" on the message line (only y confirms); p, n and q act on a single key, even with a number half typed. CTRL-C quits at once. Choosing a broken layout, or a number that isn't listed, shows a yellow message and keeps the menu open.
@@ -254,7 +256,7 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 - **Status line:** blank unless there is something to report: `n`'s hint, a change in completion, a warning or a question.
 - **Messages:** the game sends a `Message` with a kind; `TerminalUI` styles it: successes and hints in steel blue (the `SOLVED` style), information and warnings in yellow. `status()` shows it until the next command; `inform()` shows it with `Display.show_on_status_line(text, wait=True)`, which waits for a key press. `Display.warn()` is the yellow shortcut still used by code not yet moved behind the port (`Moves`, `Main`).
 - `Display.confirm(msg)` asks a yes/no question the same way and returns `True` only for `y` or `Y`. Any other key, or an interrupted prompt, declines. `TerminalUI.confirm()` uses it, for `quit_()`, `rewind_()` and the save and restore questions.
-- **Tests** of the game use `tests/recording_ui.py`, a `RecordingUI` that records every message and question and answers as the test tells it, instead of patching `Display`.
+- **Tests** of the game use `game/tests/recording_ui.py`, a `RecordingUI` that records every message and question and answers as the test tells it, instead of patching `Display`.
 
 ## 7. Conventions
 
@@ -276,6 +278,8 @@ The full list is in `CLAUDE.md`. The main points:
    - Done, **step 3, cells stop drawing:** a cell reports each change through its block and the board to the user interface's `cell_changed()`, and `render()` shows the whole board with `show_board()`; `TerminalUI` decides what to redraw. `Cell.update()` is gone (`set()` reports changes), and so are the `render()` methods of cells, blocks and the board. `Border` is layout data in `border.py`.
    - Done, **step 4, actions apart from keys:** `actions.py` defines the game's `Action`s, its `Mode`s and the actions each offers; the puzzle announces its mode with `mode_changed()`. `commands.py` is now the terminal's key-binding table, and `TerminalUI` draws the panel and the help screen. Hidden commands are gone: every key maps to its action and the puzzle refuses what its mode doesn't offer, now including guesses in setup. `Puzzle.help_()` is gone (help is the terminal's), and values and guesses are separate actions (`value_()`, `guess_()`).
    - Done, **step 5, the loop moves to the interface:** `TerminalUI.play(puzzle)` runs the loop: it reads keys, shows help itself and hands each action to `puzzle.handle(action, digit)`. `TerminalUI(v_cells, h_cells)` sets the geometry and checks the screen size, so `Puzzle` no longer uses `Display` at all. `Main` just picks the layout and the user interface.
-   - **Step 6, packages and the instance:** `game/` and `ui/terminal/` folders, `Display` becomes the `TerminalUI` instance, and a test checks that nothing in `game/` imports `ui/`.
+   - **Step 6, packages and the instance:**
+     - Done, **6a, packages:** the game is in `game/` (with `game/rules/` and `game/puzzles/`), the terminal user interface in `ui/terminal/`, and `tests/package_boundary_test.py` checks that nothing in `game/` imports from `ui` or `blessed`.
+     - **6b, `Display` becomes an object:** created by `Main` and passed to `LayoutMenu`, `TerminalUI` and `Input`, instead of class-level state.
 2. **More rules for next and auto:** for example, a value that fits only one cell in a row, column or box.
 3. **Redo**, if wanted.

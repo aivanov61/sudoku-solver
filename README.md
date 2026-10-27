@@ -92,9 +92,10 @@ See [UserGuide.md](UserGuide.md) for the full list of keys and colors.
 ## Testing
 
 Run all the unit tests with `py -m pytest` (or `python -m pytest`), or run a single
-test file directly, e.g. `python tests/cell_test.py`.  Two tests are meant to be
-watched: `tests/display_test.py::TestDisplay` draws on the terminal and
-`tests/input_test.py` waits for a key press.
+test file directly, e.g. `python game/tests/cell_test.py`.  Each folder of code has
+its tests in a `tests/` folder beside it.  Two tests are meant to be
+watched: `ui/terminal/tests/display_test.py::TestDisplay` draws on the terminal and
+`ui/terminal/tests/input_test.py` waits for a key press.
 
 ## Purpose and Design
 
@@ -123,32 +124,32 @@ of functions which are often in different files (I've been using VSCode lately)
 When looking at the code for this Sudoku puzzle solver, this list will give you
 some guidance:
 - sudoku.py - starts the program: picks the layout and the user interface; `Main` class, has entry point run()
-- puzzle.py - the generic puzzle: the commands, modes and cursor; `Puzzle` class
-- moves.py - enters values and keeps them for undo/rewind and guess shading; `Moves` class
-- completion_report.py - tells the player when the puzzle is complete; `CompletionReport` class
-- game_file.py - the save and restore commands; `GameFile` class
-- board.py - the grid of cells, found through the blocks; `Board` class, the base class for layouts
-- puzzles/board_3x3.py - the standard layout of nine 3x3 blocks; `Board3x3` class
-(new layouts go in the puzzles folder)
-- puzzle_catalog.py - finds the available layouts; `PuzzleCatalog` class
-- layout_menu.py - lets the player choose a layout; `LayoutMenu` class
-- puzzle_solver.py - finds and makes the next obvious move (n) or all of them (a) by applying the solving rules; `PuzzleSolver` class
-- rules/ - one solving rule per file (`Rule` subclasses); rules/order.py sets the order they are applied in
-- rectangular_block.py - creates/manages a rectangular block of 3x3 cells; `RectangularBlock` class.
-- cell.py - creates/manages an individual cell; `Cell` class
-- cell_solver.py - keeps the possible values of a cell; `CellSolver` class
-- actions.py - what the player can ask the game to do, and which actions each mode offers; `Action` and `Mode`
-- commands.py - the terminal's key bindings, command panel and help text; `Commands` class
-- user_interface.py - the port through which the game talks to the player; `UserInterface`, `Message` and `MessageKind`
-- terminal_ui.py - the terminal's user interface: runs the play loop, draws the board and panel, shows messages and asks questions; `TerminalUI` class
-- border.py - which sides of a cell lie on its block's edge; `Border` class
-- display.py - manages the terminal display; `Display` class
-- cell_attrs.py - what a cell's attributes mean (given, guess, solved, conflicts, guess depth); `CellAttrs` class
-- display_attrs.py - turns cell attributes into terminal colors; `DisplayAttrs` class
-- history.py - keeps the history of entries for undo; `History` and `Entry` classes
-- save_file.py - writes and reads the versioned save file; `SaveFile` and `SavedPuzzle` classes
-- input.py - manages keyboard input and decodes into a valid command; `Input` class
-- copyright.py - the GNU GPL splash text; `Copyright` class
+- game/puzzle.py - the generic puzzle: the commands, modes and cursor; `Puzzle` class
+- game/moves.py - enters values and keeps them for undo/rewind and guess shading; `Moves` class
+- game/completion_report.py - tells the player when the puzzle is complete; `CompletionReport` class
+- game/game_file.py - the save and restore commands; `GameFile` class
+- game/board.py - the grid of cells, found through the blocks; `Board` class, the base class for layouts
+- game/puzzles/board_3x3.py - the standard layout of nine 3x3 blocks; `Board3x3` class
+(new layouts go in the game/puzzles folder)
+- game/puzzle_catalog.py - finds the available layouts; `PuzzleCatalog` class
+- ui/terminal/layout_menu.py - lets the player choose a layout; `LayoutMenu` class
+- game/puzzle_solver.py - finds and makes the next obvious move (n) or all of them (a) by applying the solving rules; `PuzzleSolver` class
+- game/rules/ - one solving rule per file (`Rule` subclasses); game/rules/order.py sets the order they are applied in
+- game/rectangular_block.py - creates/manages a rectangular block of 3x3 cells; `RectangularBlock` class.
+- game/cell.py - creates/manages an individual cell; `Cell` class
+- game/cell_solver.py - keeps the possible values of a cell; `CellSolver` class
+- game/actions.py - what the player can ask the game to do, and which actions each mode offers; `Action` and `Mode`
+- ui/terminal/commands.py - the terminal's key bindings, command panel and help text; `Commands` class
+- game/user_interface.py - the port through which the game talks to the player; `UserInterface`, `Message` and `MessageKind`
+- ui/terminal/terminal_ui.py - the terminal's user interface: runs the play loop, draws the board and panel, shows messages and asks questions; `TerminalUI` class
+- game/border.py - which sides of a cell lie on its block's edge; `Border` class
+- ui/terminal/display.py - manages the terminal display; `Display` class
+- game/cell_attrs.py - what a cell's attributes mean (given, guess, solved, conflicts, guess depth); `CellAttrs` class
+- ui/terminal/display_attrs.py - turns cell attributes into terminal colors; `DisplayAttrs` class
+- game/history.py - keeps the history of entries for undo; `History` and `Entry` classes
+- game/save_file.py - writes and reads the versioned save file; `SaveFile` and `SavedPuzzle` classes
+- ui/terminal/input.py - manages keyboard input and decodes into a valid command; `Input` class
+- ui/terminal/copyright.py - the GNU GPL splash text; `Copyright` class
 
 #### Class Organization
 

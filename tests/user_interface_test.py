@@ -20,9 +20,9 @@ from unittest import main, TestCase
 
 sys.path.insert(0, ".")
 
-from recording_ui import RecordingUI
-from terminal_ui import TerminalUI
-from user_interface import UserInterface
+from game.tests.recording_ui import RecordingUI
+from game.user_interface import UserInterface
+from ui.terminal.terminal_ui import TerminalUI
 
 
 class TestUserInterface(TestCase):
