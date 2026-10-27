@@ -60,3 +60,7 @@ class History:
 
     def is_empty() -> bool:
         return len(History._history) == 0
+
+    def entries() -> list[Entry]:
+        """Return every entry, oldest first"""
+        return list(History._history)

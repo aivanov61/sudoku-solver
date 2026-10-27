@@ -15,14 +15,19 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+import os
 import sys
+import tempfile
 from unittest import main, TestCase
 from unittest.mock import patch
 
 sys.path.insert(0, ".")
 
+from commands import Commands
+from display import Display
 from display_attrs import DisplayAttrs
 from puzzles.puzzle_3x3 import Puzzle3x3
+from save_file import SavedPuzzle, SaveFile
 
 
 class TestPuzzle3x3(TestCase):
@@ -32,7 +37,12 @@ class TestPuzzle3x3(TestCase):
     def setUp(self):
         with patch("display.Display.validate_screen_size"):
             self.puzzle = Puzzle3x3()
+        self.temp_dir = tempfile.TemporaryDirectory()
         return super().setUp()
+
+    def tearDown(self):
+        self.temp_dir.cleanup()
+        return super().tearDown()
 
     def test_cell_returns_cell_at_puzzle_position(self):
         cell = self.__cell(4, 7)
@@ -217,6 +227,15 @@ class TestPuzzle3x3(TestCase):
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
         self.assertTrue(self.puzzle._initializing)
 
+    def test_play_commands_are_refused_in_setup_mode(self):
+        self.__fill_row(0, 0, range(1, 9))
+        for command in (self.puzzle.undo_, self.puzzle.rewind_, self.puzzle.auto_, self.puzzle.next_):
+            with patch("cell.Display"), patch("display.Display.warn") as warn, patch("display.Display.confirm") as confirm:
+                command()
+            self.assertIn("only while playing", warn.call_args.args[0])
+            confirm.assert_not_called()
+        self.assertIsNone(self.__cell(0, 8).value())
+
     def test_first_next_moves_to_the_cell_and_shows_why_without_filling_it(self):
         self.__fill_row(0, 0, range(1, 9))
         self.puzzle.play_()
@@ -225,9 +244,7 @@ class TestPuzzle3x3(TestCase):
             self.puzzle.display_status()
         self.assertIsNone(self.__cell(0, 8).value())
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
-        status = echo.call_args.args[0]
-        self.assertIn("Only 9 fits here", status)
-        self.assertNotIn("HELP=", status)
+        self.assertIn("Only 9 fits here", echo.call_args.args[0])
 
     def test_third_next_shows_the_following_move(self):
         self.__fill_row(4, 0, range(1, 9))
@@ -263,14 +280,25 @@ class TestPuzzle3x3(TestCase):
             self.puzzle.next_()
         self.assertEqual(self.__cell(0, 8).value(), 9)
 
-    def test_status_line_shows_the_command_summary_when_no_move_is_pending(self):
-        with patch("puzzle.echo") as echo:
-            self.puzzle.display_status()
-        self.assertIn("HELP=", echo.call_args.args[0])
+    def test_status_line_is_blank_when_there_is_nothing_to_report(self):
+        self.assertEqual(self.__status(), Display.term.clear_eol)
+
+    def test_render_draws_the_setup_commands_beside_the_puzzle(self):
+        with patch("display.Display.draw_command_panel") as draw, patch("display.Display.clear_screen"):
+            with patch("cell.Display"), patch("puzzle.echo"):
+                self.puzzle.render()
+        draw.assert_called_once_with("SETUP", Commands.panel())
+
+    def test_switching_modes_redraws_the_commands(self):
+        with patch("display.Display.draw_command_panel") as draw, patch("puzzle.echo"):
+            self.puzzle.play_()
+            self.assertEqual(draw.call_args.args[0], "PLAY")
+            self.puzzle.init_()
+            self.assertEqual(draw.call_args.args[0], "SETUP")
 
     def test_stop_warnings_repeat_on_every_next(self):
         self.__fill_row(0, 0, range(1, 9))
-        self.__cell(4, 4).set(5)
+        self.__cell(4, 8).set(5)
         self.puzzle.play_()
         with patch("cell.Display"), patch("display.Display.warn") as warn:
             self.__enter(4, 0, 5)
@@ -330,7 +358,7 @@ class TestPuzzle3x3(TestCase):
 
     def test_next_refuses_while_there_are_conflicts(self):
         self.__fill_row(0, 0, range(1, 9))
-        self.__cell(4, 4).set(5)
+        self.__cell(4, 8).set(5)
         self.puzzle.play_()
         with patch("cell.Display"), patch("display.Display.warn") as warn:
             self.__enter(4, 0, 5)
@@ -377,16 +405,16 @@ class TestPuzzle3x3(TestCase):
 
     def test_auto_stops_at_a_dead_end(self):
         self.__fill_row(0, 0, range(1, 9))
-        self.__cell(5, 8).set(9)
         self.puzzle.play_()
         with patch("cell.Display"), patch("display.Display.warn") as warn:
+            self.__enter(5, 8, 9)
             self.puzzle.auto_()
         self.assertIn("try undoing until this square shows at least one possible value", warn.call_args.args[0])
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
 
     def test_auto_refuses_while_there_are_conflicts(self):
         self.__fill_row(0, 0, range(1, 9))
-        self.__cell(4, 4).set(5)
+        self.__cell(4, 8).set(5)
         self.puzzle.play_()
         with patch("cell.Display"), patch("display.Display.warn") as warn:
             self.__enter(4, 0, 5)
@@ -402,16 +430,14 @@ class TestPuzzle3x3(TestCase):
             self.puzzle.command_received("auto_")
             self.puzzle.auto_()
             self.puzzle.display_status()
-        self.assertIn("HELP=", echo.call_args.args[0])
+        self.assertEqual(echo.call_args.args[0], Display.term.clear_eol)
 
-    def test_status_reports_solved_instead_of_the_summary_once_the_last_value_is_entered(self):
+    def test_status_reports_solved_once_the_last_value_is_entered(self):
         self.__fill_solution(skip=(8, 8))
         self.puzzle.play_()
         with patch("cell.Display"):
             self.__enter(8, 8, self.__solution(8, 8))
-        status = self.__status()
-        self.assertIn("solved", status)
-        self.assertNotIn("HELP=", status)
+        self.assertIn("solved", self.__status())
 
     def test_status_reports_completion_until_the_next_command(self):
         self.__fill_solution(skip=(8, 8))
@@ -420,7 +446,7 @@ class TestPuzzle3x3(TestCase):
             self.__enter(8, 8, self.__solution(8, 8))
         self.assertIn("solved", self.__status())
         self.puzzle.command_received("up_")
-        self.assertIn("HELP=", self.__status())
+        self.assertEqual(self.__status(), Display.term.clear_eol)
 
     def test_status_reports_errors_when_complete_with_conflicts(self):
         self.__fill_solution()
@@ -450,14 +476,14 @@ class TestPuzzle3x3(TestCase):
             self.__status()
             self.puzzle.command_received("undo_")
             self.puzzle.undo_()
-            self.assertIn("HELP=", self.__status())
+            self.assertEqual(self.__status(), Display.term.clear_eol)
             self.puzzle.command_received("value_")
             self.__enter(8, 8, self.__solution(8, 8))
         self.assertIn("solved", self.__status())
 
     def test_status_reports_no_completion_while_initializing(self):
         self.__fill_solution()
-        self.assertIn("HELP=", self.__status())
+        self.assertEqual(self.__status(), Display.term.clear_eol)
 
     def test_next_on_a_solved_puzzle_warns_it_is_already_solved(self):
         self.__fill_solution()
@@ -481,6 +507,110 @@ class TestPuzzle3x3(TestCase):
             self.puzzle.auto_()
         self.assertEqual(self.__cell(8, 8).value(), self.__solution(8, 8))
         warn.assert_not_called()
+
+    def test_guess_on_a_given_is_refused_without_deepening_the_shading(self):
+        with patch("cell.Display"), patch("display.Display.warn"):
+            self.__enter(0, 0, 5)
+            self.puzzle.play_()
+            self.__enter(0, 0, 3, guess=True)
+            self.__enter(1, 1, 4)
+        self.assertEqual(self.__cell(1, 1).attr(), ())
+
+    def test_restore_brings_back_the_board_mode_and_cursor(self):
+        self.__play_a_few_moves()
+        self.__save()
+        restored = self.__restored_puzzle()
+        self.assertFalse(restored._initializing)
+        self.assertEqual(restored.selected_cell, (2, 2))
+        for row, col in ((0, 0), (0, 1), (1, 1), (2, 2)):
+            self.assertEqual(self.__cell_of(restored, row, col).value(), self.__cell(row, col).value())
+            self.assertEqual(self.__cell_of(restored, row, col).attr(), self.__cell(row, col).attr())
+
+    def test_restored_moves_can_be_undone(self):
+        self.__play_a_few_moves()
+        self.__save()
+        restored = self.__restored_puzzle()
+        with patch("cell.Display"):
+            restored.undo_()
+            restored.undo_()
+        self.assertIsNone(self.__cell_of(restored, 2, 2).value())
+        self.assertIsNone(self.__cell_of(restored, 1, 1).value())
+        self.assertEqual(self.__cell_of(restored, 0, 1).value(), 2)
+
+    def test_restore_in_setup_mode_stays_in_setup_mode(self):
+        with patch("cell.Display"):
+            self.__enter(0, 0, 1)
+        self.__save()
+        restored = self.__restored_puzzle()
+        self.assertTrue(restored._initializing)
+        self.assertEqual(self.__cell_of(restored, 0, 0).attr(), (DisplayAttrs.INITIAL,))
+
+    def test_restore_replaces_every_value_after_confirming(self):
+        self.__cell(0, 0).set(1)
+        self.__save()
+        self.__cell(4, 4).set(5)
+        with patch("display.Display.confirm", return_value=True) as confirm:
+            self.__open()
+        confirm.assert_called_once()
+        self.assertIsNone(self.__cell(4, 4).value())
+
+    def test_declining_the_restore_keeps_the_board(self):
+        self.__cell(0, 0).set(1)
+        self.__save()
+        self.__cell(4, 4).set(5)
+        with patch("display.Display.confirm", return_value=False):
+            self.__open()
+        self.assertEqual(self.__cell(4, 4).value(), 5)
+
+    def test_restore_onto_an_empty_board_does_not_ask(self):
+        self.__cell(0, 0).set(1)
+        self.__save()
+        self.__cell(0, 0).set(None)
+        with patch("display.Display.confirm") as confirm:
+            self.__open()
+        confirm.assert_not_called()
+
+    def test_restore_refuses_a_file_from_another_layout(self):
+        SaveFile.write(self.__path(), SavedPuzzle("Other layout", True, (0, 0), [(0, 0, 1)], []))
+        with patch("display.Display.warn") as warn:
+            self.__open()
+        self.assertIn('"Other layout"', warn.call_args.args[0])
+        self.assertIsNone(self.__cell(0, 0).value())
+
+    def test_restore_warns_about_a_file_it_cannot_read(self):
+        self.__cell(4, 4).set(5)
+        with patch("display.Display.warn") as warn:
+            self.__open()
+        self.assertIn("Cannot find", warn.call_args.args[0])
+        self.assertEqual(self.__cell(4, 4).value(), 5)
+
+    def test_saving_over_an_existing_file_asks_first(self):
+        self.__cell(0, 0).set(1)
+        self.__save()
+        self.__cell(4, 4).set(5)
+        with patch("display.Display.confirm", return_value=False) as confirm:
+            self.__save()
+        confirm.assert_called_once()
+        self.assertEqual(SaveFile.read(self.__path()).givens, [])
+
+    def test_saving_an_empty_board_warns_instead_of_asking_for_a_file(self):
+        with patch("display.Display.ask") as ask, patch("display.Display.warn") as warn:
+            self.puzzle.save_()
+        ask.assert_not_called()
+        self.assertIn("Nothing to save", warn.call_args.args[0])
+
+    def test_cancelled_save_writes_nothing(self):
+        self.__cell(4, 4).set(5)
+        with patch("display.Display.ask", return_value=None):
+            self.puzzle.save_()
+        self.assertFalse(os.path.exists(self.__path()))
+
+    def test_the_last_file_name_used_is_offered_next_time(self):
+        self.__cell(0, 0).set(1)
+        self.__save()
+        with patch("display.Display.ask", return_value=None) as ask:
+            self.puzzle.open_()
+        self.assertEqual(ask.call_args.args[1], self.__path())
 
     def test_cell_already_holding_the_value_is_marked_conflicted(self):
         self.__cell(4, 4).set(5)
@@ -567,7 +697,7 @@ class TestPuzzle3x3(TestCase):
 
     def __cell(self, row, col):
         """Access to the puzzle's private cell lookup"""
-        return self.puzzle._Puzzle__cell(row, col)
+        return self.__cell_of(self.puzzle, row, col)
 
     def __is_affected_by(self, row, col, origin_row, origin_col) -> bool:
         same_box = row // 3 == origin_row // 3 and col // 3 == origin_col // 3
@@ -587,6 +717,38 @@ class TestPuzzle3x3(TestCase):
         with patch("puzzle.echo") as echo:
             self.puzzle.display_status()
         return echo.call_args.args[0]
+
+    def __play_a_few_moves(self):
+        """A given, then a typed value, a guess and a value after the guess, ending at (2, 2)"""
+        with patch("cell.Display"):
+            self.__enter(0, 0, 1)
+            self.puzzle.play_()
+            self.__enter(0, 1, 2)
+            self.__enter(1, 1, 3, guess=True)
+            self.__enter(2, 2, 4)
+
+    def __path(self) -> str:
+        return os.path.join(self.temp_dir.name, "puzzle.json")
+
+    def __save(self):
+        with patch("display.Display.ask", return_value=self.__path()), patch("display.Display.warn"):
+            self.puzzle.save_()
+
+    def __open(self):
+        with patch("display.Display.ask", return_value=self.__path()), patch.object(self.puzzle, "render"):
+            self.puzzle.open_()
+
+    def __restored_puzzle(self):
+        """A new puzzle with the saved file restored into it"""
+        with patch("display.Display.validate_screen_size"):
+            restored = Puzzle3x3()
+        with patch("display.Display.ask", return_value=self.__path()), patch("cell.Display"):
+            with patch.object(restored, "render"):
+                restored.open_()
+        return restored
+
+    def __cell_of(self, puzzle, row, col):
+        return puzzle._Puzzle__cell(row, col)
 
     def __rewind(self):
         with patch("display.Display.confirm", return_value=True):

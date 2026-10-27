@@ -93,6 +93,15 @@ class TestHistory(TestCase):
         self.assertEqual(History.last(), e2)
         self.assertEqual(len(History._history), 2)
 
+    def test_entries_lists_the_entries_oldest_first_without_removing_them(self):
+        e1 = history.Entry(Cell(cell_parent, 0, 0), history.Entry.ValueInfo(1))
+        e2 = history.Entry(Cell(cell_parent, 1, 1), history.Entry.ValueInfo(2))
+        History.add(e1)
+        History.add(e2)
+
+        self.assertEqual(History.entries(), [e1, e2])
+        self.assertEqual(len(History._history), 2)
+
 
 if __name__ == "__main__":
     main()

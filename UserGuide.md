@@ -13,14 +13,15 @@ This program lets you type in a 9x9 Sudoku puzzle, such as one from a newspaper 
 
    If there's only one layout, there's no menu. Any note about it appears in yellow under the copyright notice instead, and a broken layout ends the program.
 
-The terminal window needs to be at least **54 columns wide and 29 lines tall**. If it's smaller, the program asks you to resize it. Press `Enter` when you're done, or `CTRL-C` to quit.
+The terminal window needs to be at least **80 columns wide and 29 lines tall**. If it's smaller, the program asks you to resize it. Press `Enter` when you're done, or `CTRL-C` to quit. At exactly 80 columns, a few long messages on the status line may spill onto the line below it; the grid isn't affected, and a wider window avoids it.
 
 ## The screen
 
 - **The grid:** 81 cells in nine 3x3 boxes. Thick borders mark the boxes.
 - **Each cell** shows its value in the middle line and, along its bottom line, the values still possible for it, in small digits. They update as you enter, change, delete or undo values. When more than 5 values are possible, you'll see `.....` instead.
 - **The cursor** sits on the selected cell. That's where your next entry goes.
-- **The status line** under the grid lists the main keys for the current mode. Warnings also appear there in yellow.
+- **The command panel** to the right of the grid shows the current mode (SETUP or PLAY) and lists its keys, one per line.
+- **The status line** under the grid is blank most of the time. It shows explanations from `n`, when the puzzle is finished, warnings (in yellow) and questions.
 
 ## Two modes
 
@@ -33,8 +34,11 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | Arrow keys, or `h` `j` `k` `l` | Move left, down, up, right |
 | `1`–`9` | Enter a given number. Givens are shown in purple on lavender. |
 | `Delete` | Clear the selected cell |
+| `u` `r` `a` `n` | Not available in setup; they remind you to press `ESC` to start playing |
 | `ESC` | Finish setup and start playing. Not allowed while given numbers clash, or while an empty cell has no possible values left (the cursor moves to that cell). |
 | `?` | Show all commands |
+| `s` | Save the puzzle to a file (see below) |
+| `o` | Restore a saved puzzle (see below) |
 | `q` | Quit (asks you to confirm) |
 | `CTRL-C` | Quit at once, without asking |
 
@@ -50,7 +54,9 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | `n` | Next: show an obvious next move and why; press `n` again to fill it in (see below) |
 | `a` | Auto: fill in every obvious move, one after another (see below) |
 | `ESC` | Go back to setup mode (only once everything has been undone) |
-| `?` | Show all commands, including ones not listed on the status line |
+| `?` | Show all commands, with a longer description of each |
+| `s` | Save the puzzle to a file (see below) |
+| `o` | Restore a saved puzzle (see below) |
 | `q` | Quit (asks you to confirm) |
 | `CTRL-C` | Quit at once, without asking |
 
@@ -89,6 +95,14 @@ Press `a` to fill in, without explanations, every move that `n` would find, one 
 
 When the last empty cell is filled in, the status line says, until your next key, that the puzzle is **solved** (in steel blue) or **complete, with errors** (in yellow) if any values clash. You can still type over values, or undo, to fix errors. The status line reports again whenever that changes: once the errors are fixed, or when the puzzle is complete again after undo or rewind emptied a cell. `n` and `a` have nothing left to do, so they just remind you that the puzzle is solved, or that it's complete with errors and you should undo or change values to fix them.
 
+## Saving and restoring
+
+Press `s` at any time, in either mode, to save the puzzle to a file. The status line asks for the file name and offers the last one you used (`sudoku.json` in the program's folder the first time). Press `ENTER` to accept it, type to add to it, `Backspace` to change it, or `ESC` to cancel. If the file already exists, it asks before replacing it. If the board is still empty, there's nothing to save, and it just tells you so.
+
+Press `o` to restore a saved puzzle the same way. It brings back everything: the givens, every value you entered, guesses and their shading, the mode, and where the cursor was. Undo and rewind keep working through the restored moves. The restored puzzle replaces the current one completely, so if the board holds any values, it asks you to confirm first.
+
+A puzzle can only be restored into the layout it was saved from. A file saved by a newer version of the program can't be restored; the program says so, and you can update the program to restore it.
+
 ## Colors at a glance
 
 | Looks like | Meaning |
@@ -104,10 +118,10 @@ When the last empty cell is filled in, the status line says, until your next key
 ## Current limitations
 
 - **Next (`n`) and auto (`a`)** know only a few solving techniques so far, so on harder puzzles they will often tell you to make a guess.
-- There's no redo, and puzzles can't be saved.
+- There's no redo.
 
 ## Troubleshooting
 
 - **The grid looks broken or there are odd characters:** make sure your terminal uses UTF-8 and a font with box-drawing characters.
-- **The program asks you to resize:** make the window at least 54 × 29 and press `Enter`.
+- **The program asks you to resize:** make the window at least 80 × 29 and press `Enter`.
 - **Something looks wrong on screen:** press `?` and then any key. Returning from help redraws the whole screen.

@@ -23,6 +23,8 @@ sys.path.insert(0, ".")
 from unittest import main, TestCase
 from unittest.mock import patch
 
+from blessed.keyboard import Keystroke
+
 from display import Display, Border
 from display_attrs import DisplayAttrs
 
@@ -78,6 +80,24 @@ class TestDisplayPossibleValues(TestCase):
         self.assertIn("".join(str(v).translate(Display.small_nums) for v in (1, 5, 9)), drawn)
 
 
+class TestDisplayCommandPanel(TestCase):
+    def test_title_and_commands_are_drawn_right_of_the_puzzle(self):
+        with patch("display.echo") as echo:
+            Display.draw_command_panel("PLAY", [("u", "undo"), ("q CTRL-C", "quit")])
+        drawn = "".join(call.args[0] for call in echo.call_args_list)
+        self.assertIn("PLAY", drawn)
+        self.assertIn("undo", drawn)
+        self.assertIn("quit", drawn)
+
+    def test_every_line_beside_the_puzzle_is_cleared(self):
+        with patch("display.echo") as echo:
+            Display.draw_command_panel("PLAY", [])
+        self.assertEqual(echo.call_count, Display.y(Display.geom["v_cells"]) + 1)
+
+    def test_minimum_width_is_80_columns(self):
+        self.assertEqual(Display.min_width(), 80)
+
+
 class TestDisplayStyled(TestCase):
     def test_text_is_styled_with_the_rendered_attributes(self):
         with patch.object(Display, "term") as term:
@@ -106,6 +126,39 @@ class TestDisplayConfirm(TestCase):
         with patch("display.echo"), patch.object(Display, "term") as term:
             term.inkey.side_effect = [key]
             return Display.confirm("Really?")
+
+
+class TestDisplayAsk(TestCase):
+    def test_enter_accepts_the_default(self):
+        self.assertEqual(self.__ask_with([self.__key("KEY_ENTER")], default="sudoku.json"), "sudoku.json")
+
+    def test_typed_characters_are_added_to_the_default(self):
+        keys = [Keystroke("2"), Keystroke("!"), self.__key("KEY_ENTER")]
+        self.assertEqual(self.__ask_with(keys, default="a"), "a2!")
+
+    def test_backspace_removes_the_last_character(self):
+        keys = [self.__key("KEY_BACKSPACE"), Keystroke("b"), self.__key("KEY_ENTER")]
+        self.assertEqual(self.__ask_with(keys, default="aa"), "ab")
+
+    def test_escape_cancels(self):
+        self.assertIsNone(self.__ask_with([Keystroke("x"), self.__key("KEY_ESCAPE")], default="a"))
+
+    def test_other_special_keys_are_ignored(self):
+        keys = [self.__key("KEY_LEFT"), self.__key("KEY_ENTER")]
+        self.assertEqual(self.__ask_with(keys, default="a"), "a")
+
+    def test_interrupted_prompt_cancels(self):
+        self.assertIsNone(self.__ask_with([KeyboardInterrupt()], default="a"))
+
+    # Private functions
+
+    def __key(self, name) -> Keystroke:
+        return Keystroke("", code=1, name=name)
+
+    def __ask_with(self, keys, default):
+        with patch("display.echo"), patch.object(Display, "term") as term:
+            term.inkey.side_effect = keys
+            return Display.ask("File:", default)
 
 
 if __name__ == "__main__":

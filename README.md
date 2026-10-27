@@ -2,7 +2,7 @@
 
 Play sudoku puzzles in the terminal - written in python.  The program shows each
 cell's possible values and highlights conflicts as you play, and can point out
-obvious moves (n) or make them all at once (a).
+obvious moves (n) or make them all at once (a), and save and restore puzzles (s, o).
 
 ## Requirements
 
@@ -10,7 +10,7 @@ Once this git package is downloaded into a directory, the only two requirements 
 1. Python 3 is installed
 1. Blessed (at least ver 1.20.0) - `pip install -r requirements.txt`
 
-The terminal must use UTF-8 and be at least 54 columns by 29 lines.
+The terminal must use UTF-8 and be at least 80 columns by 29 lines.
 
 ## Playing
 
@@ -49,10 +49,9 @@ screen (**INIT** mode):
 █     │     │     █     │     │     █     │     │     █
 █     │     │     █     │     │     █     │     │     █
 ███████████████████████████████████████████████████████
-HELP=?, #=1-9/shift=guess, UP=k/^, DOWN=j/v, LEFT=h/<, RIGHT=l/>, QUIT=q/CTRL-C, DEL=Delete, PLAY=ESC [initializing]
 ```
-Notice at the bottom of the play field is a status line which will display
-information during game setup and playing and also provides command hints.
+To the right of the grid, a command panel shows the current mode and its keys.
+Below the grid, a status line shows hints, warnings and questions as you play.
 
 ### Initializing the Puzzle (**INIT** mode)
 
@@ -70,10 +69,9 @@ and hit the ESC key again to re-enter **INIT** mode.
 ### Solving the Puzzle (**PLAY** mode)
 
 While you are solving the puzzle, the movement keys are the same as in initialization
-mode.  You will notice that the status line has changed, showing you different
-command options.  There are some **hidden** commands that do not show up in the
-status line for two reasons: 1) It would make the status line very long, 2) they
-are not common commands.  To see these, use the **HELP** key (?).
+mode.  You will notice that the command panel has changed, showing you the
+commands for playing.  For a longer description of every command, use the
+**HELP** key (?).
 
 Follow the Sudoku rules to solve the puzzle:
 - The bottom line of each cell shows the values still possible for it (or `.....`
@@ -139,6 +137,7 @@ some guidance:
 - display.py - manages the terminal display; `Display` class
 - display_attrs.py - turns cell attributes into terminal colors; `DisplayAttrs` class
 - history.py - keeps the history of entries for undo; `History` and `Entry` classes
+- save_file.py - writes and reads the versioned save file; `SaveFile` and `SavedPuzzle` classes
 - input.py - manages keyboard input and decodes into a valid command; `Input` class
 - copyright.py - the GNU GPL splash text; `Copyright` class
 

@@ -30,7 +30,7 @@ from puzzles.puzzle_3x3 import Puzzle3x3
 
 class TestPuzzleCatalog(TestCase):
     PACKAGE = "catalog_test_puzzles"
-    EXTRA_COMMAND = {"extra": {"keys": "xX", "short": "x", "long": "A command only some layouts support"}}
+    EXTRA_COMMAND = {"extra": {"keys": "xX", "panel": [("x", "extra")], "long": "A command only some layouts support"}}
     LAYOUTS = {
         "complete.py": (
             "from puzzles.puzzle_3x3 import Puzzle3x3\n"

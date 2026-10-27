@@ -64,6 +64,7 @@ class Display:
     - draw_cell(row, col, border) - draw the cell outline, including thick border when needed
     - draw_cell_value(row, col, value) - draw the value of the cell in the middle of the cell
     - draw_cell_possible_values(row, col, values) - draw all the possible cell values at the bottom of the cell
+    - draw_command_panel(title, entries) - draw the mode's title and its commands to the right of the puzzle
 
     - move_to_status_line() - move the cursor to the status line: one line below the puzzle
     """
@@ -75,6 +76,12 @@ class Display:
     CELL_VALUE_ROW = 1
     CELL_VALUES_ROW = 2
 
+    # Command panel, to the right of the puzzle
+    PANEL_GAP = 2
+    PANEL_KEYS_WIDTH = 11
+    PANEL_NAME_WIDTH = 8
+    MIN_WIDTH = 80
+
     # Initialize terminal and set basic configuration
     term = Terminal()
     geom = {"h_cells": None, "v_cells": None}
@@ -85,7 +92,7 @@ class Display:
 
     def validate_screen_size():
         is_size_ok = True
-        min_width = Display.geom["h_cells"] * Display.CELL_WIDTH
+        min_width = Display.min_width()
         min_height = Display.geom["v_cells"] * Display.CELL_HEIGHT + 2
         while Display.term.is_a_tty and (Display.term.width < min_width or Display.term.height < min_height):
             is_size_ok = False
@@ -99,6 +106,10 @@ class Display:
             except:
                 return is_size_ok
         return is_size_ok
+
+    def min_width() -> int:
+        """The puzzle plus the command panel, and never less than 80 columns"""
+        return max(Display.MIN_WIDTH, Display.__panel_x() + Display.PANEL_KEYS_WIDTH + Display.PANEL_NAME_WIDTH)
 
     def clear_screen():
         echo(Display.term.home())
@@ -148,6 +159,14 @@ class Display:
         echo(rendered_attrs + " " * (Display.CELL_HORIZONTAL_SIZE - len(values)) + Display.term.normal)
         echo(rendered_attrs + "".join(str(v).translate(Display.small_nums) for v in values) + Display.term.normal)
 
+    def draw_command_panel(title, entries):
+        """Draw the title, then one command per line (its keys in red, then its name), clearing the rest beside the puzzle"""
+        lines = [Display.term.bold(title), ""]
+        lines += [Display.term.red(keys.ljust(Display.PANEL_KEYS_WIDTH)) + name for keys, name in entries]
+        for y in range(Display.y(Display.geom["v_cells"]) + 1):
+            line = lines[y] if y < len(lines) else ""
+            echo(Display.term.move_xy(Display.__panel_x(), y) + line + Display.term.clear_eol)
+
     def move_to_status_line():
         echo(Display.term.move_xy(*Display.status_line_location()))
 
@@ -175,7 +194,25 @@ class Display:
             except:
                 return False
 
+    def ask(msg, default="") -> str:
+        """Ask for a line of text on the status line, starting from the default; ENTER accepts it, ESC cancels (None)"""
+        text = default
+        try:
+            with Display.term.cbreak():
+                while True:
+                    with Display.__status_line_message(f"{msg} {text}"):
+                        key = Display.term.inkey()
+                    if key.name in ("KEY_ENTER", "KEY_ESCAPE"):
+                        return text if key.name == "KEY_ENTER" else None
+                    text = Display.__edited(text, key)
+        except:
+            return None
+
     # Private functions
+
+    def __panel_x() -> int:
+        """The screen column where the command panel starts: past the puzzle's right edge and a gap"""
+        return Display.x(Display.geom["h_cells"]) + 1 + Display.PANEL_GAP
 
     def __draw_edge_line(is_edge, border, attrs):
         """Draw the top or bottom line of a cell; is_edge tells whether it lies on the block's outer edge"""
@@ -202,6 +239,12 @@ class Display:
         with Display.term.location(*Display.status_line_location()):
             echo(Display.term.clear_eol + Display.term.yellow(msg))
             yield
+
+    def __edited(text, key) -> str:
+        """Return the text after a key: backspace removes the last character, other special keys are ignored"""
+        if key.name in ("KEY_BACKSPACE", "KEY_DELETE"):
+            return text[:-1]
+        return text if key.is_sequence else text + key
 
     # These character symbols are re-used from https://github.com/thisisparker/cursewords/blob/master/cursewords/characters.py
     vline = "│"

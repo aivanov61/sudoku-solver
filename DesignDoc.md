@@ -20,13 +20,14 @@ The code is also meant as an example of clean, object-oriented Python built with
 | Rewind (`r`) | Working |
 | Next (`n`) | Working for the first rule: a cell with a single possible value (see 5.6) |
 | Auto (`a`) | Working: makes every move `n` would, one after another (see 5.6) |
+| Save and restore (`s`, `o`) | Working (see 5.8) |
 | Redo | Not implemented. |
 
 ## 3. Running and testing
 
 - **Requirements:** Python 3 (currently developed on 3.15) and `blessed` 1.20 or later (`pip install -r requirements.txt`).
 - **Run:** `python sudoku.py` from the project folder.
-- **Terminal size:** at least 54 columns × 29 lines (9 cells × 6 columns; 9 cells × 3 lines, plus 2 for the status line).
+- **Terminal size:** at least 80 columns × 29 lines (9 cells × 6 columns plus the command panel; 9 cells × 3 lines, plus 2 for the status line). `Display.min_width()` asks for the grid plus the panel, but never less than 80. The minimum protects the grid and the panel only: status-line messages are not limited to the width, so on a terminal exactly 80 wide a few long warnings (with "Hit any key to continue") wrap onto the next line and leave leftover text there. That is expected, not a bug; wider windows, such as a default 120-column console, never show it.
 - **Tests:** `py -m pytest` from the project folder, or run one file directly, for example `py tests/cell_test.py`. The tests use `unittest` and pytest runs them unchanged. Note:
   - `tests/display_test.py::TestDisplay` draws on the real terminal and pauses for a second after each test. `tests/input_test.py` waits up to two seconds for a key press. Both are meant for watching by hand. Select the other files or classes to skip them.
   - `tests/unit_test_utils.py` holds an older helper that no test uses.
@@ -52,6 +53,7 @@ Supporting modules:
 | `display.py` | `Display`, `Border` | All terminal drawing, through `blessed` |
 | `display_attrs.py` | `DisplayAttrs` | Turns attribute mnemonics into `blessed` style names |
 | `history.py` | `History`, `Entry` | The undo stack |
+| `save_file.py` | `SaveFile`, `SavedPuzzle`, `SaveFileError` | Writes and reads the versioned save file |
 | `copyright.py` | `Copyright` | The GPL splash text |
 | `puzzle.py` | `Puzzle` | The generic puzzle; an abstract base class for layouts |
 | `puzzles/` | one module per layout | e.g. `puzzle_3x3.py` with `Puzzle3x3` |
@@ -85,7 +87,7 @@ Every cell stores its **puzzle-wide** `row` and `col` (0–8), set by `Rectangul
 2. Show the GPL splash; continue after 5 seconds or any key. With a single layout that is broken or not fully functional, or with no layouts at all, a yellow note under the splash says so.
 3. Pick the layout: with several, `LayoutMenu` lets the player choose (see 5.7); with one, it is used directly. If the player quits the menu, or the only layout is broken or missing, exit here.
 4. Create the puzzle. `Puzzle.__init__` sets the display geometry, checks the screen size and clears `History`; the layout's `__init__` then builds its blocks (9 blocks of 9 cells for `Puzzle3x3`).
-5. `render()` draws the whole grid and the status line.
+5. `render()` draws the whole grid, the command panel and the status line.
 6. Loop while `puzzle.is_playing`: re-check the screen size (redraw if it was resized), move the cursor to the selected cell, read a command and handle it.
 
 ### 5.2 Command dispatch
@@ -127,7 +129,7 @@ Puzzle.value_(val, guess)
 
 ### 5.4 Modes
 
-- **Initialization mode** (the start mode): values get `INITIAL` and are not recorded in `History`. `Delete` clears a cell. `ESC` calls `play_()`, which is refused while any cell is marked in conflict ("Resolve the conflicts before playing.") or while an empty cell has no possible values (it selects that cell and warns "This square has no possible values left - change the setup before playing."), so play never starts from a broken setup.
+- **Initialization mode** (the start mode): values get `INITIAL` and are not recorded in `History`. `Delete` clears a cell. `u`, `r`, `a` and `n` are hidden setup commands: they are left out of the panel, marked `[hidden]` in the help, and only warn "This works only while playing - ESC starts playing." `ESC` calls `play_()`, which is refused while any cell is marked in conflict ("Resolve the conflicts before playing.") or while an empty cell has no possible values (it selects that cell and warns "This square has no possible values left - change the setup before playing."), so play never starts from a broken setup.
 - **Play mode:** values are recorded in `History`. `ESC` calls `init_()`, which is refused while there is anything to undo ("Cannot initialize puzzle while playing - undo everything first."). `Delete` is mapped to `del_()` only to show a warning.
 
 ### 5.5 Undo and guess shading
@@ -139,7 +141,7 @@ Puzzle.value_(val, guess)
 
 ### 5.6 Next: the obvious next move
 
-`n` teaches as it goes, in two steps. The first press asks the puzzle's `PuzzleSolver` for the next move, moves the cursor to its cell and shows *why* in place of the command summary on the status line, in steel blue like the solved values. The second press fills it in. The next press starts over with the following move.
+`n` teaches as it goes, in two steps. The first press asks the puzzle's `PuzzleSolver` for the next move, moves the cursor to its cell and shows *why* on the status line, in steel blue like the solved values. The second press fills it in. The next press starts over with the following move.
 
 The solver consults the rules listed in `rules/order.py`, in that order, and takes the move of the first one that has one:
 
@@ -171,6 +173,14 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 - **With one layout**, its note, if any, is shown under the splash screen; a broken layout then exits instead of starting.
 - **With several layouts**, `LayoutMenu` (`layout_menu.py`) lists them all with their notes after the splash. The player types a number and presses ENTER (Backspace corrects it); numbers stay the same on every page. At most 9 digits are kept, so the number always fits in a 32-bit integer; a further digit shows `...` after them and makes the entry too big (ENTER then says "Number too big"), and Backspace removes the `...` before any digit. As many layouts are shown as fit the terminal's height; when they don't all fit, (p)revious and (n)ext turn the page (doing nothing at either end). (q)uit is always offered and asks "Really quit? (y/n)" on the message line (only y confirms); p, n and q act on a single key, even with a number half typed. CTRL-C quits at once. Choosing a broken layout, or a number that isn't listed, shows a yellow message and keeps the menu open.
 
+### 5.8 Saving and restoring
+
+- **`SavedPuzzle`** (`save_file.py`) holds everything needed to rebuild a puzzle: the layout's `NAME`, the mode, the selected cell, the givens as `(row, col, value)`, and the moves, one per `History` entry, as `(row, col, value, prim_attr)`, oldest first. Shading, conflict marks and possible values are not saved; replaying the moves rebuilds them.
+- **`SaveFile`** writes it as JSON: `{"format": "sudoku-save", "version": 1, "state": {...}}`. Reading checks the format marker and the structure, and raises `SaveFileError` with a message for the player if the file is missing, isn't a save file, or is damaged. A version newer than `SaveFile.VERSION` raises an error suggesting the player update the program.
+- **Changing the format:** raise `VERSION` and add an entry to `SaveFile.UPGRADES` that converts the previous version's `state` dictionary to the new one. Reading applies the upgrades one version at a time, so files from any older version still load.
+- **Save (`s`)** warns "Nothing to save - the board is empty." if no cell has a value; otherwise it asks for a file name with `Display.ask()` on the status line, offering the last name saved or restored (`Puzzle.DEFAULT_FILE_NAME` at first), and confirms before replacing an existing file. Givens are the cells whose attributes include `INITIAL`.
+- **Restore (`o`)** reads the file first, so a bad file or one from another layout only warns and changes nothing. If the board has any values, it then confirms. `__restore()` empties every cell and clears `History`, enters the givens in setup mode, switches to the saved mode, and replays the moves through `__enter()`, the same path as typed and solved values. Undo, rewind and guess shading then work as if the moves had just been made.
+
 ## 6. Display
 
 - **Cell layout:** each cell is 6 columns by 3 lines. The top line is the border (shared with the cell above), the middle line shows the value, and the bottom line shows the possible values. Box edges use full blocks (`█`); inner lines use `│`, `─` and `┼`.
@@ -181,6 +191,8 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
   - Values with no primary attribute are drawn in `darkorange3`.
   - The gray level travels in the attribute tuple as `{"level": n}`.
 - `Display` is a class with class-level state (`term`, `geom`) and functions called on the class, not on an instance.
+- **Command panel:** `Display.draw_command_panel(title, entries)` draws the mode's title (SETUP or PLAY) and one command per line to the right of the grid, keys in red, then clears the rest of every line beside the grid. Each command in `Commands` has a `panel` list of `(keys, name)` lines (empty to leave it out); `Commands.panel()` lists the active ones in order: `ESC`, help, the values, the moves, the mode's other commands, then save, open and quit. Help (`HELP_CMD`) and the moves (`MOVE_CMDS`) are defined once and included in each mode's commands at their place; save, open and quit are the common commands, added after the mode's. The puzzle redraws the panel in `render()` and when the mode changes.
+- **Status line:** blank unless there is something to report: `n`'s hint, a change in completion, a warning or a question.
 - Warnings appear in yellow on the status line. Many of them wait for a key press.
 - `Display.confirm(msg)` asks a yes/no question the same way and returns `True` only for `y` or `Y`. Any other key, or an interrupted prompt, declines. `quit_()` and `rewind_()` use it.
 
