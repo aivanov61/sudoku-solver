@@ -19,23 +19,40 @@ import sys
 
 sys.path.insert(0, ".")
 
+from actions import Action
 from cell_attrs import CellAttrs
 from commands import Commands
 from display import Display, echo
 from display_attrs import DisplayAttrs
+from input import Input
 from user_interface import Message, MessageKind
 
 
 class TerminalUI:
     """
-    The user interface on a terminal: it shows the game's messages and asks its questions on the status line.
+    The user interface on a terminal: it runs the game from the keyboard, draws the board and the command
+    panel, and shows the game's messages and asks its questions on the status line.
     """
 
-    def __init__(self):
+    def __init__(self, v_cells, h_cells):
+        Display.geometry({"h_cells": h_cells, "v_cells": v_cells})
+        Display.validate_screen_size()
         self.__guess_depth = 0
         self.__mode = None
         self.__offered = ()  # the actions the mode offers
         self.__drawn = {}  # (row, col): (attributes, value, possible values) of each cell as last drawn
+
+    # Interface required for Main
+
+    def play(self, game) -> None:
+        """Show the game, then hand it the action for each key, until the game is over"""
+        game.render()
+        while game.is_playing:
+            Display.validate_screen_size() or game.render()
+            Display.move_to_cell(*game.selected_cell)
+            self.__carry_out(game, *Input.get_cmd(self.__offered))
+        Display.move_to_status_line()
+        print("\n")
 
     # Interface required for the game
 
@@ -80,18 +97,30 @@ class TerminalUI:
         self.__offered = actions
         self.__draw_panel()
 
-    # Interface required for Main
+    # Private functions
 
-    def offered_actions(self) -> tuple:
-        return self.__offered
+    def __carry_out(self, game, command, digit) -> None:
+        """Show the help screen, or hand the action to the game, surviving an action that breaks"""
+        if command == Commands.HELP:
+            self.__show_help()
+            game.render()
+            return
+        try:
+            game.handle(command, digit)
+        except Exception:
+            Display.warn(f'This puzzle\'s "{command.value}" command is broken!')
+            command in (Action.QUIT, Action.FORCE_QUIT) and self.__force_quit(game)
 
-    def show_help(self) -> None:
+    def __show_help(self) -> None:
         """Show the commands the mode offers, with their keys, until a key is hit"""
         Display.clear_screen()
         print(Commands.long_help(self.__offered))
         Display.hit_any_key_to_continue()
 
-    # Private functions
+    def __force_quit(self, game) -> None:
+        Display.move_to_status_line()
+        print("\n" + Display.term.clear_eol + "FORCING quit")
+        game.force_quit_()
 
     def __styled(self, message) -> str:
         """Successes and hints in the solved style (steel blue), everything else in yellow"""

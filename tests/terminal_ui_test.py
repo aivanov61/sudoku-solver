@@ -17,11 +17,11 @@
 
 import sys
 from unittest import main, TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import call, MagicMock, patch
 
 sys.path.insert(0, ".")
 
-from actions import Mode, OFFERED_ACTIONS
+from actions import Action, Mode, OFFERED_ACTIONS
 from cell_attrs import CellAttrs
 from commands import Commands
 from display import Display
@@ -31,8 +31,63 @@ from user_interface import Message, MessageKind
 
 class TestTerminalUI(TestCase):
     def setUp(self):
-        self.ui = TerminalUI()
+        with patch("terminal_ui.Display"):
+            self.ui = TerminalUI(9, 9)
         return super().setUp()
+
+    # Starting
+
+    def test_a_new_terminal_ui_sets_the_board_size_and_checks_the_screen(self):
+        with patch("terminal_ui.Display") as display:
+            TerminalUI(9, 6)
+        display.geometry.assert_called_once_with({"h_cells": 6, "v_cells": 9})
+        display.validate_screen_size.assert_called_once()
+
+    # Playing
+
+    def test_play_shows_the_game_then_hands_it_each_action_until_it_stops_playing(self):
+        game = self.__game()
+        self.__play(game, [(Action.UP, None), (Action.VALUE, 5)])
+        self.assertEqual(game.handle.call_args_list, [call(Action.UP, None), call(Action.VALUE, 5), call(Action.QUIT, None)])
+        game.render.assert_called_once()
+
+    def test_play_puts_the_cursor_on_the_selected_cell_before_each_key(self):
+        game = self.__game()
+        display, printed = self.__play(game, [])
+        display.move_to_cell.assert_called_with(2, 3)
+
+    def test_play_shows_the_whole_game_again_after_the_screen_is_resized(self):
+        game = self.__game()
+        self.__play(game, [], screen_ok=[False, True])
+        self.assertEqual(game.render.call_count, 2)
+
+    def test_help_is_shown_without_the_game_and_the_game_is_shown_again_after_it(self):
+        game = self.__game()
+        display, printed = self.__play(game, [(Commands.HELP, None)])
+        printed.assert_any_call(Commands.long_help(()))
+        display.hit_any_key_to_continue.assert_called_once()
+        self.assertEqual(game.handle.call_args_list, [call(Action.QUIT, None)])
+        self.assertEqual(game.render.call_count, 2)
+
+    def test_help_shows_the_commands_of_the_mode(self):
+        game = self.__game()
+        with patch("terminal_ui.Display"):
+            self.ui.mode_changed(Mode.SETUP, OFFERED_ACTIONS[Mode.SETUP])
+        display, printed = self.__play(game, [(Commands.HELP, None)])
+        printed.assert_any_call(Commands.long_help(OFFERED_ACTIONS[Mode.SETUP]))
+
+    def test_a_broken_action_is_reported_and_play_goes_on(self):
+        game = self.__game(broken=Action.UP)
+        display, printed = self.__play(game, [(Action.UP, None)])
+        self.assertIn('"up" command is broken', display.warn.call_args.args[0])
+        self.assertEqual(game.handle.call_args_list[-1], call(Action.QUIT, None))
+
+    def test_a_broken_quit_forces_the_game_to_stop(self):
+        game = self.__game(broken=Action.QUIT)
+        self.__play(game, [])
+        game.force_quit_.assert_called_once()
+
+    # Showing the game
 
     def test_status_shows_a_warning_in_yellow_and_clears_the_rest_of_the_line(self):
         self.assertEqual(self.__status(Message("careful", MessageKind.WARNING)), "<yellow>careful</yellow><clear>")
@@ -86,19 +141,6 @@ class TestTerminalUI(TestCase):
             self.ui.show_board([])
         display.draw_command_panel.assert_called_once_with("SETUP", Commands.panel(OFFERED_ACTIONS[Mode.SETUP]))
 
-    def test_the_offered_actions_are_those_of_the_mode_announced(self):
-        with patch("terminal_ui.Display"):
-            self.ui.mode_changed(Mode.PLAY, OFFERED_ACTIONS[Mode.PLAY])
-        self.assertEqual(self.ui.offered_actions(), OFFERED_ACTIONS[Mode.PLAY])
-
-    def test_help_shows_the_help_for_the_mode_and_waits_for_a_key(self):
-        with patch("terminal_ui.Display") as display, patch("builtins.print") as printed:
-            self.ui.mode_changed(Mode.SETUP, OFFERED_ACTIONS[Mode.SETUP])
-            self.ui.show_help()
-        display.clear_screen.assert_called_once()
-        printed.assert_called_once_with(Commands.long_help(OFFERED_ACTIONS[Mode.SETUP]))
-        display.hit_any_key_to_continue.assert_called_once()
-
     def test_a_cell_not_yet_drawn_is_drawn_whole(self):
         display = self.__drawn_after_change(None, self.__cell(2, 3, value=4))
         display.draw_cell.assert_called_once()
@@ -144,6 +186,30 @@ class TestTerminalUI(TestCase):
         self.assertEqual(self.__warnings_for_depths([1, 2, 10, 9, 0]), [])
 
     # Private functions
+
+    def __game(self, broken=None):
+        """A stand-in game at (2, 3) that stops playing on QUIT, and whose handling of the broken action fails"""
+        game = MagicMock(is_playing=True, selected_cell=(2, 3))
+
+        def handle(action, digit):
+            if action is broken:
+                raise RuntimeError("broken")
+            game.is_playing = action is not Action.QUIT
+
+        def force_quit():
+            game.is_playing = False
+
+        game.handle.side_effect = handle
+        game.force_quit_.side_effect = force_quit
+        return game
+
+    def __play(self, game, commands, screen_ok=None):
+        """Play the game with the commands, then QUIT; return the patched Display and print"""
+        with patch("terminal_ui.Display") as display, patch("builtins.print") as printed:
+            display.validate_screen_size.side_effect = (screen_ok or []) + [True] * 10
+            with patch("terminal_ui.Input.get_cmd", side_effect=commands + [(Action.QUIT, None)]):
+                self.ui.play(game)
+        return display, printed
 
     def __cell(self, row=0, col=0, value=None, attrs=(), possible=frozenset()):
         """A stand-in for a cell as it is at one moment"""

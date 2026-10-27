@@ -35,11 +35,21 @@ class TestPuzzle3x3(TestCase):
 
     def setUp(self):
         self.ui = RecordingUI()
-        with patch("display.Display.validate_screen_size"):
-            self.puzzle = Puzzle(Board3x3(), self.ui)
+        self.puzzle = Puzzle(Board3x3(), self.ui)
         return super().setUp()
 
     # Cursor movement
+
+    def test_handle_carries_out_the_action_with_its_digit_and_shows_the_status(self):
+        self.puzzle.selected_cell = (4, 4)
+        self.puzzle.handle(Action.VALUE, 5)
+        self.assertEqual(self.__cell(4, 4).value(), 5)
+        self.assertEqual(len(self.ui.statuses), 1)
+
+    def test_handle_carries_out_an_action_without_a_digit(self):
+        self.puzzle.selected_cell = (4, 4)
+        self.puzzle.handle(Action.UP)
+        self.assertEqual(self.puzzle.selected_cell, (3, 4))
 
     def test_arrow_commands_move_the_selected_cell(self):
         self.puzzle.selected_cell = (4, 4)
@@ -331,14 +341,13 @@ class TestPuzzle3x3(TestCase):
         self.puzzle.play_()
         self.__enter(5, 8, 9)
         self.assertIn("try undoing until this square shows at least one possible value", self.__status())
-        self.puzzle.command_received(Action.LEFT)
+        self.puzzle.handle(Action.LEFT)
         self.assertNotIn("try undoing until this square shows at least one possible value", self.__status())
 
     def test_entering_any_value_while_a_dead_end_remains_shows_it_again(self):
         self.__fill_row(0, 0, range(1, 9))
         self.puzzle.play_()
         self.__enter(5, 8, 9)
-        self.puzzle.command_received(Action.VALUE)
         self.__enter(7, 3, 1)
         self.assertIn("try undoing until this square shows at least one possible value", self.__status())
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
@@ -399,8 +408,7 @@ class TestPuzzle3x3(TestCase):
         self.__fill_row(0, 0, range(1, 9))
         self.puzzle.play_()
         self.puzzle.next_()
-        self.puzzle.command_received(Action.DOWN)
-        self.puzzle.down_()
+        self.puzzle.handle(Action.DOWN)
         self.puzzle.next_()
         self.assertIsNone(self.__cell(0, 8).value())
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
@@ -410,10 +418,8 @@ class TestPuzzle3x3(TestCase):
     def test_next_command_itself_does_not_cancel_the_move(self):
         self.__fill_row(0, 0, range(1, 9))
         self.puzzle.play_()
-        self.puzzle.command_received(Action.NEXT)
-        self.puzzle.next_()
-        self.puzzle.command_received(Action.NEXT)
-        self.puzzle.next_()
+        self.puzzle.handle(Action.NEXT)
+        self.puzzle.handle(Action.NEXT)
         self.assertEqual(self.__cell(0, 8).value(), 9)
 
     def test_stop_warnings_repeat_on_every_next(self):
@@ -535,8 +541,7 @@ class TestPuzzle3x3(TestCase):
         self.__fill_row(0, 0, range(1, 9))
         self.puzzle.play_()
         self.puzzle.next_()
-        self.puzzle.command_received(Action.AUTO)
-        self.puzzle.auto_()
+        self.puzzle.handle(Action.AUTO)
         self.assertEqual(self.__status(), "")
 
     # Completion
@@ -555,13 +560,12 @@ class TestPuzzle3x3(TestCase):
         self.puzzle.play_()
         self.__enter(8, 8, self.__solution(8, 8))
         self.assertIn("solved", self.__status())
-        self.puzzle.command_received(Action.UP)
+        self.puzzle.handle(Action.UP)
         self.assertEqual(self.__status(), "")
 
     def test_status_reports_errors_when_complete_with_conflicts(self):
         self.__fill_solution()
         self.puzzle.play_()
-        self.puzzle.command_received(Action.VALUE)
         self.__enter(0, 0, self.__solution(0, 1))
         self.assertIn("errors", self.__status())
         self.assertEqual(self.__cell(0, 0).value(), self.__solution(0, 1))
@@ -569,10 +573,8 @@ class TestPuzzle3x3(TestCase):
     def test_status_reports_solved_again_once_errors_are_fixed(self):
         self.__fill_solution()
         self.puzzle.play_()
-        self.puzzle.command_received(Action.VALUE)
         self.__enter(0, 0, self.__solution(0, 1))
         self.__status()
-        self.puzzle.command_received(Action.VALUE)
         self.__enter(0, 0, self.__solution(0, 0))
         self.assertIn("solved", self.__status())
 
@@ -581,10 +583,8 @@ class TestPuzzle3x3(TestCase):
         self.puzzle.play_()
         self.__enter(8, 8, self.__solution(8, 8))
         self.__status()
-        self.puzzle.command_received(Action.UNDO)
-        self.puzzle.undo_()
+        self.puzzle.handle(Action.UNDO)
         self.assertEqual(self.__status(), "")
-        self.puzzle.command_received(Action.VALUE)
         self.__enter(8, 8, self.__solution(8, 8))
         self.assertIn("solved", self.__status())
 
@@ -671,7 +671,7 @@ class TestPuzzle3x3(TestCase):
 
     def __enter(self, row, col, value, guess=False):
         self.puzzle.selected_cell = (row, col)
-        self.puzzle.guess_(value) if guess else self.puzzle.value_(value)
+        self.puzzle.handle(Action.GUESS if guess else Action.VALUE, value)
 
     def __status(self) -> str:
         """Show the status line and return what it shows"""
@@ -692,8 +692,7 @@ class TestPuzzle3x3(TestCase):
     def __restored_puzzle(self, ui=None):
         """A new puzzle, using the given user interface, with this puzzle's saved state restored into it"""
         saved = self.puzzle.saved_state()
-        with patch("display.Display.validate_screen_size"):
-            restored = Puzzle(Board3x3(), ui or RecordingUI())
+        restored = Puzzle(Board3x3(), ui or RecordingUI())
         with patch.object(restored, "render"):
             restored.restore(saved)
         return restored

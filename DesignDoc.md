@@ -37,7 +37,8 @@ The code is also meant as an example of clean, object-oriented Python built with
 ### 4.1 Layers
 
 ```
-Main (sudoku.py)  ── gets the layout from PuzzleCatalog, reads commands via Input, dispatches actions to the puzzle
+Main (sudoku.py)  ── gets the layout from PuzzleCatalog, then has the user interface (TerminalUI) play the puzzle:
+                     TerminalUI reads commands via Input and hands each action to puzzle.handle()
   └── Puzzle                  the game: commands, modes, cursor, screen; helpers do moves, solving, completion, files
         └── Board3x3 (a Board)    Board: finding and asking about cells; Board3x3: only the 3x3 block layout
               └── RectangularBlock ×9   knows its cells and which lie in a given row or column
@@ -53,7 +54,7 @@ Supporting modules:
 | `commands.py` | `Commands` | The terminal's key bindings: keys, command panel lines and help text for each action, plus the help screen |
 | `input.py` | `Input` | Reads keystrokes and turns the next bound one into a command |
 | `user_interface.py` | `UserInterface`, `Message`, `MessageKind` | The port through which the game talks to the player (section 4.4) |
-| `terminal_ui.py` | `TerminalUI` | The terminal's implementation of the port: messages and questions on the status line |
+| `terminal_ui.py` | `TerminalUI` | The terminal's implementation of the port: runs the play loop, draws the board, the command panel and the help screen, and shows messages and questions on the status line |
 | `border.py` | `Border` | Which sides of a cell lie on its block's edge (layout data) |
 | `display.py` | `Display` | All terminal drawing, through `blessed` |
 | `cell_attrs.py` | `CellAttrs` | What a cell's attributes mean: how its value got there, conflict marks, guess depth |
@@ -110,7 +111,7 @@ class UserInterface(Protocol):
     def guess_depth_changed(self, depth) -> None: ...      # every change; the interface decides what to show
 ```
 
-A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCESS` or `HINT`. The port, `Message` and `MessageKind` are in `user_interface.py`. `status`, `inform`, `confirm` and `ask_file_name` exist since step 1, `guess_depth_changed` since step 2, `show_board` and `cell_changed` since step 3, and `mode_changed` since step 4; `select` may follow with step 5.
+A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCESS` or `HINT`. The port, `Message` and `MessageKind` are in `user_interface.py`. `status`, `inform`, `confirm` and `ask_file_name` exist since step 1, `guess_depth_changed` since step 2, `show_board` and `cell_changed` since step 3, and `mode_changed` since step 4. A user interface reads the puzzle's `selected_cell` after each action; a `select()` method that tells it of every change can be added if a user interface needs one.
 
 **What belongs where:**
 
@@ -136,17 +137,18 @@ A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCE
 1. Ask `PuzzleCatalog` for the available layouts.
 2. Show the GPL splash; continue after 5 seconds or any key. With a single layout that is broken, or with no layouts at all, a yellow note under the splash says so.
 3. Pick the layout: with several, `LayoutMenu` lets the player choose (see 5.7); with one, it is used directly. If the player quits the menu, or the only layout is broken or missing, exit here.
-4. Create the board, then the puzzle with its user interface: `Puzzle(layout.board_class(), TerminalUI())`. The board's `__init__` builds its blocks (9 blocks of 9 cells for `Board3x3`); `Puzzle.__init__` sets the display geometry from the board's size, checks the screen size and creates its helpers (`Moves` creates its own, empty `History`).
-5. `render()` shows the whole board (through the user interface's `show_board()`), the command panel and the status line.
-6. Loop while `puzzle.is_playing`: re-check the screen size (redraw if it was resized), move the cursor to the selected cell, read a command and handle it.
+4. Create the board, the user interface and the puzzle: `TerminalUI(board.v_cells, board.h_cells)` sets the display geometry from the board's size and checks the screen size; `Puzzle(board, ui)` announces setup mode and creates its helpers (`Moves` creates its own, empty `History`). The board's `__init__` builds its blocks (9 blocks of 9 cells for `Board3x3`).
+5. `ui.play(puzzle)` runs the game. It first calls the puzzle's `render()`, which shows the whole board (through the user interface's `show_board()`, which also draws the command panel) and the status line.
+6. Then it loops while `puzzle.is_playing`: re-check the screen size (render again if it was resized), move the cursor to the puzzle's `selected_cell`, read a command and carry it out (see 5.2).
 
 ### 5.2 Command dispatch
 
 - **Actions** (`actions.py`) are what the player can ask the game to do. Each `Action`'s value names the puzzle method that does it, plus `_` (for example `Action.UP` is `up_()`), so it can't clash with Python reserved words; a test checks that `Puzzle` has a method for every action. `OFFERED_ACTIONS` lists the actions each `Mode` offers. The puzzle announces its mode and those actions to the user interface with `mode_changed()`.
 - **Commands** (`commands.py`) belong to the terminal: `Commands.BINDINGS` lists, in command panel order, each command's keys, its panel label and name, and its help text. A command is an action, or `Commands.HELP`, the terminal's own help screen. `Commands.command_for(key, offered)` returns `(command, digit)`: a key always maps to its command, even where the mode doesn't offer it, so the puzzle can refuse it with its warning; a key bound to a command in each mode (`ESC`: `PLAY` in setup, `INIT` while playing) maps to the one the mode offers. Digits give `VALUE` and shifted digits `GUESS`, with the digit.
 - `Input.get_cmd(offered)` reads keys until one is bound and returns its command. Unknown keys are ignored. CTRL-C or any input error gives `FORCE_QUIT`, which stops at once without asking; `q` gives `QUIT`, which asks for confirmation.
-- Before carrying out any command, `Main` calls `puzzle.command_received(command)`, so the puzzle can react to commands in general (today: any command ends a notice and the completion report, and any command but `n` cancels a pending `n` move).
-- `Main` shows the help screen itself (`TerminalUI.show_help()`, then the puzzle re-renders). For an action, it calls the puzzle's method with `getattr`, passing the digit for `VALUE` and `GUESS`. A method that raises an exception gives "This puzzle's "…" command is broken!". If the failing action was `QUIT` or `FORCE_QUIT`, `Main` forces the program to quit.
+- `TerminalUI` shows the help screen itself, then has the puzzle render again. It hands every action to `puzzle.handle(action, digit)`, the game's one entry point for the player's actions.
+- `handle()` first lets the puzzle react to actions in general (any action ends a notice and the completion report, and any action but `n` cancels a pending `n` move), then calls the puzzle's method for the action with `getattr`, passing the digit for `VALUE` and `GUESS`, and then shows the status.
+- If `handle()` raises an exception, `TerminalUI` warns "This puzzle's "…" command is broken!" and play goes on; if the failing action was `QUIT` or `FORCE_QUIT`, it forces the game to stop (`force_quit_()`).
 
 ### 5.3 Entering a value
 
@@ -207,7 +209,7 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 
 - **Rules** live in `rules/`, one file each. Each is a `Rule` subclass with `find(puzzle)`, which returns a `Move` or `None` without changing anything. A `Move` holds its `outcome` (`MOVED` for a value to fill in, `STOPPED` for a warning), its `hint` (the explanation or the warning), its `cell` and its `value`. Rules that stop solving come before rules that make moves. A test checks that every rule in `rules/` is listed in `rules/order.py`.
 - **The solver** has `find_move()` (the first rule's move) and `make_move(move)` (fill in its value through the puzzle). It also carries out the commands: `next()` points out a move, keeping it as its *pending move*, and the following `next()` makes it; `auto()` makes moves until none is obvious. The puzzle's `next_()` and `auto_()` first refuse in setup mode or on a complete puzzle, then call these.
-- **Cancelling:** `Main` calls `puzzle.command_received(cmd)` before carrying out every command. Any command other than `n` drops the pending move (`PuzzleSolver.cancel_pending_move()`), so the following `n` points out a move again instead of filling one in. Keys the program does not recognize are ignored as before and cancel nothing.
+- **Cancelling:** `handle()` lets the puzzle react to every action before carrying it out. Any action other than `n` drops the pending move (`PuzzleSolver.cancel_pending_move()`), so the following `n` points out a move again instead of filling one in. Keys the program does not recognize are ignored as before and cancel nothing.
 - **The puzzle's interface for the solver:** `first_cell_where(condition)` returns the first cell, left to right and top to bottom, for which the condition holds (it asks every block's `cells_where()`, so only blocks look inside cells, as section 4.2 requires); `select(cell)` moves the cursor; `enter_solved_value(cell, value)` enters a value; `is_complete()` tells `auto()` not to warn once it has filled in the last cell. The other helpers use the same section of the puzzle (`Interface required for the solver and the other helpers`): `is_initializing()`, `has_conflicts()`, `has_values()`, `saved_state()` and `restore(saved)`.
 - **Auto (`a`):** `PuzzleSolver.auto()` makes moves with `find_move()` and `make_move()` while they are `MOVED`, selecting each move's cell, without hints. It ends with the same warning `n` would give: the stopping rule's warning, or the one about making a guess. Each move is a separate `History` entry, so `u` takes them back one at a time.
 - **Notices:** a dead-end warning does not wait for a key. The puzzle keeps it as a notice (a `WARNING` message), which `display_status()` passes to the user interface's `status()` ahead of the completion report and the `n` hint, until `command_received()` clears it at the next command. (A `Display.warn()` that does not wait would be overwritten at once, because `Main` redraws the status line after every command.)
@@ -273,7 +275,7 @@ The full list is in `CLAUDE.md`. The main points:
    - Done, **step 2, attributes with meaning only:** `CellAttrs` (`cell_attrs.py`) defines what the attributes mean, and the game uses only it. `Moves` keeps a guess depth instead of a gray level. `DisplayAttrs` is now just the terminal's style table, turning depth into gray. `Moves` reports every change of depth through the new `guess_depth_changed()` port method, and `TerminalUI` warns when the depth crosses beyond its last shade.
    - Done, **step 3, cells stop drawing:** a cell reports each change through its block and the board to the user interface's `cell_changed()`, and `render()` shows the whole board with `show_board()`; `TerminalUI` decides what to redraw. `Cell.update()` is gone (`set()` reports changes), and so are the `render()` methods of cells, blocks and the board. `Border` is layout data in `border.py`.
    - Done, **step 4, actions apart from keys:** `actions.py` defines the game's `Action`s, its `Mode`s and the actions each offers; the puzzle announces its mode with `mode_changed()`. `commands.py` is now the terminal's key-binding table, and `TerminalUI` draws the panel and the help screen. Hidden commands are gone: every key maps to its action and the puzzle refuses what its mode doesn't offer, now including guesses in setup. `Puzzle.help_()` is gone (help is the terminal's), and values and guesses are separate actions (`value_()`, `guess_()`).
-   - **Step 5, the loop moves to the interface:** the terminal adapter reads keys and calls `game.handle(action)`; `Main` just picks the interface and the layout.
+   - Done, **step 5, the loop moves to the interface:** `TerminalUI.play(puzzle)` runs the loop: it reads keys, shows help itself and hands each action to `puzzle.handle(action, digit)`. `TerminalUI(v_cells, h_cells)` sets the geometry and checks the screen size, so `Puzzle` no longer uses `Display` at all. `Main` just picks the layout and the user interface.
    - **Step 6, packages and the instance:** `game/` and `ui/terminal/` folders, `Display` becomes the `TerminalUI` instance, and a test checks that nothing in `game/` imports `ui/`.
 2. **More rules for next and auto:** for example, a value that fits only one cell in a row, column or box.
 3. **Redo**, if wanted.

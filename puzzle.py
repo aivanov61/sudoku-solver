@@ -23,7 +23,6 @@ from actions import Action, Mode, OFFERED_ACTIONS
 from cell import Cell
 from completion_report import CompletionReport
 from cell_attrs import CellAttrs
-from display import Display
 from game_file import GameFile
 from moves import Moves
 from puzzle_solver import PuzzleSolver
@@ -39,17 +38,16 @@ class Puzzle:
     The board (a layout's Board subclass, from the puzzles folder) holds the cells; the puzzle reaches
     them only through it.
 
-    Main relies on the following attributes:
+    A user interface runs the game with the following attributes:
         selected_cell - (row: int, col: int) - a tuple that represents the currently selected cell
         is_playing - bool - True if user is still playing the puzzle, False otherwise
 
     And the following methods:
-        render() -
-        display_status() -
-        command_received(cmd) - called before each command is carried out
-        force_quit_() - stop playing at once, without asking (CTRL-C)
+        render() - show the whole game afresh
+        handle(action, digit) - carry out one action from the player
+        force_quit_() - stop playing at once, without asking (e.g. when an action breaks)
 
-    In addition, the puzzle has a method for every Action in actions.py: the action's value with an
+    handle() calls the puzzle's method for the Action (see actions.py): the action's value with an
     underscore (_) as a suffix, to avoid conflicts with reserved words.
 
     The puzzle hands parts of its work to helpers: Moves (entering values, undo and guess shading),
@@ -63,9 +61,6 @@ class Puzzle:
         self.selected_cell = (0, 0)  # row, col (NOT x, y)
         self.is_playing = True
 
-        Display.geometry({"h_cells": board.h_cells, "v_cells": board.v_cells})
-        Display.validate_screen_size()
-
         self.__notice = None  # a warning shown on the status line until the next command
         self.__board = board
         self.__ui = ui
@@ -76,7 +71,7 @@ class Puzzle:
         self.__report = CompletionReport(self)
         self.__game_file = GameFile(self, ui)
 
-    # Interface required for Main
+    # Interface required for user interfaces
 
     def render(self) -> None:
         self.__ui.show_board(self.__board.cells())
@@ -86,16 +81,16 @@ class Puzzle:
         """Show a notice, a newly changed completion, or why the move "n" pointed out is right, if any; otherwise leave it blank"""
         self.__ui.status(self.__notice or self.__report.message() or self.__pending_hint())
 
-    def command_received(self, cmd) -> None:
-        """Any command ends the notice and the completion report; any command other than "n" cancels the move a previous "n" pointed out"""
-        self.__notice = None
-        self.__report.seen()
-        cmd is Action.NEXT or self.__solver.cancel_pending_move()
+    def handle(self, action, digit=None) -> None:
+        """Carry out the player's action (with its digit, for values and guesses), then show the status"""
+        self.__action_received(action)
+        getattr(self, f"{action.value}_")(*([] if digit is None else [digit]))
+        self.display_status()
 
     def force_quit_(self) -> None:
         self.is_playing = False
 
-    # Interface required for Main: one method per Action
+    # Interface required for handle(): one method per Action
 
     def quit_(self) -> None:
         self.__ui.confirm("Really quit?") and self.force_quit_()
@@ -216,6 +211,12 @@ class Puzzle:
         """Return why the move "n" pointed out is right, or None if there is none"""
         hint = self.__solver.pending_hint()
         return Message(hint, MessageKind.HINT) if hint else None
+
+    def __action_received(self, action) -> None:
+        """Any action ends the notice and the completion report; any action but "n" cancels the move a previous "n" pointed out"""
+        self.__notice = None
+        self.__report.seen()
+        action is Action.NEXT or self.__solver.cancel_pending_move()
 
     def __enter(self, val, prim_attr) -> None:
         """Enter the value in the selected cell, with its primary attribute, then point out any dead end"""

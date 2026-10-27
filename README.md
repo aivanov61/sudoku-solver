@@ -122,7 +122,7 @@ of functions which are often in different files (I've been using VSCode lately)
 
 When looking at the code for this Sudoku puzzle solver, this list will give you
 some guidance:
-- sudoku.py - plays the game, handles the flow; `Main` class, has entry point run()
+- sudoku.py - starts the program: picks the layout and the user interface; `Main` class, has entry point run()
 - puzzle.py - the generic puzzle: the commands, modes and cursor; `Puzzle` class
 - moves.py - enters values and keeps them for undo/rewind and guess shading; `Moves` class
 - completion_report.py - tells the player when the puzzle is complete; `CompletionReport` class
@@ -140,7 +140,7 @@ some guidance:
 - actions.py - what the player can ask the game to do, and which actions each mode offers; `Action` and `Mode`
 - commands.py - the terminal's key bindings, command panel and help text; `Commands` class
 - user_interface.py - the port through which the game talks to the player; `UserInterface`, `Message` and `MessageKind`
-- terminal_ui.py - the terminal's user interface: messages and questions on the status line; `TerminalUI` class
+- terminal_ui.py - the terminal's user interface: runs the play loop, draws the board and panel, shows messages and asks questions; `TerminalUI` class
 - border.py - which sides of a cell lie on its block's edge; `Border` class
 - display.py - manages the terminal display; `Display` class
 - cell_attrs.py - what a cell's attributes mean (given, guess, solved, conflicts, guess depth); `CellAttrs` class
@@ -163,10 +163,9 @@ the Sudoku program entails:
 1. Getting the puzzle layouts from the catalog
 1. Handling the GNU GPL notice (with a note if the only layout is not fully usable)
 1. Letting the player choose a layout from a menu, when there are several
-1. Instantiating the puzzle
-1. Rendering the puzzle
-1. Entering the *play* loop
-1. Cleaning up and exiting when the *play* is over
+1. Creating the board, the user interface (`TerminalUI`) and the puzzle
+1. Letting the user interface play the puzzle: it renders it, runs the *play* loop, and cleans up when
+   the *play* is over
 
 #### Display
 
