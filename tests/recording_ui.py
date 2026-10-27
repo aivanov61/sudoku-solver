@@ -29,6 +29,7 @@ class RecordingUI:
         self.guess_depths = []  # every guess depth reported
         self.shown_boards = []  # the cells of every board shown whole
         self.changed_cells = []  # every cell reported changed
+        self.modes = []  # (mode, offered actions) for every mode announced
 
     # Interface required for the game
 
@@ -54,6 +55,9 @@ class RecordingUI:
 
     def cell_changed(self, cell) -> None:
         self.changed_cells.append(cell)
+
+    def mode_changed(self, mode, actions) -> None:
+        self.modes.append((mode, actions))
 
     # Interface required for tests
 

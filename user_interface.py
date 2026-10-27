@@ -63,3 +63,6 @@ class UserInterface(Protocol):
 
     def cell_changed(self, cell) -> None:
         """Hear that the cell's value, attributes or possible values changed, to show it as it is now"""
+
+    def mode_changed(self, mode, actions) -> None:
+        """Hear that the puzzle is now in the mode (see actions.py), which offers these actions"""

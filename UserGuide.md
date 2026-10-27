@@ -32,9 +32,9 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | Arrow keys, or `h` `j` `k` `l` | Move left, down, up, right |
 | `1`–`9` | Enter a given number. Givens are shown in purple on lavender. |
 | `Delete` | Clear the selected cell |
-| `u` `r` `a` `n` | Not available in setup; they remind you to press `ESC` to start playing |
+| `u` `r` `a` `n`, shifted `1`–`9` | Not available in setup (no guesses either); they remind you to press `ESC` to start playing |
 | `ESC` | Finish setup and start playing. Not allowed while given numbers clash, or while an empty cell has no possible values left (the cursor moves to that cell). |
-| `?` | Show all commands |
+| `?` | Show the setup commands, with a longer description of each |
 | `s` | Save the puzzle to a file (see below) |
 | `o` | Restore a saved puzzle (see below) |
 | `q` | Quit (asks you to confirm) |
@@ -52,7 +52,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | `n` | Next: show an obvious next move and why; press `n` again to fill it in (see below) |
 | `a` | Auto: fill in every obvious move, one after another (see below) |
 | `ESC` | Go back to setup mode (only once everything has been undone) |
-| `?` | Show all commands, with a longer description of each |
+| `?` | Show the playing commands, with a longer description of each |
 | `s` | Save the puzzle to a file (see below) |
 | `o` | Restore a saved puzzle (see below) |
 | `q` | Quit (asks you to confirm) |

@@ -37,7 +37,7 @@ The code is also meant as an example of clean, object-oriented Python built with
 ### 4.1 Layers
 
 ```
-Main (sudoku.py)  ── gets the layout from PuzzleCatalog, reads keys via Input, dispatches to the puzzle
+Main (sudoku.py)  ── gets the layout from PuzzleCatalog, reads commands via Input, dispatches actions to the puzzle
   └── Puzzle                  the game: commands, modes, cursor, screen; helpers do moves, solving, completion, files
         └── Board3x3 (a Board)    Board: finding and asking about cells; Board3x3: only the 3x3 block layout
               └── RectangularBlock ×9   knows its cells and which lie in a given row or column
@@ -49,8 +49,9 @@ Supporting modules:
 
 | Module | Class | Role |
 |---|---|---|
-| `commands.py` | `Commands` | Key bindings and help text for each mode |
-| `input.py` | `Input` | Reads a keystroke and turns it into a command name |
+| `actions.py` | `Action`, `Mode`, `OFFERED_ACTIONS` | What the player can ask the game to do, the modes, and which actions each mode offers |
+| `commands.py` | `Commands` | The terminal's key bindings: keys, command panel lines and help text for each action, plus the help screen |
+| `input.py` | `Input` | Reads keystrokes and turns the next bound one into a command |
 | `user_interface.py` | `UserInterface`, `Message`, `MessageKind` | The port through which the game talks to the player (section 4.4) |
 | `terminal_ui.py` | `TerminalUI` | The terminal's implementation of the port: messages and questions on the status line |
 | `border.py` | `Border` | Which sides of a cell lie on its block's edge (layout data) |
@@ -109,7 +110,7 @@ class UserInterface(Protocol):
     def guess_depth_changed(self, depth) -> None: ...      # every change; the interface decides what to show
 ```
 
-A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCESS` or `HINT`. The port, `Message` and `MessageKind` are in `user_interface.py`. `status`, `inform`, `confirm` and `ask_file_name` exist since step 1, `guess_depth_changed` since step 2, and `show_board` and `cell_changed` since step 3; the others will be added in later steps.
+A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCESS` or `HINT`. The port, `Message` and `MessageKind` are in `user_interface.py`. `status`, `inform`, `confirm` and `ask_file_name` exist since step 1, `guess_depth_changed` since step 2, `show_board` and `cell_changed` since step 3, and `mode_changed` since step 4; `select` may follow with step 5.
 
 **What belongs where:**
 
@@ -141,15 +142,16 @@ A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCE
 
 ### 5.2 Command dispatch
 
-- `Commands.CMDS` maps command names to their keys and help text. It is swapped between `COMMON_CMDS + INIT_COMMANDS` and `COMMON_CMDS + PLAY_COMMANDS` when the mode changes.
-- `Input.get_cmd()` reads a key. Digits and shifted digits are returned as the character itself. Other keys become the command name plus `_` (for example `up_`), so they can't clash with Python reserved words. Unknown keys are ignored. `q` gives `quit_`, which asks for confirmation. CTRL-C or any input error gives `force_quit_`, which stops at once without asking.
-- Before carrying out any command, `Main` calls `puzzle.command_received(cmd)`, so the puzzle can react to commands in general (today: any command ends a notice and the completion report, and any command but `n` cancels a pending `n` move).
-- `Main` sends values to `puzzle.value_(value, guess)`. For anything else, it calls the puzzle method of that name with `getattr`. A missing method gives "This puzzle does not support the "…" command". A method that raises an exception gives "This puzzle's "…" command is broken!". If the failing command was `quit_` or `force_quit_`, `Main` forces the program to quit.
+- **Actions** (`actions.py`) are what the player can ask the game to do. Each `Action`'s value names the puzzle method that does it, plus `_` (for example `Action.UP` is `up_()`), so it can't clash with Python reserved words; a test checks that `Puzzle` has a method for every action. `OFFERED_ACTIONS` lists the actions each `Mode` offers. The puzzle announces its mode and those actions to the user interface with `mode_changed()`.
+- **Commands** (`commands.py`) belong to the terminal: `Commands.BINDINGS` lists, in command panel order, each command's keys, its panel label and name, and its help text. A command is an action, or `Commands.HELP`, the terminal's own help screen. `Commands.command_for(key, offered)` returns `(command, digit)`: a key always maps to its command, even where the mode doesn't offer it, so the puzzle can refuse it with its warning; a key bound to a command in each mode (`ESC`: `PLAY` in setup, `INIT` while playing) maps to the one the mode offers. Digits give `VALUE` and shifted digits `GUESS`, with the digit.
+- `Input.get_cmd(offered)` reads keys until one is bound and returns its command. Unknown keys are ignored. CTRL-C or any input error gives `FORCE_QUIT`, which stops at once without asking; `q` gives `QUIT`, which asks for confirmation.
+- Before carrying out any command, `Main` calls `puzzle.command_received(command)`, so the puzzle can react to commands in general (today: any command ends a notice and the completion report, and any command but `n` cancels a pending `n` move).
+- `Main` shows the help screen itself (`TerminalUI.show_help()`, then the puzzle re-renders). For an action, it calls the puzzle's method with `getattr`, passing the digit for `VALUE` and `GUESS`. A method that raises an exception gives "This puzzle's "…" command is broken!". If the failing action was `QUIT` or `FORCE_QUIT`, `Main` forces the program to quit.
 
 ### 5.3 Entering a value
 
 ```
-Puzzle.value_(val, guess)
+Puzzle.value_(val) / guess_(val)   (guess_ is refused in setup mode, like the other play-only actions)
   ├─ refuse to change an INITIAL cell in play mode (warning)
   ├─ Moves.enter(cell, val, GUESS or None)
        ├─ guess (in play mode) → one guess deeper
@@ -180,7 +182,7 @@ Puzzle.value_(val, guess)
 
 ### 5.4 Modes
 
-- **Initialization mode** (the start mode): values get `INITIAL` and are not recorded in `History`. `Delete` clears a cell. `u`, `r`, `a` and `n` are hidden setup commands: they are left out of the panel, marked `[hidden]` in the help, and only warn "This works only while playing - ESC starts playing." `ESC` calls `play_()`, which is refused while any cell is marked in conflict ("Resolve the conflicts before playing.") or while an empty cell has no possible values (it selects that cell and shows "This square has no possible values left - change the setup before playing." as a notice, the same check and warning that follow every value entered in setup and restoring a game saved in setup), so play never starts from a broken setup.
+- **Initialization mode** (the start mode): values get `INITIAL` and are not recorded in `History`. `Delete` clears a cell. Setup offers no guesses and no `u`, `r`, `a` or `n`: they are left out of the panel and the help, and their keys only warn "This works only while playing - ESC starts playing." `ESC` calls `play_()`, which is refused while any cell is marked in conflict ("Resolve the conflicts before playing.") or while an empty cell has no possible values (it selects that cell and shows "This square has no possible values left - change the setup before playing." as a notice, the same check and warning that follow every value entered in setup and restoring a game saved in setup), so play never starts from a broken setup.
 - **Play mode:** values are recorded in `History`. `ESC` calls `init_()`, which is refused while there is anything to undo ("Cannot initialize puzzle while playing - undo everything first."). `Delete` is mapped to `del_()` only to show a warning.
 
 ### 5.5 Undo and guess shading
@@ -222,7 +224,7 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 
 - **`Board`** (`board.py`) is an abstract base class (`abc.ABC`) holding everything about cells that does not depend on the block layout. A layout subclass sets `NAME`, calls `super().__init__(v_cells, h_cells)`, builds its blocks with the board as their parent, and implements the two `@abstractmethod` hooks `_blocks()` and `_block_at(row, col)`. Python refuses to create a layout that is missing a hook. `Puzzle` is not a base class: one generic game plays every layout, so every layout has every command.
 - **`PuzzleCatalog.available()`** imports every module in `puzzles/` and returns a `PuzzleLayout` for each `Board` subclass that has its own `NAME` (classes without one, such as shared base classes, are skipped), sorted by name. A new layout is just a new file there.
-- **Notes for the player:** a layout is *broken* if its file cannot be loaded or a hook is missing (the class is still abstract). `PuzzleLayout.label()` shows this after the name, e.g. "Jigsaw (broken: missing _block_at)". Detecting it never creates the board, so it has no side effects. A test checks that `Puzzle` has a method for every command in `Commands` (`#` maps to `value_`, every other command to its name plus `_`).
+- **Notes for the player:** a layout is *broken* if its file cannot be loaded or a hook is missing (the class is still abstract). `PuzzleLayout.label()` shows this after the name, e.g. "Jigsaw (broken: missing _block_at)". Detecting it never creates the board, so it has no side effects. A test checks that `Puzzle` has a method for every `Action`.
 - **With one layout**, its note, if any, is shown under the splash screen; a broken layout then exits instead of starting.
 - **With several layouts**, `LayoutMenu` (`layout_menu.py`) lists them all with their notes after the splash. The player types a number and presses ENTER (Backspace corrects it); numbers stay the same on every page. At most 9 digits are kept, so the number always fits in a 32-bit integer; a further digit shows `...` after them and makes the entry too big (ENTER then says "Number too big"), and Backspace removes the `...` before any digit. As many layouts are shown as fit the terminal's height; when they don't all fit, (p)revious and (n)ext turn the page (doing nothing at either end). (q)uit is always offered and asks "Really quit? (y/n)" on the message line (only y confirms); p, n and q act on a single key, even with a number half typed. CTRL-C quits at once. Choosing a broken layout, or a number that isn't listed, shows a yellow message and keeps the menu open.
 
@@ -245,7 +247,8 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
   - Values with no primary attribute are drawn in `darkorange3`.
   - The guess depth travels in the attribute tuple as `{"depth": n}`; the terminal shows it as `gray{10 × n}`, at most `gray100`.
 - `Display` is a class with class-level state (`term`, `geom`) and functions called on the class, not on an instance.
-- **Command panel:** `Display.draw_command_panel(title, entries)` draws the mode's title (SETUP or PLAY) and one command per line to the right of the grid, keys in red, then clears the rest of every line beside the grid. Each command in `Commands` has a `panel` list of `(keys, name)` lines (empty to leave it out); `Commands.panel()` lists the active ones in order: `ESC`, help, the values, the moves, the mode's other commands, then save, open and quit. Help (`HELP_CMD`) and the moves (`MOVE_CMDS`) are defined once and included in each mode's commands at their place; save, open and quit are the common commands, added after the mode's. The puzzle redraws the panel in `render()` and when the mode changes.
+- **Command panel:** `Display.draw_command_panel(title, entries)` draws the mode's title (SETUP or PLAY) and one command per line to the right of the grid, keys in red, then clears the rest of every line beside the grid. `Commands.panel(offered)` lists, as `(keys, name)`, the commands the mode offers, in `BINDINGS` order: `ESC`, help, the values, the moves, the mode's other commands, then save, open and quit. `TerminalUI` draws the panel when the puzzle announces a mode (`mode_changed()`) and again in `show_board()`.
+- **Help screen:** `?` shows `Commands.long_help(offered)`: the commands the mode offers, the same ones as the panel, each with its keys and a longer description.
 - **Status line:** blank unless there is something to report: `n`'s hint, a change in completion, a warning or a question.
 - **Messages:** the game sends a `Message` with a kind; `TerminalUI` styles it: successes and hints in steel blue (the `SOLVED` style), information and warnings in yellow. `status()` shows it until the next command; `inform()` shows it with `Display.show_on_status_line(text, wait=True)`, which waits for a key press. `Display.warn()` is the yellow shortcut still used by code not yet moved behind the port (`Moves`, `Main`).
 - `Display.confirm(msg)` asks a yes/no question the same way and returns `True` only for `y` or `Y`. Any other key, or an interrupted prompt, declines. `TerminalUI.confirm()` uses it, for `quit_()`, `rewind_()` and the save and restore questions.
@@ -269,7 +272,7 @@ The full list is in `CLAUDE.md`. The main points:
    - Done, **step 1, messages and dialogs:** `PuzzleSolver` and `CompletionReport` return messages instead of warning; the puzzle and `GameFile` send every message, with its kind, and every dialog through the user interface (`user_interface.py`), and `TerminalUI` wraps today's `Display`. Left for step 2: `Moves`' warning about running out of gray shades, which belongs to the terminal.
    - Done, **step 2, attributes with meaning only:** `CellAttrs` (`cell_attrs.py`) defines what the attributes mean, and the game uses only it. `Moves` keeps a guess depth instead of a gray level. `DisplayAttrs` is now just the terminal's style table, turning depth into gray. `Moves` reports every change of depth through the new `guess_depth_changed()` port method, and `TerminalUI` warns when the depth crosses beyond its last shade.
    - Done, **step 3, cells stop drawing:** a cell reports each change through its block and the board to the user interface's `cell_changed()`, and `render()` shows the whole board with `show_board()`; `TerminalUI` decides what to redraw. `Cell.update()` is gone (`set()` reports changes), and so are the `render()` methods of cells, blocks and the board. `Border` is layout data in `border.py`.
-   - **Step 4, actions apart from keys:** the game defines its actions; the terminal keeps its key bindings and help text.
+   - Done, **step 4, actions apart from keys:** `actions.py` defines the game's `Action`s, its `Mode`s and the actions each offers; the puzzle announces its mode with `mode_changed()`. `commands.py` is now the terminal's key-binding table, and `TerminalUI` draws the panel and the help screen. Hidden commands are gone: every key maps to its action and the puzzle refuses what its mode doesn't offer, now including guesses in setup. `Puzzle.help_()` is gone (help is the terminal's), and values and guesses are separate actions (`value_()`, `guess_()`).
    - **Step 5, the loop moves to the interface:** the terminal adapter reads keys and calls `game.handle(action)`; `Main` just picks the interface and the layout.
    - **Step 6, packages and the instance:** `game/` and `ui/terminal/` folders, `Display` becomes the `TerminalUI` instance, and a test checks that nothing in `game/` imports `ui/`.
 2. **More rules for next and auto:** for example, a value that fits only one cell in a row, column or box.

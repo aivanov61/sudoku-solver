@@ -19,6 +19,7 @@ import sys
 
 sys.path.insert(0, ".")
 
+from actions import Action
 from copyright import Copyright
 from commands import Commands
 from display import Display
@@ -38,7 +39,8 @@ class Main:
         layouts = PuzzleCatalog.available()
         self.__splash(self.__startup_note(layouts))
         layout = self.__chosen_layout(layouts)
-        layout and self.__start(Puzzle(layout.board_class(), TerminalUI()))
+        self.__ui = TerminalUI()
+        layout and self.__start(Puzzle(layout.board_class(), self.__ui))
 
     # Private functions
 
@@ -77,32 +79,26 @@ class Main:
             self.__process_user_input()
 
     def __process_user_input(self):
-        cmd = Input.get_cmd()
-        self._puzzle.command_received(cmd)
-        self.__handle_puzzle_value(cmd) if Commands.is_value(cmd) else self.__handle_puzzle_func(cmd)
+        command, digit = Input.get_cmd(self.__ui.offered_actions())
+        self._puzzle.command_received(command)
+        self.__show_help() if command == Commands.HELP else self.__carry_out(command, digit)
 
-    def __handle_puzzle_value(self, cmd):
-        self._puzzle.value_(*Commands.val_with_guess(cmd))
-        self._puzzle.display_status()
+    def __show_help(self):
+        self.__ui.show_help()
+        self._puzzle.render()
 
-    def __handle_puzzle_func(self, cmd):
-        self.__execute_puzzle_func(cmd)if hasattr(self._puzzle, cmd) else self.__report_unsupported_func(cmd)
-
-    def __execute_puzzle_func(self, cmd):
+    def __carry_out(self, action, digit):
+        """Call the puzzle's method for the action, with the digit for values and guesses"""
         try:
-            getattr(self._puzzle, cmd)()
+            getattr(self._puzzle, f"{action.value}_")(*([] if digit is None else [digit]))
         except Exception as e:
-            Display.warn(f'This puzzle\'s "{cmd}" command is broken!')
-            self.__handle_possible_forced_quit(cmd)
+            Display.warn(f'This puzzle\'s "{action.value}" command is broken!')
+            self.__handle_possible_forced_quit(action)
             return
         self._puzzle.display_status()
 
-    def __report_unsupported_func(self, cmd):
-        Display.warn(f'This puzzle does not support the "{cmd}" command')
-        self.__handle_possible_forced_quit(cmd)
-
-    def __handle_possible_forced_quit(self, cmd):
-        if cmd not in ("quit_", "force_quit_"):
+    def __handle_possible_forced_quit(self, action):
+        if action not in (Action.QUIT, Action.FORCE_QUIT):
             return
         Display.move_to_status_line()
         print("\n" + Display.term.clear_eol + "FORCING quit")

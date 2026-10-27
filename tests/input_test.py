@@ -19,29 +19,46 @@ import sys
 from unittest import main, TestCase
 from unittest.mock import patch
 
+from blessed.keyboard import Keystroke
+
 sys.path.insert(0, ".")
 
+from actions import Action, Mode, OFFERED_ACTIONS
 from display import Display
 from input import Input
+
+PLAY = OFFERED_ACTIONS[Mode.PLAY]
 
 
 class TestInput(TestCase):
     def test_get_input(self):
         print('Hit a valid command key, like "?" or CTRL-C, to continue; timeout=2 seconds')
-        cmd = Input.get_cmd(timeout=2.0)
+        cmd = Input.get_cmd(PLAY, timeout=2.0)
         print(f'cmd="{cmd}"')
 
 
-class TestInputForcedQuit(TestCase):
+class TestInputDecoding(TestCase):
+    def test_keys_that_are_not_bound_are_skipped(self):
+        self.assertEqual(self.__get_cmd_with([Keystroke("x"), Keystroke("u")]), (Action.UNDO, None))
+
+    def test_special_keys_are_decoded_by_name(self):
+        self.assertEqual(self.__get_cmd_with([Keystroke("[A", code=1, name="KEY_UP")]), (Action.UP, None))
+
+    def test_a_timeout_is_no_command(self):
+        self.assertIsNone(self.__get_cmd_with([Keystroke("")]))
+
     def test_ctrl_c_is_a_forced_quit(self):
-        with patch.object(Display, "term") as term:
-            term.inkey.side_effect = KeyboardInterrupt()
-            self.assertEqual(Input.get_cmd(), "force_quit_")
+        self.assertEqual(self.__get_cmd_with(KeyboardInterrupt()), (Action.FORCE_QUIT, None))
 
     def test_input_error_is_a_forced_quit(self):
+        self.assertEqual(self.__get_cmd_with(OSError()), (Action.FORCE_QUIT, None))
+
+    # Private functions
+
+    def __get_cmd_with(self, keys):
         with patch.object(Display, "term") as term:
-            term.inkey.side_effect = OSError()
-            self.assertEqual(Input.get_cmd(), "force_quit_")
+            term.inkey.side_effect = keys
+            return Input.get_cmd(PLAY)
 
 
 if __name__ == "__main__":

@@ -15,32 +15,26 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from actions import Action
 from commands import Commands
 from display import Display
 
 
 class Input:
     """
-    Get input from the terminal and/or other connected input devices and decode it
+    Get keys from the terminal and decode them into commands (see Commands)
     """
 
-    def get_cmd(timeout=None):
-        cmd = None
-        while not cmd:
+    def get_cmd(offered, timeout=None) -> tuple:
+        """Return (command, digit) for the next bound key, given the actions the mode offers; None after a timeout"""
+        while True:
             try:
                 with Display.term.cbreak():
-                    cmd = Input.__decode_inkey(Display.term.inkey(timeout=timeout))
+                    keystroke = Display.term.inkey(timeout=timeout)
             except:  # Anything bad, including CTRL-C (KeyboardInterrupt), quits without asking
-                return "force_quit_"
-        return cmd
-
-    # Private functions
-
-    def __decode_inkey(keystroke):
-        if keystroke == "":
-            return "timeout"
-        cmd_name = keystroke.name if keystroke.is_sequence else keystroke
-        matching_cmds = [k for k in Commands.CMDS.keys() if cmd_name in Commands.CMDS[k]["keys"]]
-        cmd = next(iter(matching_cmds), None)
-        cmd = cmd_name if cmd == "#" else cmd + "_" if cmd else cmd
-        return cmd
+                return Action.FORCE_QUIT, None
+            if keystroke == "":
+                return None
+            command = Commands.command_for(keystroke.name if keystroke.is_sequence else str(keystroke), offered)
+            if command:
+                return command

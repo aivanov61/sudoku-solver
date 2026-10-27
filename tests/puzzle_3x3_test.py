@@ -21,8 +21,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, ".")
 
+from actions import Action, Mode, OFFERED_ACTIONS
 from cell_attrs import CellAttrs
-from commands import Commands
 from puzzle import Puzzle
 from puzzles.board_3x3 import Board3x3
 from recording_ui import RecordingUI
@@ -298,22 +298,23 @@ class TestPuzzle3x3(TestCase):
             self.assertEqual(self.ui.questions, [])
         self.assertIsNone(self.__cell(0, 8).value())
 
-    def test_render_draws_the_setup_commands_beside_the_puzzle(self):
-        with patch("display.Display.draw_command_panel") as draw:
-            self.puzzle.render()
-        draw.assert_called_once_with("SETUP", Commands.panel())
+    def test_a_new_puzzle_announces_setup_mode_and_its_actions(self):
+        self.assertEqual(self.ui.modes, [(Mode.SETUP, OFFERED_ACTIONS[Mode.SETUP])])
 
     def test_render_shows_the_whole_board(self):
-        with patch("display.Display.draw_command_panel"):
-            self.puzzle.render()
+        self.puzzle.render()
         self.assertEqual(len(self.ui.shown_boards[-1]), self.SIZE * self.SIZE)
 
-    def test_switching_modes_redraws_the_commands(self):
-        with patch("display.Display.draw_command_panel") as draw:
-            self.puzzle.play_()
-            self.assertEqual(draw.call_args.args[0], "PLAY")
-            self.puzzle.init_()
-            self.assertEqual(draw.call_args.args[0], "SETUP")
+    def test_switching_modes_announces_the_new_mode(self):
+        self.puzzle.play_()
+        self.assertEqual(self.ui.modes[-1], (Mode.PLAY, OFFERED_ACTIONS[Mode.PLAY]))
+        self.puzzle.init_()
+        self.assertEqual(self.ui.modes[-1], (Mode.SETUP, OFFERED_ACTIONS[Mode.SETUP]))
+
+    def test_guesses_are_refused_in_setup_mode(self):
+        self.__enter(0, 0, 5, guess=True)
+        self.assertIsNone(self.__cell(0, 0).value())
+        self.assertIn("only while playing", self.ui.last_informed())
 
     # Dead ends
 
@@ -330,14 +331,14 @@ class TestPuzzle3x3(TestCase):
         self.puzzle.play_()
         self.__enter(5, 8, 9)
         self.assertIn("try undoing until this square shows at least one possible value", self.__status())
-        self.puzzle.command_received("left_")
+        self.puzzle.command_received(Action.LEFT)
         self.assertNotIn("try undoing until this square shows at least one possible value", self.__status())
 
     def test_entering_any_value_while_a_dead_end_remains_shows_it_again(self):
         self.__fill_row(0, 0, range(1, 9))
         self.puzzle.play_()
         self.__enter(5, 8, 9)
-        self.puzzle.command_received("value_")
+        self.puzzle.command_received(Action.VALUE)
         self.__enter(7, 3, 1)
         self.assertIn("try undoing until this square shows at least one possible value", self.__status())
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
@@ -398,7 +399,7 @@ class TestPuzzle3x3(TestCase):
         self.__fill_row(0, 0, range(1, 9))
         self.puzzle.play_()
         self.puzzle.next_()
-        self.puzzle.command_received("down_")
+        self.puzzle.command_received(Action.DOWN)
         self.puzzle.down_()
         self.puzzle.next_()
         self.assertIsNone(self.__cell(0, 8).value())
@@ -409,9 +410,9 @@ class TestPuzzle3x3(TestCase):
     def test_next_command_itself_does_not_cancel_the_move(self):
         self.__fill_row(0, 0, range(1, 9))
         self.puzzle.play_()
-        self.puzzle.command_received("next_")
+        self.puzzle.command_received(Action.NEXT)
         self.puzzle.next_()
-        self.puzzle.command_received("next_")
+        self.puzzle.command_received(Action.NEXT)
         self.puzzle.next_()
         self.assertEqual(self.__cell(0, 8).value(), 9)
 
@@ -534,7 +535,7 @@ class TestPuzzle3x3(TestCase):
         self.__fill_row(0, 0, range(1, 9))
         self.puzzle.play_()
         self.puzzle.next_()
-        self.puzzle.command_received("auto_")
+        self.puzzle.command_received(Action.AUTO)
         self.puzzle.auto_()
         self.assertEqual(self.__status(), "")
 
@@ -554,13 +555,13 @@ class TestPuzzle3x3(TestCase):
         self.puzzle.play_()
         self.__enter(8, 8, self.__solution(8, 8))
         self.assertIn("solved", self.__status())
-        self.puzzle.command_received("up_")
+        self.puzzle.command_received(Action.UP)
         self.assertEqual(self.__status(), "")
 
     def test_status_reports_errors_when_complete_with_conflicts(self):
         self.__fill_solution()
         self.puzzle.play_()
-        self.puzzle.command_received("value_")
+        self.puzzle.command_received(Action.VALUE)
         self.__enter(0, 0, self.__solution(0, 1))
         self.assertIn("errors", self.__status())
         self.assertEqual(self.__cell(0, 0).value(), self.__solution(0, 1))
@@ -568,10 +569,10 @@ class TestPuzzle3x3(TestCase):
     def test_status_reports_solved_again_once_errors_are_fixed(self):
         self.__fill_solution()
         self.puzzle.play_()
-        self.puzzle.command_received("value_")
+        self.puzzle.command_received(Action.VALUE)
         self.__enter(0, 0, self.__solution(0, 1))
         self.__status()
-        self.puzzle.command_received("value_")
+        self.puzzle.command_received(Action.VALUE)
         self.__enter(0, 0, self.__solution(0, 0))
         self.assertIn("solved", self.__status())
 
@@ -580,10 +581,10 @@ class TestPuzzle3x3(TestCase):
         self.puzzle.play_()
         self.__enter(8, 8, self.__solution(8, 8))
         self.__status()
-        self.puzzle.command_received("undo_")
+        self.puzzle.command_received(Action.UNDO)
         self.puzzle.undo_()
         self.assertEqual(self.__status(), "")
-        self.puzzle.command_received("value_")
+        self.puzzle.command_received(Action.VALUE)
         self.__enter(8, 8, self.__solution(8, 8))
         self.assertIn("solved", self.__status())
 
@@ -670,7 +671,7 @@ class TestPuzzle3x3(TestCase):
 
     def __enter(self, row, col, value, guess=False):
         self.puzzle.selected_cell = (row, col)
-        self.puzzle.value_(value, guess)
+        self.puzzle.guess_(value) if guess else self.puzzle.value_(value)
 
     def __status(self) -> str:
         """Show the status line and return what it shows"""

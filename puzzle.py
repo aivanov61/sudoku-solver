@@ -19,7 +19,7 @@ import sys
 
 sys.path.insert(0, ".")
 
-from commands import Commands
+from actions import Action, Mode, OFFERED_ACTIONS
 from cell import Cell
 from completion_report import CompletionReport
 from cell_attrs import CellAttrs
@@ -49,8 +49,8 @@ class Puzzle:
         command_received(cmd) - called before each command is carried out
         force_quit_() - stop playing at once, without asking (CTRL-C)
 
-    In addition, the puzzle should support all the commands available in commands.py.  Function
-    names for commands have underscore (_) as a suffix to eliminate conflicts with reserved words.
+    In addition, the puzzle has a method for every Action in actions.py: the action's value with an
+    underscore (_) as a suffix, to avoid conflicts with reserved words.
 
     The puzzle hands parts of its work to helpers: Moves (entering values, undo and guess shading),
     PuzzleSolver (next and auto), CompletionReport (telling the player the puzzle is complete) and
@@ -66,11 +66,11 @@ class Puzzle:
         Display.geometry({"h_cells": board.h_cells, "v_cells": board.v_cells})
         Display.validate_screen_size()
 
-        self._initializing = True
         self.__notice = None  # a warning shown on the status line until the next command
         self.__board = board
         self.__ui = ui
         board.report_changes_to(ui.cell_changed)
+        self.__use_mode(initializing=True)
         self.__moves = Moves(self, ui)
         self.__solver = PuzzleSolver(self)
         self.__report = CompletionReport(self)
@@ -80,7 +80,6 @@ class Puzzle:
 
     def render(self) -> None:
         self.__ui.show_board(self.__board.cells())
-        self.__draw_commands()
         self.display_status()
 
     def display_status(self) -> None:
@@ -91,30 +90,22 @@ class Puzzle:
         """Any command ends the notice and the completion report; any command other than "n" cancels the move a previous "n" pointed out"""
         self.__notice = None
         self.__report.seen()
-        cmd == "next_" or self.__solver.cancel_pending_move()
+        cmd is Action.NEXT or self.__solver.cancel_pending_move()
 
     def force_quit_(self) -> None:
         self.is_playing = False
 
-    # Interface required for Main: one method per command in Commands
+    # Interface required for Main: one method per Action
 
     def quit_(self) -> None:
         self.__ui.confirm("Really quit?") and self.force_quit_()
 
-    def help_(self) -> None:
-        Display.clear_screen()
-        print(Commands.long_help())
-        Display.hit_any_key_to_continue()
-        self.render()
+    def value_(self, val) -> None:
+        self.__enter(val, None)
 
-    def value_(self, val, guess=False) -> None:
-        """Enter the value in the selected cell, then point out any dead end"""
-        cell = self.__selected_cell()
-        if not self._initializing and CellAttrs.INITIAL in cell.attr():
-            self.__warn("Cannot change an initial value while playing. ")
-            return
-        self.__moves.enter(cell, val, CellAttrs.GUESS if guess else None)
-        self.__found_dead_end()
+    def guess_(self, val) -> None:
+        """Enter the value as a guess, which rewind can go back to; only while playing"""
+        self.__refused_while_initializing() or self.__enter(val, CellAttrs.GUESS)
 
     def up_(self) -> None:
         self.__move(-1, 0)
@@ -215,13 +206,25 @@ class Puzzle:
 
     # Private functions
 
-    def __draw_commands(self) -> None:
-        Display.draw_command_panel("SETUP" if self._initializing else "PLAY", Commands.panel())
+    def __use_mode(self, initializing) -> None:
+        """Enter setup or play mode, announcing it and the actions it offers to the user interface"""
+        self._initializing = initializing
+        mode = Mode.SETUP if initializing else Mode.PLAY
+        self.__ui.mode_changed(mode, OFFERED_ACTIONS[mode])
 
     def __pending_hint(self) -> Message:
         """Return why the move "n" pointed out is right, or None if there is none"""
         hint = self.__solver.pending_hint()
         return Message(hint, MessageKind.HINT) if hint else None
+
+    def __enter(self, val, prim_attr) -> None:
+        """Enter the value in the selected cell, with its primary attribute, then point out any dead end"""
+        cell = self.__selected_cell()
+        if not self._initializing and CellAttrs.INITIAL in cell.attr():
+            self.__warn("Cannot change an initial value while playing. ")
+            return
+        self.__moves.enter(cell, val, prim_attr)
+        self.__found_dead_end()
 
     def __selected_cell(self) -> Cell:
         return self.__board.cell(*self.selected_cell)
@@ -243,6 +246,11 @@ class Puzzle:
         )
         return True
 
+    def __refused_while_initializing(self) -> bool:
+        """Warn that a play command was used in setup mode, returning whether it was"""
+        self._initializing and self.__warn("This works only while playing - ESC starts playing. ")
+        return self._initializing
+
     def __move(self, d_row, d_col) -> None:
         """Move the selected cell, stopping at the edges of the board"""
         row, col = self.selected_cell
@@ -259,22 +267,12 @@ class Puzzle:
 
     def __switch_mode(self, initializing) -> None:
         self.__use_mode(initializing)
-        self.__draw_commands()
         self.display_status()
-
-    def __use_mode(self, initializing) -> None:
-        self._initializing = initializing
-        Commands.use(Commands.INIT_COMMANDS if initializing else Commands.PLAY_COMMANDS)
 
     def __check_for_active_play(self) -> bool:
         is_actively_playing = not self.__moves.is_empty()
         is_actively_playing and self.__warn("Cannot initialize puzzle while playing - undo everything first. ")
         return is_actively_playing
-
-    def __refused_while_initializing(self) -> bool:
-        """Warn that a play command was used in setup mode, returning whether it was"""
-        self._initializing and self.__warn("This works only while playing - ESC starts playing. ")
-        return self._initializing
 
     def __warn_nothing_to_undo(self) -> None:
         self.__warn("Cannot undo initialized puzzle.  ESC will re-enter initialization mode. ")

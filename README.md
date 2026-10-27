@@ -137,7 +137,8 @@ some guidance:
 - rectangular_block.py - creates/manages a rectangular block of 3x3 cells; `RectangularBlock` class.
 - cell.py - creates/manages an individual cell; `Cell` class
 - cell_solver.py - keeps the possible values of a cell; `CellSolver` class
-- commands.py - establish the commands for the puzzle; `Commands` class
+- actions.py - what the player can ask the game to do, and which actions each mode offers; `Action` and `Mode`
+- commands.py - the terminal's key bindings, command panel and help text; `Commands` class
 - user_interface.py - the port through which the game talks to the player; `UserInterface`, `Message` and `MessageKind`
 - terminal_ui.py - the terminal's user interface: messages and questions on the status line; `TerminalUI` class
 - border.py - which sides of a cell lie on its block's edge; `Border` class
@@ -189,9 +190,9 @@ the display.  Key functions/attributes in this class are:
 
 #### Input
 
-Get terminal input and decode it using the commands given. It relies on commands
-given in a specific format (see Commands below).  It provides a single function:
+Get terminal input and decode it using the key bindings in `Commands`.  It provides a single function:
 
-- get_cmd() - Wait for, and get, keyboard input.  It handles exceptions and CTRL-C
-(keyboard interrupt), which force an immediate quit, and returns a valid command.  Keyboard input that is not
+- get_cmd(offered) - Wait for, and get, keyboard input.  It handles exceptions and CTRL-C
+(keyboard interrupt), which force an immediate quit, and returns the command for the key: one of the game's
+actions (with its digit, for values and guesses) or the help screen.  Keyboard input that is not
 recognized is ignored.

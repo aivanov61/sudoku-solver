@@ -20,6 +20,7 @@ import sys
 sys.path.insert(0, ".")
 
 from cell_attrs import CellAttrs
+from commands import Commands
 from display import Display, echo
 from display_attrs import DisplayAttrs
 from user_interface import Message, MessageKind
@@ -32,6 +33,8 @@ class TerminalUI:
 
     def __init__(self):
         self.__guess_depth = 0
+        self.__mode = None
+        self.__offered = ()  # the actions the mode offers
         self.__drawn = {}  # (row, col): (attributes, value, possible values) of each cell as last drawn
 
     # Interface required for the game
@@ -56,10 +59,11 @@ class TerminalUI:
         runs_out and self.inform(Message("No more shades of gray left - repeating last shade. ", MessageKind.WARNING))
 
     def show_board(self, cells) -> None:
-        """Clear the screen and draw every cell whole"""
+        """Clear the screen and draw every cell whole, and the command panel"""
         Display.clear_screen()
         for cell in cells:
             self.__draw_whole_cell(cell)
+        self.__draw_panel()
 
     def cell_changed(self, cell) -> None:
         """Redraw only what differs from what was last drawn: the whole cell when its attributes changed"""
@@ -71,6 +75,22 @@ class TerminalUI:
         possible_values != cell.possible_values() and self.__draw_possible_values(cell)
         self.__remember(cell)
 
+    def mode_changed(self, mode, actions) -> None:
+        self.__mode = mode
+        self.__offered = actions
+        self.__draw_panel()
+
+    # Interface required for Main
+
+    def offered_actions(self) -> tuple:
+        return self.__offered
+
+    def show_help(self) -> None:
+        """Show the commands the mode offers, with their keys, until a key is hit"""
+        Display.clear_screen()
+        print(Commands.long_help(self.__offered))
+        Display.hit_any_key_to_continue()
+
     # Private functions
 
     def __styled(self, message) -> str:
@@ -78,6 +98,10 @@ class TerminalUI:
         if message.kind in (MessageKind.SUCCESS, MessageKind.HINT):
             return Display.styled(message.text, (CellAttrs.SOLVED,))
         return Display.term.yellow(message.text)
+
+    def __draw_panel(self) -> None:
+        """Draw the mode's title and its commands beside the puzzle, once a mode has been announced"""
+        self.__mode and Display.draw_command_panel(self.__mode.value, Commands.panel(self.__offered))
 
     def __draw_whole_cell(self, cell) -> None:
         Display.draw_cell(cell.row, cell.col, cell.borders, cell.attr())

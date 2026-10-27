@@ -21,7 +21,9 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, ".")
 
+from actions import Mode, OFFERED_ACTIONS
 from cell_attrs import CellAttrs
+from commands import Commands
 from display import Display
 from terminal_ui import TerminalUI
 from user_interface import Message, MessageKind
@@ -71,6 +73,31 @@ class TestTerminalUI(TestCase):
         self.assertEqual(display.draw_cell.call_count, 2)
         display.draw_cell_value.assert_any_call(0, 0, 5, ())
         display.draw_cell_possible_values.assert_any_call(0, 1, {1, 2}, ())
+
+    def test_a_new_mode_draws_its_panel(self):
+        with patch("terminal_ui.Display") as display:
+            self.ui.mode_changed(Mode.PLAY, OFFERED_ACTIONS[Mode.PLAY])
+        display.draw_command_panel.assert_called_once_with("PLAY", Commands.panel(OFFERED_ACTIONS[Mode.PLAY]))
+
+    def test_show_board_redraws_the_panel_of_the_mode(self):
+        with patch("terminal_ui.Display") as display:
+            self.ui.mode_changed(Mode.SETUP, OFFERED_ACTIONS[Mode.SETUP])
+            display.reset_mock()
+            self.ui.show_board([])
+        display.draw_command_panel.assert_called_once_with("SETUP", Commands.panel(OFFERED_ACTIONS[Mode.SETUP]))
+
+    def test_the_offered_actions_are_those_of_the_mode_announced(self):
+        with patch("terminal_ui.Display"):
+            self.ui.mode_changed(Mode.PLAY, OFFERED_ACTIONS[Mode.PLAY])
+        self.assertEqual(self.ui.offered_actions(), OFFERED_ACTIONS[Mode.PLAY])
+
+    def test_help_shows_the_help_for_the_mode_and_waits_for_a_key(self):
+        with patch("terminal_ui.Display") as display, patch("builtins.print") as printed:
+            self.ui.mode_changed(Mode.SETUP, OFFERED_ACTIONS[Mode.SETUP])
+            self.ui.show_help()
+        display.clear_screen.assert_called_once()
+        printed.assert_called_once_with(Commands.long_help(OFFERED_ACTIONS[Mode.SETUP]))
+        display.hit_any_key_to_continue.assert_called_once()
 
     def test_a_cell_not_yet_drawn_is_drawn_whole(self):
         display = self.__drawn_after_change(None, self.__cell(2, 3, value=4))

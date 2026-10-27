@@ -20,67 +20,82 @@ from unittest import main, TestCase
 
 sys.path.insert(0, ".")
 
+from actions import Action, Mode, OFFERED_ACTIONS
 from commands import Commands
+
+SETUP = OFFERED_ACTIONS[Mode.SETUP]
+PLAY = OFFERED_ACTIONS[Mode.PLAY]
 
 
 class TestCommands(TestCase):
-    def setUp(self):
-        self.saved_cmds = Commands.CMDS
-        return super().setUp()
+    # The command panel
 
-    def tearDown(self):
-        Commands.CMDS = self.saved_cmds
-        return super().tearDown()
+    def test_panel_in_play_mode(self):
+        self.assertEqual(
+            Commands.panel(PLAY),
+            [
+                ("ESC", "SETUP"), ("?", "help"), ("1-9", "value"), ("shift 1-9", "guess"),
+                ("k ↑", "up"), ("j ↓", "down"), ("h ←", "left"), ("l →", "right"),
+                ("u", "undo"), ("r", "rewind"), ("a", "auto"), ("n", "next"),
+                ("s", "save"), ("o", "open"), ("q CTRL-C", "quit"),
+            ],
+        )
 
-    def test_play_commands_can_be_made_active(self):
-        Commands.use(Commands.PLAY_COMMANDS)
-        self.assertEqual(list(Commands.CMDS), list(Commands.PLAY_COMMANDS) + list(Commands.COMMON_CMDS))
+    def test_panel_in_setup_mode(self):
+        self.assertEqual(
+            Commands.panel(SETUP),
+            [
+                ("ESC", "PLAY"), ("?", "help"), ("1-9", "value"),
+                ("k ↑", "up"), ("j ↓", "down"), ("h ←", "left"), ("l →", "right"),
+                ("Del", "clear"), ("s", "save"), ("o", "open"), ("q CTRL-C", "quit"),
+            ],
+        )
 
-    def test_initialization_commands_can_be_made_active_again(self):
-        Commands.use(Commands.PLAY_COMMANDS)
-        Commands.use(Commands.INIT_COMMANDS)
-        self.assertEqual(list(Commands.CMDS), list(Commands.INIT_COMMANDS) + list(Commands.COMMON_CMDS))
+    # Keys
 
-    def test_save_and_open_are_available_in_both_modes(self):
-        for mode_cmds in (Commands.INIT_COMMANDS, Commands.PLAY_COMMANDS):
-            Commands.use(mode_cmds)
-            self.assertIn("s", Commands.CMDS["save"]["keys"])
-            self.assertIn("o", Commands.CMDS["open"]["keys"])
+    def test_esc_starts_playing_in_setup_and_goes_back_to_setup_while_playing(self):
+        self.assertEqual(Commands.command_for("KEY_ESCAPE", SETUP), (Action.PLAY, None))
+        self.assertEqual(Commands.command_for("KEY_ESCAPE", PLAY), (Action.INIT, None))
 
-    def test_panel_lists_the_mode_commands_first_then_the_common_ones(self):
-        Commands.use(Commands.PLAY_COMMANDS)
-        panel = Commands.panel()
-        self.assertEqual(panel[2:4], [("1-9", "value"), ("shift 1-9", "guess")])
-        self.assertIn(("u", "undo"), panel)
-        self.assertEqual(panel[-1], ("q CTRL-C", "quit"))
+    def test_digits_are_values_and_shifted_digits_are_guesses(self):
+        for offered in (SETUP, PLAY):
+            self.assertEqual(Commands.command_for("5", offered), (Action.VALUE, 5))
+            self.assertEqual(Commands.command_for("%", offered), (Action.GUESS, 5))
 
-    def test_panel_in_setup_mode_has_no_guess_and_offers_play(self):
-        Commands.use(Commands.INIT_COMMANDS)
-        panel = Commands.panel()
-        self.assertNotIn(("shift 1-9", "guess"), panel)
-        self.assertIn(("ESC", "PLAY"), panel)
+    def test_a_key_maps_to_its_action_even_where_the_mode_does_not_offer_it(self):
+        self.assertEqual(Commands.command_for("u", SETUP), (Action.UNDO, None))
+        self.assertEqual(Commands.command_for("KEY_DELETE", PLAY), (Action.DEL, None))
 
-    def test_esc_then_help_head_the_panel_in_both_modes(self):
-        for mode_cmds, name in ((Commands.INIT_COMMANDS, "PLAY"), (Commands.PLAY_COMMANDS, "SETUP")):
-            Commands.use(mode_cmds)
-            self.assertEqual(Commands.panel()[:2], [("ESC", name), ("?", "help")])
+    def test_both_cases_of_a_letter_work(self):
+        self.assertEqual(Commands.command_for("N", PLAY), (Action.NEXT, None))
 
-    def test_moves_come_right_after_the_values_in_both_modes(self):
-        for mode_cmds in (Commands.INIT_COMMANDS, Commands.PLAY_COMMANDS):
-            Commands.use(mode_cmds)
-            keys = [keys for keys, name in Commands.panel()]
-            last_value = max(i for i, key in enumerate(keys) if "1-9" in key)
-            self.assertEqual(keys[last_value + 1 : last_value + 5], ["k ↑", "j ↓", "h ←", "l →"])
+    def test_question_mark_is_the_terminals_own_help(self):
+        self.assertEqual(Commands.command_for("?", SETUP), (Commands.HELP, None))
 
-    def test_play_commands_are_hidden_in_setup_mode(self):
-        Commands.use(Commands.INIT_COMMANDS)
-        for name in ("undo", "rewind", "auto", "next"):
-            self.assertEqual(Commands.CMDS[name]["panel"], [])
-        self.assertIn("[hidden]", Commands.long_help())
+    def test_unknown_key_is_no_command(self):
+        self.assertIsNone(Commands.command_for("x", PLAY))
 
-    def test_commands_without_panel_lines_are_left_out(self):
-        Commands.use(Commands.PLAY_COMMANDS)
-        self.assertNotIn("Del", [keys for keys, name in Commands.panel()])
+    # Help
+
+    def test_help_lists_only_what_the_mode_offers(self):
+        self.assertNotIn("u", self.__help_keys(SETUP))
+        self.assertIn("u", self.__help_keys(PLAY))
+        self.assertNotIn("Del", self.__help_keys(PLAY))
+
+    def test_help_lines_up_the_dashes_after_the_keys(self):
+        for offered in (SETUP, PLAY):
+            lines = Commands.long_help(offered).split("\n")
+            self.assertEqual(len({line.index(" - ") for line in lines}), 1, lines)
+
+    def test_help_lists_the_same_commands_as_the_panel(self):
+        for offered in (SETUP, PLAY):
+            self.assertEqual(self.__help_keys(offered), [keys for keys, name in Commands.panel(offered)])
+
+    # Private functions
+
+    def __help_keys(self, offered) -> list:
+        """The keys at the start of each line of the help for the offered actions"""
+        return [line.split(" - ")[0].rstrip() for line in Commands.long_help(offered).split("\n")]
 
 
 if __name__ == "__main__":
