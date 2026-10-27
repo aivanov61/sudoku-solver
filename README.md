@@ -150,49 +150,9 @@ some guidance:
 - game/save_file.py - writes and reads the versioned save file; `SaveFile` and `SavedPuzzle` classes
 - ui/terminal/input.py - manages keyboard input and decodes into a valid command; `Input` class
 - ui/terminal/copyright.py - the GNU GPL splash text; `Copyright` class
+- ui/error_log.py - keeps the details of errors the program survives, in sudoku.log; `ErrorLog` class
 
 #### Class Organization
 
-Rather than drawing a UML (I'll leave that to the reader and IDE), here is an
-explanation of a few of the classes.  [DesignDoc.md](DesignDoc.md) describes
-all of them and how they work together.
-
-#### Main
-
-This class is instantiated in sudoku.py and drives the Sudoku program.  Driving
-the Sudoku program entails:
-1. Getting the puzzle layouts from the catalog
-1. Handling the GNU GPL notice (with a note if the only layout is not fully usable)
-1. Letting the player choose a layout from a menu, when there are several
-1. Creating the board, the user interface (`TerminalUI`) and the puzzle
-1. Letting the user interface play the puzzle: it renders it, runs the *play* loop, and cleans up when
-   the *play* is over
-
-#### Display
-
-Draws on a `blessed` terminal; `Main` creates one `Display` and passes it to
-the code that draws.  Key methods/attributes are:
-
-- term - an instance of the `blessed` Terminal()
-- geometry(v_cells, h_cells) - establish the vertical and horizontal sizes of the puzzle
-- geom - access the geometry `h_cells` and `v_cells` (horizontal and vertical respectively)
-- CONSTANTS for the puzzle cell sizes
-- y() - return the terminal y offset for a given row
-- x() - return the terminal x offset for a given column
-- clear_screen() - as the name suggests
-- validate_screen_size() - makes sure terminal is big enough; forces resizing until it is
-- draw_cell() - Draws the cell outline/background, sans the values
-- draw_cell_value() - Draws the current cell value with color/attributes
-- draw_cell_possible_values() - Draws the sorted values possible for the cell (or `.....` if there are too many to fit in the cell)
-- move_to_status_line() - Move the cursor to the first character of the status line (one line below the puzzle cells)
-- move_to_cell() - Move to the 'center' of the cell (where the value will be printed)
-- warn() - Display a warning in yellow on the status line
-
-#### Input
-
-Get terminal input and decode it using the key bindings in `Commands`.  It provides a single function:
-
-- get_cmd(offered) - Wait for, and get, keyboard input.  It handles exceptions and CTRL-C
-(keyboard interrupt), which force an immediate quit, and returns the command for the key: one of the game's
-actions (with its digit, for values and guesses) or the help screen.  Keyboard input that is not
-recognized is ignored.
+Rather than drawing a UML (I'll leave that to the reader and IDE), see
+[DesignDoc.md](DesignDoc.md), which describes all the classes and how they work together.
