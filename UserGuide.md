@@ -33,7 +33,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | Arrow keys, or `h` `j` `k` `l` | Move left, down, up, right |
 | `1`–`9` | Enter a given number. Givens are shown in purple on lavender. |
 | `Delete` | Clear the selected cell |
-| `ESC` | Finish setup and start playing |
+| `ESC` | Finish setup and start playing. Not allowed while given numbers clash, or while an empty cell has no possible values left (the cursor moves to that cell). |
 | `?` | Show all commands |
 | `q` | Quit (asks you to confirm) |
 | `CTRL-C` | Quit at once, without asking |
@@ -87,7 +87,7 @@ Press `a` to fill in, without explanations, every move that `n` would find, one 
 
 ## Finishing the puzzle
 
-When the last empty cell is filled in, the status line says, until your next key, that the puzzle is **solved** (in steel blue) or **complete, with errors** (in yellow) if any values clash. You can still type over values, or undo, to fix errors. If the clashing values are givens from the setup, and you haven't entered anything since, it tells you to press `ESC` to go back to setup mode and change them there. The status line reports again whenever that changes: once the errors are fixed, or when the puzzle is complete again after undo or rewind emptied a cell. `n` and `a` have nothing left to do, so they just remind you that the puzzle is solved, or that it's complete with errors and you should undo or change values to fix them.
+When the last empty cell is filled in, the status line says, until your next key, that the puzzle is **solved** (in steel blue) or **complete, with errors** (in yellow) if any values clash. You can still type over values, or undo, to fix errors. The status line reports again whenever that changes: once the errors are fixed, or when the puzzle is complete again after undo or rewind emptied a cell. `n` and `a` have nothing left to do, so they just remind you that the puzzle is solved, or that it's complete with errors and you should undo or change values to fix them.
 
 ## Colors at a glance
 

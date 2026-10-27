@@ -139,6 +139,8 @@ class Puzzle(ABC):
         self.__move(0, 1)
 
     def play_(self) -> None:
+        if self.__setup_blocks_playing():
+            return
         self._initializing = False
         Commands.use(Commands.PLAY_COMMANDS)
         self.display_status()
@@ -221,7 +223,7 @@ class Puzzle(ABC):
         return {
             None: None,
             "solved": Display.styled("The puzzle is solved. ", (DisplayAttrs.SOLVED,)),
-            "errors": Display.term.yellow(f"The puzzle is complete, with errors - {self.__how_to_fix_errors()}. "),
+            "errors": Display.term.yellow("The puzzle is complete, with errors - undo or change values to fix them. "),
         }[self.__unseen_completion]
 
     def __completion(self) -> str:
@@ -236,10 +238,6 @@ class Puzzle(ABC):
 
     def __has_errors(self) -> bool:
         return self.first_cell_where(Cell.is_marked_in_conflict) is not None
-
-    def __how_to_fix_errors(self) -> str:
-        """Values entered while playing can be undone or changed; with none entered, the errors are in the setup"""
-        return "use ESC and then change values to fix them" if History.is_empty() else "undo or change values to fix them"
 
     def __increment_bg_level(self) -> None:
         self._bg_level += self.BG_LEVEL_DELTA
@@ -279,6 +277,18 @@ class Puzzle(ABC):
         col = min(max(col + d_col, 0), Display.geom["h_cells"] - 1)
         self.selected_cell = (row, col)
 
+    def __setup_blocks_playing(self) -> bool:
+        """Warn if the setup has conflicts, or a dead end (moving to it), which would block solving"""
+        if self.__has_errors():
+            Display.warn("Resolve the conflicts before playing. ", wait=True)
+            return True
+        dead_end = self.first_cell_where(Cell.is_dead_end)
+        if dead_end is None:
+            return False
+        self.select(dead_end)
+        Display.warn("This square has no possible values left - change the setup before playing. ", wait=True)
+        return True
+
     def __check_for_active_play(self) -> bool:
         is_actively_playing = not History.is_empty()
         is_actively_playing and Display.warn(
@@ -316,7 +326,7 @@ class Puzzle(ABC):
 
     def __warn_already_complete(self) -> None:
         Display.warn(
-            f"The puzzle is already complete, with errors - {self.__how_to_fix_errors()}. "
+            "The puzzle is already complete, with errors - undo or change values to fix them. "
             if self.__has_errors()
             else "The puzzle is already solved. ",
             wait=True,
