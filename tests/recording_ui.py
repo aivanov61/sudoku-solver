@@ -26,6 +26,7 @@ class RecordingUI:
         self.statuses = []  # every message shown with status(), None for a blank status line
         self.informed = []  # every message shown with inform()
         self.questions = []  # every question asked with confirm(), and (prompt, default) for each ask_file_name()
+        self.guess_depths = []  # every guess depth reported
 
     # Interface required for the game
 
@@ -42,6 +43,9 @@ class RecordingUI:
     def ask_file_name(self, prompt, default) -> str:
         self.questions.append((prompt, default))
         return self.file_name
+
+    def guess_depth_changed(self, depth) -> None:
+        self.guess_depths.append(depth)
 
     # Interface required for tests
 

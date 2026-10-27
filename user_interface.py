@@ -54,3 +54,6 @@ class UserInterface(Protocol):
 
     def ask_file_name(self, prompt, default) -> str:
         """Ask for a file name, offering the default; return None if the player cancels"""
+
+    def guess_depth_changed(self, depth) -> None:
+        """Hear that values are now entered depth guesses deep (0 when no guess is in play)"""

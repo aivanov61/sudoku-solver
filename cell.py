@@ -17,8 +17,8 @@
 
 from cell_solver import CellSolver
 from copy import deepcopy
+from cell_attrs import CellAttrs
 from display import Display, Border
-from display_attrs import DisplayAttrs
 
 
 class Cell:
@@ -85,7 +85,7 @@ class Cell:
         return not self._value and not self.possible_values()
 
     def is_marked_in_conflict(self) -> bool:
-        return any(attr in DisplayAttrs.CONFLICT_ATTRS for attr in self._attrs)
+        return any(attr in CellAttrs.CONFLICT_ATTRS for attr in self._attrs)
 
     # Interface required for related cells
 
@@ -104,20 +104,20 @@ class Cell:
     def mark_conflicted(self, value) -> None:
         """Mark the cell as conflicted if it holds the value just entered in a related cell"""
         if value == self._value and not self.is_marked_in_conflict():
-            self.__add_attr(DisplayAttrs.CONFLICTED)
+            self.__add_attr(CellAttrs.CONFLICTED)
             self.render()
 
     def clear_resolved_conflict(self, value) -> None:
         """Clear the cell's conflict mark if it holds the value and no related cell holds it any more"""
         if value == self._value and self.is_marked_in_conflict() and not self.__is_held_by_related_cell(value):
-            self._attrs = tuple(attr for attr in self._attrs if attr not in DisplayAttrs.CONFLICT_ATTRS)
+            self._attrs = tuple(attr for attr in self._attrs if attr not in CellAttrs.CONFLICT_ATTRS)
             self.render()
 
     # Private functions
 
     def __mark_if_conflicting(self, value) -> None:
         if value and self.__is_held_by_related_cell(value):
-            self.__add_attr(DisplayAttrs.CONFLICTING)
+            self.__add_attr(CellAttrs.CONFLICTING)
 
     def __is_held_by_related_cell(self, value) -> bool:
         return any(cell.value() == value for cell in self.__related_cells())

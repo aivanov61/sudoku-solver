@@ -19,15 +19,19 @@ import sys
 
 sys.path.insert(0, ".")
 
+from cell_attrs import CellAttrs
 from display import Display, echo
 from display_attrs import DisplayAttrs
-from user_interface import MessageKind
+from user_interface import Message, MessageKind
 
 
 class TerminalUI:
     """
     The user interface on a terminal: it shows the game's messages and asks its questions on the status line.
     """
+
+    def __init__(self):
+        self.__guess_depth = 0
 
     # Interface required for the game
 
@@ -44,10 +48,16 @@ class TerminalUI:
     def ask_file_name(self, prompt, default) -> str:
         return Display.ask(prompt, default)
 
+    def guess_depth_changed(self, depth) -> None:
+        """Warn when guesses go from within the shades of gray to deeper than the last one"""
+        runs_out = DisplayAttrs.is_beyond_last_shade(depth) and not DisplayAttrs.is_beyond_last_shade(self.__guess_depth)
+        self.__guess_depth = depth
+        runs_out and self.inform(Message("No more shades of gray left - repeating last shade. ", MessageKind.WARNING))
+
     # Private functions
 
     def __styled(self, message) -> str:
         """Successes and hints in the solved style (steel blue), everything else in yellow"""
         if message.kind in (MessageKind.SUCCESS, MessageKind.HINT):
-            return Display.styled(message.text, (DisplayAttrs.SOLVED,))
+            return Display.styled(message.text, (CellAttrs.SOLVED,))
         return Display.term.yellow(message.text)

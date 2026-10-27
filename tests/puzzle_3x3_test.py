@@ -21,8 +21,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, ".")
 
+from cell_attrs import CellAttrs
 from commands import Commands
-from display_attrs import DisplayAttrs
 from puzzle import Puzzle
 from puzzles.board_3x3 import Board3x3
 from recording_ui import RecordingUI
@@ -121,12 +121,12 @@ class TestPuzzle3x3(TestCase):
     def test_cell_already_holding_the_value_is_marked_conflicted(self):
         self.__cell(4, 4).set(5)
         self.__cell(4, 0).set(5)
-        self.assertIn(DisplayAttrs.CONFLICTED, self.__cell(4, 4).attr())
+        self.assertIn(CellAttrs.CONFLICTED, self.__cell(4, 4).attr())
 
     def test_unrelated_cell_holding_the_value_is_not_marked(self):
         self.__cell(0, 0).set(5)
         self.__cell(4, 4).set(5)
-        self.assertNotIn(DisplayAttrs.CONFLICTED, self.__cell(0, 0).attr())
+        self.assertNotIn(CellAttrs.CONFLICTED, self.__cell(0, 0).attr())
 
     def test_deleting_conflicting_value_clears_conflicted_mark(self):
         self.__cell(4, 4).set(5)
@@ -151,7 +151,7 @@ class TestPuzzle3x3(TestCase):
         self.__cell(4, 0).set(5)
         self.__cell(0, 4).set(5)
         self.__cell(4, 0).set(None)
-        self.assertIn(DisplayAttrs.CONFLICTED, self.__cell(4, 4).attr())
+        self.assertIn(CellAttrs.CONFLICTED, self.__cell(4, 4).attr())
 
     def test_undo_clears_conflict_marks(self):
         self.puzzle.play_()
@@ -166,38 +166,38 @@ class TestPuzzle3x3(TestCase):
     def test_value_already_in_row_is_conflicting(self):
         self.__cell(4, 4).set(5)
         self.__cell(4, 0).set(5)
-        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(4, 0).attr())
+        self.assertIn(CellAttrs.CONFLICTING, self.__cell(4, 0).attr())
 
     def test_value_already_in_column_is_conflicting(self):
         self.__cell(4, 4).set(5)
         self.__cell(0, 4).set(5)
-        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(0, 4).attr())
+        self.assertIn(CellAttrs.CONFLICTING, self.__cell(0, 4).attr())
 
     def test_value_already_in_box_is_conflicting(self):
         self.__cell(4, 4).set(5)
         self.__cell(3, 3).set(5)
-        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(3, 3).attr())
+        self.assertIn(CellAttrs.CONFLICTING, self.__cell(3, 3).attr())
 
     def test_value_directly_above_in_another_block_is_conflicting(self):
         self.__cell(0, 8).set(7)
         self.__cell(6, 8).set(7)
-        self.assertIn(DisplayAttrs.CONFLICTING, self.__cell(6, 8).attr())
+        self.assertIn(CellAttrs.CONFLICTING, self.__cell(6, 8).attr())
 
     def test_value_in_block_above_but_not_in_same_column_is_not_conflicting(self):
         self.__cell(0, 6).set(5)
         self.__cell(6, 8).set(5)
-        self.assertNotIn(DisplayAttrs.CONFLICTING, self.__cell(6, 8).attr())
+        self.assertNotIn(CellAttrs.CONFLICTING, self.__cell(6, 8).attr())
 
     def test_replacing_value_with_unused_value_is_not_conflicting(self):
         self.__cell(4, 4).set(3)
         self.__cell(4, 4).set(7)
-        self.assertNotIn(DisplayAttrs.CONFLICTING, self.__cell(4, 4).attr())
+        self.assertNotIn(CellAttrs.CONFLICTING, self.__cell(4, 4).attr())
 
     def test_replacing_conflicting_value_with_unused_value_clears_conflict(self):
         self.__cell(4, 4).set(5)
         self.__cell(4, 0).set(5)
         self.__cell(4, 0).set(7)
-        self.assertNotIn(DisplayAttrs.CONFLICTING, self.__cell(4, 0).attr())
+        self.assertNotIn(CellAttrs.CONFLICTING, self.__cell(4, 0).attr())
 
     # Undo and rewind
 
@@ -250,7 +250,7 @@ class TestPuzzle3x3(TestCase):
             self.__enter(2, 2, 3)
             self.__rewind()
             self.__enter(4, 4, 5)
-        self.assertEqual(self.__cell(4, 4).attr(), (dict(level=10),))
+        self.assertEqual(self.__cell(4, 4).attr(), (dict(depth=1),))
 
     def test_rewind_through_a_guess_removes_its_shading(self):
         self.puzzle.play_()
@@ -445,7 +445,7 @@ class TestPuzzle3x3(TestCase):
             self.puzzle.next_()
             self.puzzle.next_()
         self.assertEqual(self.__cell(0, 8).value(), 9)
-        self.assertEqual(self.__cell(0, 8).attr(), (DisplayAttrs.SOLVED,))
+        self.assertEqual(self.__cell(0, 8).attr(), (CellAttrs.SOLVED,))
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
 
     def test_next_picks_the_first_single_value_cell_left_to_right_top_to_bottom(self):
@@ -476,7 +476,7 @@ class TestPuzzle3x3(TestCase):
             self.__enter(0, 8, 5)
             self.puzzle.undo_()
         self.assertEqual(self.__cell(0, 8).value(), 9)
-        self.assertEqual(self.__cell(0, 8).attr(), (DisplayAttrs.SOLVED,))
+        self.assertEqual(self.__cell(0, 8).attr(), (CellAttrs.SOLVED,))
 
     def test_next_after_a_guess_keeps_the_guess_shading(self):
         self.__fill_row(0, 0, range(1, 9))
@@ -485,7 +485,7 @@ class TestPuzzle3x3(TestCase):
             self.__enter(8, 0, 9, guess=True)
             self.puzzle.next_()
             self.puzzle.next_()
-        self.assertEqual(self.__cell(0, 8).attr(), (DisplayAttrs.SOLVED, dict(level=10)))
+        self.assertEqual(self.__cell(0, 8).attr(), (CellAttrs.SOLVED, dict(depth=1)))
 
     def test_next_refuses_while_there_are_conflicts(self):
         self.__fill_row(0, 0, range(1, 9))
@@ -521,7 +521,7 @@ class TestPuzzle3x3(TestCase):
             self.puzzle.auto_()
         self.assertEqual(self.__cell(2, 0).value(), 9)
         self.assertEqual(self.__cell(4, 8).value(), 9)
-        self.assertEqual(self.__cell(4, 8).attr(), (DisplayAttrs.SOLVED,))
+        self.assertEqual(self.__cell(4, 8).attr(), (CellAttrs.SOLVED,))
         self.assertEqual(self.puzzle.selected_cell, (4, 8))
         self.assertIn("No obvious next move. You'll have to make a guess.", self.ui.last_informed())
 
@@ -669,7 +669,7 @@ class TestPuzzle3x3(TestCase):
             self.__enter(0, 0, 1)
         restored = self.__restored_puzzle()
         self.assertTrue(restored._initializing)
-        self.assertEqual(self.__cell_of(restored, 0, 0).attr(), (DisplayAttrs.INITIAL,))
+        self.assertEqual(self.__cell_of(restored, 0, 0).attr(), (CellAttrs.INITIAL,))
 
     # Quit
 

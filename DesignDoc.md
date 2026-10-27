@@ -54,7 +54,8 @@ Supporting modules:
 | `user_interface.py` | `UserInterface`, `Message`, `MessageKind` | The port through which the game talks to the player (section 4.4) |
 | `terminal_ui.py` | `TerminalUI` | The terminal's implementation of the port: messages and questions on the status line |
 | `display.py` | `Display`, `Border` | All terminal drawing, through `blessed` |
-| `display_attrs.py` | `DisplayAttrs` | Turns attribute mnemonics into `blessed` style names |
+| `cell_attrs.py` | `CellAttrs` | What a cell's attributes mean: how its value got there, conflict marks, guess depth |
+| `display_attrs.py` | `DisplayAttrs` | The terminal's style table: turns a cell's attributes into `blessed` style names |
 | `history.py` | `History`, `Entry` | The undo stack |
 | `moves.py` | `Moves` | Enters values, records them in its own `History` for undo and rewind, and keeps the guess shading |
 | `save_file.py` | `SaveFile`, `SavedPuzzle`, `SaveFileError` | Writes and reads the versioned save file |
@@ -103,9 +104,10 @@ class UserInterface(Protocol):
     def inform(self, message) -> None: ...                 # must be acknowledged before going on
     def confirm(self, question) -> bool: ...
     def ask_file_name(self, prompt, default) -> str | None: ...
+    def guess_depth_changed(self, depth) -> None: ...      # every change; the interface decides what to show
 ```
 
-A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCESS` or `HINT`. The port, `Message` and `MessageKind` are in `user_interface.py`. The last four methods exist since step 1; the others will be added in later steps.
+A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCESS` or `HINT`. The port, `Message` and `MessageKind` are in `user_interface.py`. `status`, `inform`, `confirm` and `ask_file_name` exist since step 1, and `guess_depth_changed` since step 2; the others will be added in later steps.
 
 **What belongs where:**
 
@@ -148,8 +150,8 @@ A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCE
 Puzzle.value_(val, guess)
   ├─ refuse to change an INITIAL cell in play mode (warning)
   ├─ Moves.enter(cell, val, GUESS or None)
-       ├─ guess (in play mode) → raise the gray level
-       ├─ attributes           → INITIAL (init mode) or the primary attribute, plus the gray level if any
+       ├─ guess (in play mode) → one guess deeper
+       ├─ attributes           → INITIAL (init mode) or the primary attribute, plus the guess depth if any
        ├─ play mode            → History.add(Entry(cell, new value, previous value))
        └─ Cell.update(val, attrs)
             └─ Cell.set()
@@ -185,7 +187,7 @@ Puzzle.value_(val, guess)
 - `Moves` (`moves.py`) is the only code that uses its `History`; the puzzle's `undo_()` and `rewind_()` call its `undo()` and `rewind()`, which return the cell for the cursor.
 - `undo_()` pops the last entry, moves the cursor to that cell and restores the previous value with `cell.update()`. With nothing to undo, it warns "Cannot undo initialized puzzle. ESC will re-enter initialization mode."
 - `rewind_()` undoes at least one entry, then keeps undoing until the most recent remaining entry is a guess (primary attribute `GUESS`), or until the history is empty. The guess stays on the board and the cursor moves to it, ready for a different value to be typed over it. Pressing `r` again undoes that guess and rewinds to the one before. It uses `History.last()` to look at the most recent entry without removing it. With nothing to undo, it gives the same warning as `undo_()`. Otherwise it asks for confirmation first, since a rewind can't be undone.
-- **Guess shading:** each guess raises the shade kept by `Moves` by `Moves.SHADE_STEP` (10). Every value entered afterwards, guess or not, gets that gray background, which shows what depends on the guess. Undoing a guess lowers the level by 10. Above `MAX_GRAY_LEVEL` (100), the program warns and keeps reusing the last shade.
+- **Guess shading:** each guess makes the guess depth kept by `Moves` one deeper. Every value entered afterwards, guess or not, carries that depth, which shows what depends on the guess; undoing a guess makes it one shallower. The terminal shows depth as gray: `DisplayAttrs.GRAY_STEP` (10) lighter per guess, up to `MAX_GRAY_LEVEL` (100). Deeper than that it reuses the last shade. `Moves` reports every change of depth through the user interface's `guess_depth_changed()`, and `TerminalUI` warns "No more shades of gray left - repeating last shade." whenever the depth goes from within the shades to beyond the last one; deeper guesses stay quiet, and coming back within the shades lets it warn again. The game itself never knows about shades.
 
 ### 5.6 Next: the obvious next move
 
@@ -235,11 +237,11 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 
 - **Cell layout:** each cell is 6 columns by 3 lines. The top line is the border (shared with the cell above), the middle line shows the value, and the bottom line shows the possible values. Box edges use full blocks (`█`); inner lines use `│`, `─` and `┼`.
 - **Possible values** are drawn in increasing order as subscript digits. When there are more than 5, `.....` is shown instead.
-- **Attributes:** `DisplayAttrs` turns mnemonics into `blessed` style names such as `purple_on_lavender` or `bold_red_on_bright_yellow`. There are two kinds:
+- **Attributes:** a cell's attributes are a tuple whose meanings are defined, for the game, by `CellAttrs`; `DisplayAttrs`, the terminal's style table, turns them into `blessed` style names such as `purple_on_lavender` or `bold_red_on_bright_yellow`. There are two kinds:
   - *Primary* attributes (at most one per cell): `INITIAL` gives purple on lavender, `GUESS` gives green on the current gray, and `SOLVED` (values filled in by `n`) gives steel blue on the current gray.
   - *Optional* attributes: `CONFLICTING` gives bold red on bright yellow. `CONFLICTED` gives the primary color on yellow, so the newest entry stands out from the cells it clashes with. A cell carries at most one of the two; `CONFLICTING` wins.
   - Values with no primary attribute are drawn in `darkorange3`.
-  - The gray level travels in the attribute tuple as `{"level": n}`.
+  - The guess depth travels in the attribute tuple as `{"depth": n}`; the terminal shows it as `gray{10 × n}`, at most `gray100`.
 - `Display` is a class with class-level state (`term`, `geom`) and functions called on the class, not on an instance.
 - **Command panel:** `Display.draw_command_panel(title, entries)` draws the mode's title (SETUP or PLAY) and one command per line to the right of the grid, keys in red, then clears the rest of every line beside the grid. Each command in `Commands` has a `panel` list of `(keys, name)` lines (empty to leave it out); `Commands.panel()` lists the active ones in order: `ESC`, help, the values, the moves, the mode's other commands, then save, open and quit. Help (`HELP_CMD`) and the moves (`MOVE_CMDS`) are defined once and included in each mode's commands at their place; save, open and quit are the common commands, added after the mode's. The puzzle redraws the panel in `render()` and when the mode changes.
 - **Status line:** blank unless there is something to report: `n`'s hint, a change in completion, a warning or a question.
@@ -263,7 +265,7 @@ The full list is in `CLAUDE.md`. The main points:
 1. **Separate the game from the display** (section 4.4), one step at a time, each with its own commits, all tests passing and a check by hand:
    - Done first: each `Moves` owns its `History`, instead of one global history.
    - Done, **step 1, messages and dialogs:** `PuzzleSolver` and `CompletionReport` return messages instead of warning; the puzzle and `GameFile` send every message, with its kind, and every dialog through the user interface (`user_interface.py`), and `TerminalUI` wraps today's `Display`. Left for step 2: `Moves`' warning about running out of gray shades, which belongs to the terminal.
-   - **Step 2, attributes with meaning only:** the game keeps a cell's kind, conflict marks and guess depth; colors and gray levels move to a terminal style table.
+   - Done, **step 2, attributes with meaning only:** `CellAttrs` (`cell_attrs.py`) defines what the attributes mean, and the game uses only it. `Moves` keeps a guess depth instead of a gray level. `DisplayAttrs` is now just the terminal's style table, turning depth into gray. `Moves` reports every change of depth through the new `guess_depth_changed()` port method, and `TerminalUI` warns when the depth crosses beyond its last shade.
    - **Step 3, cells stop drawing:** the board reports changed cells through the port, and block edges become layout data instead of a display `Border`.
    - **Step 4, actions apart from keys:** the game defines its actions; the terminal keeps its key bindings and help text.
    - **Step 5, the loop moves to the interface:** the terminal adapter reads keys and calls `game.handle(action)`; `Main` just picks the interface and the layout.

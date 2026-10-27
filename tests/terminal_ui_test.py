@@ -21,8 +21,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, ".")
 
+from cell_attrs import CellAttrs
 from display import Display
-from display_attrs import DisplayAttrs
 from terminal_ui import TerminalUI
 from user_interface import Message, MessageKind
 
@@ -42,7 +42,7 @@ class TestTerminalUI(TestCase):
         for kind in (MessageKind.SUCCESS, MessageKind.HINT):
             with patch("display.Display.styled", side_effect=lambda text, attrs: f"<{attrs[0]}>{text}") as styled:
                 self.assertEqual(self.__status(Message("why", kind)), "<solved>why<clear>")
-            styled.assert_called_once_with("why", (DisplayAttrs.SOLVED,))
+            styled.assert_called_once_with("why", (CellAttrs.SOLVED,))
 
     def test_status_without_a_message_blanks_the_line(self):
         self.assertEqual(self.__status(None), "<clear>")
@@ -63,7 +63,26 @@ class TestTerminalUI(TestCase):
             self.assertEqual(self.ui.ask_file_name("Save to file:", "sudoku.json"), "game.json")
         ask.assert_called_once_with("Save to file:", "sudoku.json")
 
+    def test_guesses_going_deeper_than_the_last_shade_warn(self):
+        self.assertEqual(self.__warnings_for_depths([10, 11]), ["No more shades of gray left - repeating last shade. "])
+
+    def test_guesses_staying_beyond_the_last_shade_do_not_warn_again(self):
+        self.assertEqual(len(self.__warnings_for_depths([11, 12, 11])), 1)
+
+    def test_coming_back_within_the_shades_and_going_beyond_again_warns_again(self):
+        self.assertEqual(len(self.__warnings_for_depths([11, 10, 11])), 2)
+
+    def test_guesses_within_the_shades_do_not_warn(self):
+        self.assertEqual(self.__warnings_for_depths([1, 2, 10, 9, 0]), [])
+
     # Private functions
+
+    def __warnings_for_depths(self, depths) -> list:
+        """Report each guess depth in turn; return the text of every warning shown"""
+        with patch.object(TerminalUI, "inform") as inform:
+            for depth in depths:
+                self.ui.guess_depth_changed(depth)
+        return [call.args[0].text for call in inform.call_args_list]
 
     def __status(self, message) -> str:
         """Show the message on the status line and return what was written there"""

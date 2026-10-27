@@ -20,8 +20,7 @@ import sys
 sys.path.insert(0, ".")
 
 from cell import Cell
-from display import Display
-from display_attrs import DisplayAttrs
+from cell_attrs import CellAttrs
 from history import History, Entry
 
 
@@ -30,16 +29,15 @@ class Moves:
     Enter values into cells and record them in a History, so they can be undone.
 
     Values entered while the puzzle is set up are givens, which are not recorded.  While playing,
-    each guess gives itself and every value entered after it a lighter shade of gray.
+    each guess puts itself (and thus every value entered after it) one guess deeper.
 
-    The puzzle provides is_initializing().
+    The puzzle provides is_initializing(); the user interface hears of every change of guess depth.
     """
 
-    SHADE_STEP = 10
-
-    def __init__(self, puzzle):
+    def __init__(self, puzzle, ui):
         self.__puzzle = puzzle
-        self.__shade = 0
+        self.__ui = ui
+        self.__guess_depth = 0
         self.__history = History()
 
     # Interface required for the puzzle
@@ -47,7 +45,7 @@ class Moves:
     def enter(self, cell, value, prim_attr=None) -> None:
         """Enter a value with its primary attribute (None for a typed value) and record it while playing"""
         is_playing = not self.__puzzle.is_initializing()
-        prim_attr == DisplayAttrs.GUESS and is_playing and self.__deepen_shade()
+        prim_attr == CellAttrs.GUESS and is_playing and self.__one_guess_deeper()
         attr = self.__attributes(prim_attr)
         is_playing and self.__record(cell, value, attr)
         cell.update(value, attr)
@@ -58,7 +56,7 @@ class Moves:
     def undo(self) -> Cell:
         """Undo the most recent move, putting back the cell's previous value, and return the cell"""
         entry = self.__history.undo()
-        self.__is_guess(entry) and self.__lighten_shade()
+        self.__is_guess(entry) and self.__one_guess_shallower()
         previous = entry.previous_valueinfo
         value, attr = (previous.value, self.__attributes(previous.prim_attr)) if previous else (None, ())
         entry.cell.update(value, attr)
@@ -80,20 +78,22 @@ class Moves:
 
     def clear(self) -> None:
         self.__history.clear()
-        self.__shade = 0
+        self.__set_guess_depth(0)
 
     # Private functions
 
-    def __deepen_shade(self) -> None:
-        self.__shade += self.SHADE_STEP
-        self.__shade > DisplayAttrs.MAX_GRAY_LEVEL and Display.warn(
-            "No more shades of gray left - repeating last shade. ", wait=True
-        )
+    def __one_guess_deeper(self) -> None:
+        self.__set_guess_depth(self.__guess_depth + 1)
+
+    def __set_guess_depth(self, depth) -> None:
+        """Change the guess depth, telling the user interface if it changed"""
+        depth != self.__guess_depth and self.__ui.guess_depth_changed(depth)
+        self.__guess_depth = depth
 
     def __attributes(self, prim_attr) -> tuple:
-        """Primary attribute: INITIAL while initializing, else prim_attr (if any); plus the shading"""
-        attr = [DisplayAttrs.INITIAL] if self.__puzzle.is_initializing() else [prim_attr] if prim_attr else []
-        attr += [dict(level=self.__shade)] if self.__shade else []
+        """Primary attribute: INITIAL while initializing, else prim_attr (if any); plus the guess depth"""
+        attr = [CellAttrs.INITIAL] if self.__puzzle.is_initializing() else [prim_attr] if prim_attr else []
+        attr += [dict(depth=self.__guess_depth)] if self.__guess_depth else []
         return tuple(attr)
 
     def __record(self, cell, value, attr) -> None:
@@ -103,10 +103,10 @@ class Moves:
         self.__history.add(Entry(cell, new_info, prev_info))
 
     def __prim_attr(self, attr) -> str:
-        return next((prim_attr for prim_attr in DisplayAttrs.ATTRS_PRIMARY if prim_attr in attr), None)
+        return next((prim_attr for prim_attr in CellAttrs.PRIMARY if prim_attr in attr), None)
 
     def __is_guess(self, entry) -> bool:
-        return entry.valueinfo.prim_attr == DisplayAttrs.GUESS
+        return entry.valueinfo.prim_attr == CellAttrs.GUESS
 
-    def __lighten_shade(self) -> None:
-        self.__shade = max(self.__shade - self.SHADE_STEP, 0)
+    def __one_guess_shallower(self) -> None:
+        self.__set_guess_depth(max(self.__guess_depth - 1, 0))

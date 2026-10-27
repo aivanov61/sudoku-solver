@@ -22,7 +22,7 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, ".")
 
 from cell import Cell
-from display_attrs import DisplayAttrs
+from cell_attrs import CellAttrs
 
 
 class TestCell(TestCase):
@@ -138,17 +138,17 @@ class TestCell(TestCase):
         self.__related_cell(value=8)
         self.cell.set(8)
         self.parent.related_cells.assert_called_with(0, 0)
-        self.assertIn(DisplayAttrs.CONFLICTING, self.cell.attr())
+        self.assertIn(CellAttrs.CONFLICTING, self.cell.attr())
 
     def test_cell_value_is_not_conflicting_when_no_related_cell_holds_it(self):
         self.cell.set(8)
-        self.assertNotIn(DisplayAttrs.CONFLICTING, self.cell.attr())
+        self.assertNotIn(CellAttrs.CONFLICTING, self.cell.attr())
 
     def test_cell_re_entering_same_value_keeps_it_conflicting(self):
         self.__related_cell(value=8)
         self.cell.set(8)
         self.cell.set(8)
-        self.assertIn(DisplayAttrs.CONFLICTING, self.cell.attr())
+        self.assertIn(CellAttrs.CONFLICTING, self.cell.attr())
 
     def test_cell_new_value_marks_related_cells_conflicted(self):
         related = self.__related_cell()
@@ -163,16 +163,16 @@ class TestCell(TestCase):
 
     @patch("cell.Display")
     def test_cell_mark_conflicted_marks_cell_holding_the_value(self, display):
-        self.cell.set(8, (DisplayAttrs.INITIAL,))
+        self.cell.set(8, (CellAttrs.INITIAL,))
         self.cell.mark_conflicted(8)
-        self.assertEqual(self.cell.attr(), (DisplayAttrs.INITIAL, DisplayAttrs.CONFLICTED))
+        self.assertEqual(self.cell.attr(), (CellAttrs.INITIAL, CellAttrs.CONFLICTED))
         display.draw_cell.assert_called_once()
 
     @patch("cell.Display")
     def test_cell_mark_conflicted_ignores_other_values(self, display):
         self.cell.set(8)
         self.cell.mark_conflicted(5)
-        self.assertNotIn(DisplayAttrs.CONFLICTED, self.cell.attr())
+        self.assertNotIn(CellAttrs.CONFLICTED, self.cell.attr())
         display.draw_cell.assert_not_called()
 
     @patch("cell.Display")
@@ -180,16 +180,16 @@ class TestCell(TestCase):
         self.__related_cell(value=8)
         self.cell.set(8)
         self.cell.mark_conflicted(8)
-        self.assertEqual(self.cell.attr(), (DisplayAttrs.CONFLICTING,))
+        self.assertEqual(self.cell.attr(), (CellAttrs.CONFLICTING,))
 
     @patch("cell.Display")
     def test_cell_clear_resolved_conflict_clears_marks_when_no_related_cell_holds_value(self, display):
         related = self.__related_cell(value=8)
-        self.cell.set(8, (DisplayAttrs.GUESS,))
+        self.cell.set(8, (CellAttrs.GUESS,))
         self.cell.mark_conflicted(8)
         related.value.return_value = None
         self.cell.clear_resolved_conflict(8)
-        self.assertEqual(self.cell.attr(), (DisplayAttrs.GUESS,))
+        self.assertEqual(self.cell.attr(), (CellAttrs.GUESS,))
 
     @patch("cell.Display")
     def test_cell_clear_resolved_conflict_keeps_mark_while_a_related_cell_holds_value(self, display):
@@ -197,7 +197,7 @@ class TestCell(TestCase):
         self.cell.mark_conflicted(8)
         self.__related_cell(value=8)
         self.cell.clear_resolved_conflict(8)
-        self.assertIn(DisplayAttrs.CONFLICTED, self.cell.attr())
+        self.assertIn(CellAttrs.CONFLICTED, self.cell.attr())
 
     def test_cell_is_marked_in_conflict_when_conflicting(self):
         self.__related_cell(value=8)

@@ -22,8 +22,8 @@ sys.path.insert(0, ".")
 from commands import Commands
 from cell import Cell
 from completion_report import CompletionReport
+from cell_attrs import CellAttrs
 from display import Display
-from display_attrs import DisplayAttrs
 from game_file import GameFile
 from moves import Moves
 from puzzle_solver import PuzzleSolver
@@ -70,7 +70,7 @@ class Puzzle:
         self.__notice = None  # a warning shown on the status line until the next command
         self.__board = board
         self.__ui = ui
-        self.__moves = Moves(self)
+        self.__moves = Moves(self, ui)
         self.__solver = PuzzleSolver(self)
         self.__report = CompletionReport(self)
         self.__game_file = GameFile(self, ui)
@@ -110,10 +110,10 @@ class Puzzle:
     def value_(self, val, guess=False) -> None:
         """Enter the value in the selected cell, then point out any dead end"""
         cell = self.__selected_cell()
-        if not self._initializing and DisplayAttrs.INITIAL in cell.attr():
+        if not self._initializing and CellAttrs.INITIAL in cell.attr():
             self.__warn("Cannot change an initial value while playing. ")
             return
-        self.__moves.enter(cell, val, DisplayAttrs.GUESS if guess else None)
+        self.__moves.enter(cell, val, CellAttrs.GUESS if guess else None)
         self.__found_dead_end()
 
     def up_(self) -> None:
@@ -178,7 +178,7 @@ class Puzzle:
 
     def enter_solved_value(self, cell, value) -> None:
         """Enter a value found by the solver, the same way as a typed value but marked SOLVED"""
-        self.__moves.enter(cell, value, DisplayAttrs.SOLVED)
+        self.__moves.enter(cell, value, CellAttrs.SOLVED)
 
     def is_initializing(self) -> bool:
         return self._initializing

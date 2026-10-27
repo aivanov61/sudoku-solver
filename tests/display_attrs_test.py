@@ -21,6 +21,7 @@ sys.path.insert(0, ".")
 
 from unittest import main, TestCase
 
+from cell_attrs import CellAttrs
 from display_attrs import DisplayAttrs
 
 
@@ -36,59 +37,68 @@ class TestDisplayRenderAttrs(TestCase):
         self.assertEqual(out, DisplayAttrs.DEFAULT_COLOR)
 
     def test_initial_attribute_renders_purple_on_lavender(self):
-        out = DisplayAttrs.render(DisplayAttrs.INITIAL)
+        out = DisplayAttrs.render(CellAttrs.INITIAL)
         self.assertEqual(out, "purple_on_lavender")
 
-        t = (DisplayAttrs.INITIAL, "junk")
+        t = (CellAttrs.INITIAL, "junk")
         out = DisplayAttrs.render(t)
         self.assertEqual(out, "purple_on_lavender")
 
     def test_solved_attribute_renders_steelblue(self):
-        self.assertEqual(DisplayAttrs.render(DisplayAttrs.SOLVED), "steelblue")
+        self.assertEqual(DisplayAttrs.render(CellAttrs.SOLVED), "steelblue")
 
     def test_solved_attribute_keeps_the_guess_shading(self):
-        self.assertEqual(DisplayAttrs.render((DisplayAttrs.SOLVED, dict(level=10))), "steelblue_on_gray10")
+        self.assertEqual(DisplayAttrs.render((CellAttrs.SOLVED, dict(depth=1))), "steelblue_on_gray10")
 
     def test_guess_attribute_renders_green(self):
-        out = DisplayAttrs.render(DisplayAttrs.GUESS)
+        out = DisplayAttrs.render(CellAttrs.GUESS)
         self.assertEqual(out, "green")
 
-    def test_level_attribute_that_is_not_a_dict_is_ignored(self):
-        out = DisplayAttrs.render("level")
+    def test_depth_attribute_that_is_not_a_dict_is_ignored(self):
+        out = DisplayAttrs.render("depth")
         self.assertEqual(out, DisplayAttrs.DEFAULT_COLOR)
 
-    def test_level_attribute_combined_with_non_dict_level_works_properly(self):
-        out = DisplayAttrs.render(("level", dict(level=50)))
+    def test_depth_attribute_combined_with_non_dict_depth_works_properly(self):
+        out = DisplayAttrs.render(("depth", dict(depth=5)))
         self.assertEqual(out, f"{DisplayAttrs.DEFAULT_COLOR}_on_gray50")
 
-        out = DisplayAttrs.render((dict(level=50), "level"))
+        out = DisplayAttrs.render((dict(depth=5), "depth"))
         self.assertEqual(out, f"{DisplayAttrs.DEFAULT_COLOR}_on_gray50")
 
-        out = DisplayAttrs.render(("level", dict(level=50), "level"))
+        out = DisplayAttrs.render(("depth", dict(depth=5), "depth"))
         self.assertEqual(out, f"{DisplayAttrs.DEFAULT_COLOR}_on_gray50")
 
-    def test_level75_attribute_with_guess_renders_green_on_gray75(self):
-        out = DisplayAttrs.render((DisplayAttrs.GUESS, dict(level=75)))
-        self.assertEqual(out, "green_on_gray75")
+    def test_guess_seven_deep_renders_green_on_gray70(self):
+        out = DisplayAttrs.render((CellAttrs.GUESS, dict(depth=7)))
+        self.assertEqual(out, "green_on_gray70")
+
+    def test_guess_deeper_than_the_last_shade_renders_the_last_shade(self):
+        out = DisplayAttrs.render((CellAttrs.GUESS, dict(depth=12)))
+        self.assertEqual(out, "green_on_gray100")
+
+    def test_only_a_depth_beyond_the_last_shade_runs_out_of_shades(self):
+        self.assertFalse(DisplayAttrs.is_beyond_last_shade(0))
+        self.assertFalse(DisplayAttrs.is_beyond_last_shade(10))
+        self.assertTrue(DisplayAttrs.is_beyond_last_shade(11))
 
     def test_conflicting_value_renders_bold_red_on_bright_yellow(self):
-        out = DisplayAttrs.render(DisplayAttrs.CONFLICTING)
+        out = DisplayAttrs.render(CellAttrs.CONFLICTING)
         self.assertEqual(out, "bold_red_on_bright_yellow")
 
-        out = DisplayAttrs.render((DisplayAttrs.INITIAL, DisplayAttrs.CONFLICTING))
+        out = DisplayAttrs.render((CellAttrs.INITIAL, CellAttrs.CONFLICTING))
         self.assertEqual(out, "bold_red_on_bright_yellow")
 
-        out = DisplayAttrs.render((DisplayAttrs.GUESS, DisplayAttrs.CONFLICTING, dict(level=75)))
+        out = DisplayAttrs.render((CellAttrs.GUESS, CellAttrs.CONFLICTING, dict(depth=7)))
         self.assertEqual(out, "bold_red_on_bright_yellow")
 
     def test_conflicted_value_renders_primary_on_yellow(self):
-        out = DisplayAttrs.render(DisplayAttrs.CONFLICTED)
+        out = DisplayAttrs.render(CellAttrs.CONFLICTED)
         self.assertEqual(out, f"{DisplayAttrs.DEFAULT_COLOR}_on_yellow")
 
-        out = DisplayAttrs.render((DisplayAttrs.CONFLICTED, DisplayAttrs.INITIAL))
+        out = DisplayAttrs.render((CellAttrs.CONFLICTED, CellAttrs.INITIAL))
         self.assertEqual(out, "purple_on_yellow")
 
-        out = DisplayAttrs.render((DisplayAttrs.CONFLICTED, DisplayAttrs.GUESS, dict(level=25)))
+        out = DisplayAttrs.render((CellAttrs.CONFLICTED, CellAttrs.GUESS, dict(depth=2)))
         self.assertEqual(out, "green_on_yellow")
 
 
@@ -102,40 +112,40 @@ class TestDisplayRenderBgAttrs(TestCase):
         self.assertEqual(out, "normal")
 
     def test_solved_attribute_has_no_background_of_its_own(self):
-        self.assertEqual(DisplayAttrs.render_bg(DisplayAttrs.SOLVED), "normal")
+        self.assertEqual(DisplayAttrs.render_bg(CellAttrs.SOLVED), "normal")
 
-    def test_guess_attribute_renders_the_right_level_of_gray(self):
-        out = DisplayAttrs.render_bg(DisplayAttrs.GUESS)
+    def test_guess_attribute_renders_the_gray_for_its_depth(self):
+        out = DisplayAttrs.render_bg(CellAttrs.GUESS)
         self.assertEqual(out, "normal")
 
-        out = DisplayAttrs.render_bg((DisplayAttrs.GUESS, dict(level=60)))
+        out = DisplayAttrs.render_bg((CellAttrs.GUESS, dict(depth=6)))
         self.assertEqual(out, "on_gray60")
 
     def test_initial_attribute_renders_lavender(self):
-        out = DisplayAttrs.render_bg(DisplayAttrs.INITIAL)
+        out = DisplayAttrs.render_bg(CellAttrs.INITIAL)
         self.assertEqual(out, "on_lavender")
 
-        out = DisplayAttrs.render_bg((DisplayAttrs.INITIAL, dict(level=60)))
+        out = DisplayAttrs.render_bg((CellAttrs.INITIAL, dict(depth=6)))
         self.assertEqual(out, "on_lavender")
 
     def test_conflicting_value_renders_bright_yellow(self):
-        out = DisplayAttrs.render_bg(DisplayAttrs.CONFLICTING)
+        out = DisplayAttrs.render_bg(CellAttrs.CONFLICTING)
         self.assertEqual(out, "on_bright_yellow")
 
-        out = DisplayAttrs.render_bg((DisplayAttrs.INITIAL, DisplayAttrs.CONFLICTING))
+        out = DisplayAttrs.render_bg((CellAttrs.INITIAL, CellAttrs.CONFLICTING))
         self.assertEqual(out, "on_bright_yellow")
 
-        out = DisplayAttrs.render_bg((DisplayAttrs.GUESS, DisplayAttrs.CONFLICTING, dict(level=75)))
+        out = DisplayAttrs.render_bg((CellAttrs.GUESS, CellAttrs.CONFLICTING, dict(depth=7)))
         self.assertEqual(out, "on_bright_yellow")
 
     def test_conflicted_value_renders_yellow(self):
-        out = DisplayAttrs.render_bg(DisplayAttrs.CONFLICTED)
+        out = DisplayAttrs.render_bg(CellAttrs.CONFLICTED)
         self.assertEqual(out, "on_yellow")
 
-        out = DisplayAttrs.render_bg((DisplayAttrs.CONFLICTED, DisplayAttrs.INITIAL))
+        out = DisplayAttrs.render_bg((CellAttrs.CONFLICTED, CellAttrs.INITIAL))
         self.assertEqual(out, "on_yellow")
 
-        out = DisplayAttrs.render_bg((DisplayAttrs.CONFLICTED, DisplayAttrs.GUESS, dict(level=25)))
+        out = DisplayAttrs.render_bg((CellAttrs.CONFLICTED, CellAttrs.GUESS, dict(depth=2)))
         self.assertEqual(out, "on_yellow")
 
 

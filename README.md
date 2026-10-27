@@ -141,6 +141,7 @@ some guidance:
 - user_interface.py - the port through which the game talks to the player; `UserInterface`, `Message` and `MessageKind`
 - terminal_ui.py - the terminal's user interface: messages and questions on the status line; `TerminalUI` class
 - display.py - manages the terminal display; `Display` class
+- cell_attrs.py - what a cell's attributes mean (given, guess, solved, conflicts, guess depth); `CellAttrs` class
 - display_attrs.py - turns cell attributes into terminal colors; `DisplayAttrs` class
 - history.py - keeps the history of entries for undo; `History` and `Entry` classes
 - save_file.py - writes and reads the versioned save file; `SaveFile` and `SavedPuzzle` classes

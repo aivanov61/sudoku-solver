@@ -146,7 +146,7 @@ class Display:
         echo(Display.term.move_xy(x, y))
 
     def styled(text, attrs) -> str:
-        """Return the text styled with the attributes' colors, e.g. (DisplayAttrs.SOLVED,) for steel blue"""
+        """Return the text styled with the attributes' colors, e.g. (CellAttrs.SOLVED,) for steel blue"""
         return getattr(Display.term, Attrs.render(attrs)) + text + Display.term.normal
 
     def draw_cell_possible_values(row=0, col=0, values=[], attrs=dict()):

@@ -17,29 +17,25 @@
 
 from dataclasses import dataclass
 
+from cell_attrs import CellAttrs
+
 
 class DisplayAttrs:
     """
-    Use display attribute mnemonics to produce properly rendered "blessed" function names.
+    The terminal's style table: turns a cell's attributes (see CellAttrs) into "blessed" style names.
 
-    Valid Mnemonics are:
-    - Primary (at most one is allowed per cell)
+    - Primary (at most one per cell)
         - INITIAL - FG=Purple, BG=Lavender
         - GUESS - FG=Green, BG=[shade of gray]
         - SOLVED - FG=SteelBlue, BG=[shade of gray]
     - Additional (optional)
         - CONFLICTING - FG=BoldRed, BG=BrightYellow
         - CONFLICTED - FG=[primary], BG=Yellow
+    - Guess depth - the shade of gray: GRAY_STEP lighter for each guess, up to the last shade, MAX_GRAY_LEVEL
     """
 
-    INITIAL = "initial"
-    GUESS = "guess"
-    SOLVED = "solved"
-    CONFLICTING = "conflicting"
-    CONFLICTED = "conflicted"
-    CONFLICT_ATTRS = (CONFLICTING, CONFLICTED)
-
     DEFAULT_COLOR = "darkorange3"
+    GRAY_STEP = 10
     MAX_GRAY_LEVEL = 100  # There are no gray levels greater than 100
 
     @dataclass
@@ -49,15 +45,15 @@ class DisplayAttrs:
 
     ATTRS_PRIMARY = {
         # The following are mutually exclusive basic required attributes
-        INITIAL: FgBgAttr(("purple",), ("lavender",)),
-        GUESS: FgBgAttr(("green",), None),
-        SOLVED: FgBgAttr(("steelblue",), None),
+        CellAttrs.INITIAL: FgBgAttr(("purple",), ("lavender",)),
+        CellAttrs.GUESS: FgBgAttr(("green",), None),
+        CellAttrs.SOLVED: FgBgAttr(("steelblue",), None),
     }
 
     ATTRS_OPTIONAL = {
         # The following are optional (can be combined with the required ones) but are also mutually exclusive
-        CONFLICTING: FgBgAttr(("bold", "red"), ("bright", "yellow")),
-        CONFLICTED: FgBgAttr(None, ("yellow",)),
+        CellAttrs.CONFLICTING: FgBgAttr(("bold", "red"), ("bright", "yellow")),
+        CellAttrs.CONFLICTED: FgBgAttr(None, ("yellow",)),
     }
 
     def outer_border(_str, _attrs):
@@ -78,17 +74,24 @@ class DisplayAttrs:
         fg, bg = DisplayAttrs.__get_fg_bg(_attrs)
         return f"on_{bg}" if bg else "normal"
 
+    def is_beyond_last_shade(depth) -> bool:
+        """Return True if the guess depth needs a lighter shade of gray than the last one"""
+        return depth * DisplayAttrs.GRAY_STEP > DisplayAttrs.MAX_GRAY_LEVEL
+
     # Private functions
 
     def __get_fg_bg(_attrs):
         primary = DisplayAttrs.__get_attrs(_attrs, DisplayAttrs.ATTRS_PRIMARY)
         optional = DisplayAttrs.__get_attrs(_attrs, DisplayAttrs.ATTRS_OPTIONAL)
         fg = "_".join(optional.fg or primary.fg or (DisplayAttrs.DEFAULT_COLOR,))
-        level = next(iter([attr["level"] for attr in _attrs if isinstance(attr, dict) and "level" in attr]), None)
-        level = min(level, DisplayAttrs.MAX_GRAY_LEVEL) if level else None
+        level = min(DisplayAttrs.__depth(_attrs) * DisplayAttrs.GRAY_STEP, DisplayAttrs.MAX_GRAY_LEVEL)
         bg_level = (f"gray{level}",) if level else ()
         bg = "_".join(optional.bg or primary.bg or bg_level)
         return fg, bg
+
+    def __depth(_attrs) -> int:
+        """Return the guess depth, 0 when there is none"""
+        return next(iter([attr["depth"] for attr in _attrs if isinstance(attr, dict) and "depth" in attr]), 0)
 
     def __get_attrs(_attrs, _attr_list) -> FgBgAttr:
         key = next(iter([key for key in _attr_list.keys() if key in _attrs]), None)

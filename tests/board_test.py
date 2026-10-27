@@ -22,7 +22,7 @@ from unittest.mock import patch
 sys.path.insert(0, ".")
 
 from board import Board
-from display_attrs import DisplayAttrs
+from cell_attrs import CellAttrs
 from puzzles.board_3x3 import Board3x3
 
 
@@ -94,8 +94,8 @@ class TestBoard(TestCase):
         self.assertEqual(self.__position(self.board.first_dead_end()), (0, 8))
 
     def test_givens_are_the_values_entered_as_initial(self):
-        self.board.cell(1, 1).set(4, (DisplayAttrs.INITIAL,))
-        self.board.cell(0, 5).set(7, (DisplayAttrs.INITIAL,))
+        self.board.cell(1, 1).set(4, (CellAttrs.INITIAL,))
+        self.board.cell(0, 5).set(7, (CellAttrs.INITIAL,))
         self.board.cell(2, 2).set(3)
         self.assertEqual(self.board.givens(), [(0, 5, 7), (1, 1, 4)])
 

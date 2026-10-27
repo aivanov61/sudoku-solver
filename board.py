@@ -22,7 +22,7 @@ from abc import ABC, abstractmethod
 sys.path.insert(0, ".")
 
 from cell import Cell
-from display_attrs import DisplayAttrs
+from cell_attrs import CellAttrs
 
 
 class Board(ABC):
@@ -71,7 +71,7 @@ class Board(ABC):
 
     def givens(self) -> list:
         """Return (row, col, value) for each value entered while setting up the puzzle"""
-        is_given = lambda cell: DisplayAttrs.INITIAL in cell.attr()
+        is_given = lambda cell: CellAttrs.INITIAL in cell.attr()
         return [(cell.row, cell.col, cell.value()) for cell in self.cells_where(is_given)]
 
     def clear(self) -> None:

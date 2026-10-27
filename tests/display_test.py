@@ -25,8 +25,8 @@ from unittest.mock import patch
 
 from blessed.keyboard import Keystroke
 
+from cell_attrs import CellAttrs
 from display import Display, Border
-from display_attrs import DisplayAttrs
 
 
 class TestDisplay(TestCase):
@@ -103,7 +103,7 @@ class TestDisplayStyled(TestCase):
         with patch.object(Display, "term") as term:
             term.steelblue = "<steelblue>"
             term.normal = "</>"
-            self.assertEqual(Display.styled("hint", (DisplayAttrs.SOLVED,)), "<steelblue>hint</>")
+            self.assertEqual(Display.styled("hint", (CellAttrs.SOLVED,)), "<steelblue>hint</>")
 
 
 class TestDisplayStatusLine(TestCase):

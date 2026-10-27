@@ -70,7 +70,7 @@ A dead end is an empty cell with no possible values left. Whenever you enter a v
 
 When you're stuck and need to try a value, enter it as a guess with a shifted digit. Guesses are shown in green on a gray background.
 
-Every value you enter after a guess gets the same gray background, so you can see everything that depends on it. Each new guess makes the gray a shade lighter. If a guess turns out wrong, press `r` to rewind: everything entered after the guess is undone, and the cursor lands on the guessed cell so you can type a different guess over it. Pressing `r` again also undoes that guess and rewinds to the guess before it. After ten nested guesses there are no lighter shades left, and the program warns you and reuses the last one.
+Every value you enter after a guess gets the same gray background, so you can see everything that depends on it. Each new guess makes the gray a shade lighter. If a guess turns out wrong, press `r` to rewind: everything entered after the guess is undone, and the cursor lands on the guessed cell so you can type a different guess over it. Pressing `r` again also undoes that guess and rewinds to the guess before it. After ten nested guesses there are no lighter shades left: the program warns you when you go past the last shade and then reuses it for any deeper guesses. If you undo back within the shades and later go past the last one again, it warns you again.
 
 Guesses also make good checkpoints, even for values you're sure of: see "Next: an obvious move" below.
 
