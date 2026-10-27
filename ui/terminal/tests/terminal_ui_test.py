@@ -114,10 +114,18 @@ class TestTerminalUI(TestCase):
         self.assertTrue(self.ui.confirm("Really?"))
         self.display.confirm.assert_called_once_with("Really?")
 
-    def test_file_name_is_asked_for_on_the_status_line(self):
-        self.display.ask.return_value = "game.json"
-        self.assertEqual(self.ui.ask_file_name("Save to file:", "sudoku.json"), "game.json")
-        self.display.ask.assert_called_once_with("Save to file:", "sudoku.json")
+    def test_file_name_is_asked_for_on_the_status_line_with_its_extension_shown(self):
+        self.display.ask.return_value = "game"
+        self.assertEqual(self.ui.ask_file_name("Save to file:", "sudoku", ".json"), "game.json")
+        self.display.ask.assert_called_once_with("Save to file:", "sudoku", ".json")
+
+    def test_a_cancelled_file_name_is_none(self):
+        self.display.ask.return_value = None
+        self.assertIsNone(self.ui.ask_file_name("Save to file:", "sudoku", ".json"))
+
+    def test_an_empty_file_name_counts_as_cancelled(self):
+        self.display.ask.return_value = ""
+        self.assertIsNone(self.ui.ask_file_name("Save to file:", "sudoku", ".json"))
 
     def test_show_board_clears_the_screen_and_draws_every_cell_whole(self):
         cells = [self.__cell(0, 0, value=5), self.__cell(0, 1, possible={1, 2})]

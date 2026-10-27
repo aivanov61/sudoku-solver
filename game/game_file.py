@@ -32,12 +32,12 @@ class GameFile:
     saved_state() and restore(saved); the user interface asks the player and shows the outcome.
     """
 
-    DEFAULT_FILE_NAME = "sudoku.json"
+    DEFAULT_FILE_NAME = "sudoku"
 
     def __init__(self, puzzle, ui):
         self.__puzzle = puzzle
         self.__ui = ui
-        self.__file_name = self.DEFAULT_FILE_NAME  # the file name last saved or restored, as typed
+        self.__file_name = self.DEFAULT_FILE_NAME  # the file name last saved or restored, as typed, without its extension
 
     # Interface required for the puzzle
 
@@ -45,7 +45,7 @@ class GameFile:
         if not self.__puzzle.has_values():
             self.__warn("Nothing to save - the board is empty. ")
             return
-        name = self.__ui.ask_file_name("Save to file:", self.__file_name)
+        name = self.__ui.ask_file_name("Save to file:", self.__file_name, SaveFile.EXTENSION)
         path = name and SaveFile.located(name)
         if not path or os.path.exists(path) and not self.__ui.confirm(f"{path} already exists.  Replace it?"):
             return
@@ -54,22 +54,26 @@ class GameFile:
         except OSError as error:
             self.__warn(f"Cannot save to {path}: {error.strerror}. ")
             return
-        self.__file_name = name
+        self.__remember(name)
         self.__ui.inform(Message(f"Saved to {path}. ", MessageKind.INFO))
 
     def restore(self) -> None:
         """Replace the puzzle with one saved to a file, asking first if that would lose any values"""
-        name = self.__ui.ask_file_name("Restore from file:", self.__file_name)
+        name = self.__ui.ask_file_name("Restore from file:", self.__file_name, SaveFile.EXTENSION)
         saved = name and self.__read(SaveFile.located(name))
         if not saved or self.__puzzle.has_values() and not self.__ui.confirm("Restoring replaces every value.  Really restore?"):
             return
-        self.__file_name = name
+        self.__remember(name)
         self.__puzzle.restore(saved)
 
     # Private functions
 
     def __warn(self, text) -> None:
         self.__ui.inform(Message(text, MessageKind.WARNING))
+
+    def __remember(self, name) -> None:
+        """Offer the name next time, without its extension"""
+        self.__file_name = name.removesuffix(SaveFile.EXTENSION)
 
     def __read(self, path) -> SavedPuzzle:
         """Return the puzzle saved in the file, or None after warning why it cannot be restored here"""

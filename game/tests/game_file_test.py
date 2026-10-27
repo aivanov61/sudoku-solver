@@ -82,7 +82,7 @@ class TestGameFile(TestCase):
             self.ui.file_name = "game.json"
             self.game_file.save()
             self.assertTrue(os.path.exists(os.path.join(SaveFile.FOLDER, "game.json")))
-        self.assertEqual(self.__name_offered_by_restore(), "game.json")
+        self.assertEqual(self.__name_offered_by_restore(), "game")
 
     def test_restore_replays_the_saved_puzzle_after_confirming(self):
         self.__save()
@@ -102,7 +102,7 @@ class TestGameFile(TestCase):
         self.puzzle.has_values.return_value = False
         self.ui.questions.clear()
         self.__restore()
-        self.assertEqual(self.ui.questions, [("Restore from file:", self.path)])
+        self.assertEqual(self.ui.questions, [("Restore from file:", self.__stem(self.path), ".json")])
         self.puzzle.restore.assert_called_once_with(self.SAVED)
 
     def test_restore_refuses_a_file_from_another_layout(self):
@@ -117,12 +117,18 @@ class TestGameFile(TestCase):
         self.assertEqual(self.ui.informed[-1].kind, MessageKind.WARNING)
         self.puzzle.restore.assert_not_called()
 
-    def test_the_last_file_name_used_is_offered_next_time(self):
+    def test_the_last_file_name_used_is_offered_next_time_without_its_extension(self):
         self.__save()
-        self.assertEqual(self.__name_offered_by_restore(), self.path)
+        self.assertEqual(self.__name_offered_by_restore(), self.__stem(self.path))
 
     def test_the_default_file_name_is_offered_at_first(self):
-        self.assertEqual(self.__name_offered_by_restore(), GameFile.DEFAULT_FILE_NAME)
+        self.assertEqual(self.__name_offered_by_restore(), "sudoku")
+
+    def test_the_file_name_is_asked_for_with_the_save_file_extension(self):
+        self.game_file.save()
+        prompt, default, extension = self.ui.questions[-1]
+        self.assertEqual(extension, SaveFile.EXTENSION)
+        self.assertEqual(SaveFile.EXTENSION, ".json")
 
     # Private functions
 
@@ -138,8 +144,12 @@ class TestGameFile(TestCase):
     def __name_offered_by_restore(self) -> str:
         self.ui.file_name = None
         self.game_file.restore()
-        prompt, default = self.ui.questions[-1]
+        prompt, default, extension = self.ui.questions[-1]
         return default
+
+    def __stem(self, path) -> str:
+        """The file name without the save file extension"""
+        return path.removesuffix(".json")
 
 
 if __name__ == "__main__":

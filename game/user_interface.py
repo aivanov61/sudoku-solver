@@ -52,8 +52,9 @@ class UserInterface(Protocol):
     def confirm(self, question) -> bool:
         """Ask a yes/no question, returning True only for yes"""
 
-    def ask_file_name(self, prompt, default) -> str:
-        """Ask for a file name, offering the default; return None if the player cancels"""
+    def ask_file_name(self, prompt, default, extension) -> str:
+        """Ask for a file name, offering the default; the player doesn't type the extension, which is added to the
+        name returned; return None if the player cancels"""
 
     def guess_depth_changed(self, depth) -> None:
         """Hear that values are now entered depth guesses deep (0 when no guess is in play)"""

@@ -25,7 +25,7 @@ class RecordingUI:
         self.file_name = file_name  # the answer to every ask_file_name()
         self.statuses = []  # every message shown with status(), None for a blank status line
         self.informed = []  # every message shown with inform()
-        self.questions = []  # every question asked with confirm(), and (prompt, default) for each ask_file_name()
+        self.questions = []  # every question asked with confirm(), and (prompt, default, extension) for each ask_file_name()
         self.guess_depths = []  # every guess depth reported
         self.shown_boards = []  # the cells of every board shown whole
         self.changed_cells = []  # every cell reported changed
@@ -43,8 +43,8 @@ class RecordingUI:
         self.questions.append(question)
         return self.confirms
 
-    def ask_file_name(self, prompt, default) -> str:
-        self.questions.append((prompt, default))
+    def ask_file_name(self, prompt, default, extension) -> str:
+        self.questions.append((prompt, default, extension))
         return self.file_name
 
     def guess_depth_changed(self, depth) -> None:

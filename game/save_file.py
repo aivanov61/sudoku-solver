@@ -43,13 +43,15 @@ class SaveFile:
     When the format changes, raise VERSION and add an entry to UPGRADES that turns the state saved by
     the previous version into the new one, so files saved by older programs can still be read.
 
-    A file name without a folder means a file in FOLDER, which is created when needed.
+    A file name without a folder means a file in FOLDER, which is created when needed.  Save files end in
+    EXTENSION; the player is asked for a name without it.
     """
 
     FORMAT = "sudoku-save"
     VERSION = 1
     UPGRADES = {}  # version: function returning that version's state converted to the next version
     FOLDER = "saved_games"
+    EXTENSION = ".json"
 
     def located(name) -> str:
         """Return the path for a file name: in FOLDER unless the name includes a folder of its own"""

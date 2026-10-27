@@ -179,17 +179,22 @@ class Display:
             except:
                 return False
 
-    def ask(self, msg, default="") -> str:
-        """Ask for a line of text on the status line, starting from the default; ENTER accepts it, ESC cancels (None)"""
-        text = default
+    def ask(self, msg, default="", suffix="") -> str:
+        """
+        Ask for a line of text on the status line, starting from the default, with the suffix shown after it.
+        The arrows move the cursor within the text, never into the suffix; ENTER accepts the text (without the
+        suffix), ESC cancels (None).
+        """
+        text, cursor = default, len(default)
         try:
             with self.term.cbreak():
                 while True:
-                    with self.__status_line_message(self.term.yellow(f"{msg} {text}")):
+                    with self.__status_line_message(self.term.yellow(f"{msg} {text}{suffix}")):
+                        self.__move_cursor_left(len(text) - cursor + len(suffix))
                         key = self.term.inkey()
                     if key.name in ("KEY_ENTER", "KEY_ESCAPE"):
                         return text if key.name == "KEY_ENTER" else None
-                    text = self.__edited(text, key)
+                    text, cursor = self.__edited(text, cursor, key)
         except:
             return None
 
@@ -225,11 +230,26 @@ class Display:
             echo(self.term.clear_eol + text)
             yield
 
-    def __edited(self, text, key) -> str:
-        """Return the text after a key: backspace removes the last character, other special keys are ignored"""
-        if key.name in ("KEY_BACKSPACE", "KEY_DELETE"):
-            return text[:-1]
-        return text if key.is_sequence else text + key
+    def __move_cursor_left(self, count):
+        if count:
+            echo(self.term.move_left(count))
+
+    def __edited(self, text, cursor, key) -> tuple:
+        """
+        Return the text and the cursor after a key: the arrows move the cursor, backspace removes the character
+        before it and delete the one at it, other special keys are ignored, and any other key is inserted at it
+        """
+        if key.name == "KEY_LEFT":
+            return text, max(cursor - 1, 0)
+        if key.name == "KEY_RIGHT":
+            return text, min(cursor + 1, len(text))
+        if key.name == "KEY_BACKSPACE":
+            return text[: max(cursor - 1, 0)] + text[cursor:], max(cursor - 1, 0)
+        if key.name == "KEY_DELETE":
+            return text[:cursor] + text[cursor + 1 :], cursor
+        if key.is_sequence:
+            return text, cursor
+        return text[:cursor] + key + text[cursor:], cursor + 1
 
     # These character symbols are re-used from https://github.com/thisisparker/cursewords/blob/master/cursewords/characters.py
     vline = "│"

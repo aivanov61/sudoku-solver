@@ -196,16 +196,53 @@ class TestDisplayAsk(TestCase):
     def test_interrupted_prompt_cancels(self):
         self.assertIsNone(self.__ask_with([KeyboardInterrupt()], default="a"))
 
+    def test_the_suffix_is_shown_after_the_text_with_the_cursor_before_it(self):
+        echoed = []
+        self.__ask_with([self.__key("KEY_ENTER")], default="ab", suffix=".json", echoed=echoed)
+        self.assertIn("<yellow>File: ab.json</yellow>", echoed)
+        self.assertIn("<left 5>", echoed)
+
+    def test_the_suffix_is_not_part_of_the_answer(self):
+        self.assertEqual(self.__ask_with([self.__key("KEY_ENTER")], default="ab", suffix=".json"), "ab")
+
+    def test_left_arrow_moves_the_cursor_and_typing_inserts_there(self):
+        keys = [self.__key("KEY_LEFT"), Keystroke("x"), self.__key("KEY_ENTER")]
+        self.assertEqual(self.__ask_with(keys, default="ab", suffix=".json"), "axb")
+
+    def test_the_cursor_stops_at_the_start_of_the_text(self):
+        keys = [self.__key("KEY_LEFT")] * 3 + [Keystroke("x"), self.__key("KEY_ENTER")]
+        self.assertEqual(self.__ask_with(keys, default="ab", suffix=".json"), "xab")
+
+    def test_the_cursor_stops_before_the_suffix(self):
+        keys = [self.__key("KEY_LEFT"), self.__key("KEY_RIGHT"), self.__key("KEY_RIGHT"), Keystroke("x"), self.__key("KEY_ENTER")]
+        self.assertEqual(self.__ask_with(keys, default="ab", suffix=".json"), "abx")
+
+    def test_backspace_removes_the_character_before_the_cursor(self):
+        keys = [self.__key("KEY_LEFT"), self.__key("KEY_BACKSPACE"), self.__key("KEY_ENTER")]
+        self.assertEqual(self.__ask_with(keys, default="ab", suffix=".json"), "b")
+
+    def test_delete_removes_the_character_at_the_cursor(self):
+        keys = [self.__key("KEY_LEFT"), self.__key("KEY_DELETE"), self.__key("KEY_ENTER")]
+        self.assertEqual(self.__ask_with(keys, default="ab", suffix=".json"), "a")
+
+    def test_delete_at_the_end_of_the_text_does_nothing(self):
+        keys = [self.__key("KEY_DELETE"), self.__key("KEY_ENTER")]
+        self.assertEqual(self.__ask_with(keys, default="ab", suffix=".json"), "ab")
+
     # Private functions
 
     def __key(self, name) -> Keystroke:
         return Keystroke("", code=1, name=name)
 
-    def __ask_with(self, keys, default):
+    def __ask_with(self, keys, default, suffix="", echoed=None):
+        """Answer the prompt with the keys; collect what it echoed, if a list is given"""
         term = MagicMock()
         term.inkey.side_effect = keys
-        with patch("ui.terminal.display.echo"):
-            return board_display(term).ask("File:", default)
+        term.yellow = lambda text: f"<yellow>{text}</yellow>"
+        term.move_left = lambda count: f"<left {count}>"
+        term.clear_eol = ""
+        with patch("ui.terminal.display.echo", side_effect=lambda text: echoed is not None and echoed.append(text)):
+            return board_display(term).ask("File:", default, suffix)
 
 
 if __name__ == "__main__":

@@ -68,8 +68,10 @@ class TerminalUI:
     def confirm(self, question) -> bool:
         return self.__display.confirm(question)
 
-    def ask_file_name(self, prompt, default) -> str:
-        return self.__display.ask(prompt, default)
+    def ask_file_name(self, prompt, default, extension) -> str:
+        """Ask for the file name with the extension shown after it; return it with the extension, or None if cancelled or empty"""
+        name = self.__display.ask(prompt, default, extension)
+        return name + extension if name else None
 
     def guess_depth_changed(self, depth) -> None:
         """Warn when guesses go from within the shades of gray to deeper than the last one"""
