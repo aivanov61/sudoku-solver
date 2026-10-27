@@ -16,6 +16,7 @@
 # -----------------------------------------------------------------------------
 
 import json
+import os
 
 from dataclasses import asdict, dataclass
 
@@ -41,13 +42,21 @@ class SaveFile:
 
     When the format changes, raise VERSION and add an entry to UPGRADES that turns the state saved by
     the previous version into the new one, so files saved by older programs can still be read.
+
+    A file name without a folder means a file in FOLDER, which is created when needed.
     """
 
     FORMAT = "sudoku-save"
     VERSION = 1
     UPGRADES = {}  # version: function returning that version's state converted to the next version
+    FOLDER = "saved_games"
+
+    def located(name) -> str:
+        """Return the path for a file name: in FOLDER unless the name includes a folder of its own"""
+        return name if os.path.dirname(name) else os.path.join(SaveFile.FOLDER, name)
 
     def write(path, saved: SavedPuzzle) -> None:
+        os.path.dirname(path) == SaveFile.FOLDER and os.makedirs(SaveFile.FOLDER, exist_ok=True)
         with open(path, "w", encoding="utf-8") as file:
             json.dump({"format": SaveFile.FORMAT, "version": SaveFile.VERSION, "state": asdict(saved)}, file, indent=1)
 

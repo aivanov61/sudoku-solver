@@ -75,7 +75,7 @@ class Puzzle(ABC):
         self.__pending_move = None  # a move shown as a hint by "n", made by the next "n"
         self.__reported_completion = None  # the completion last reported on the status line
         self.__unseen_completion = None  # a completion shown on the status line until the next command
-        self.__file_name = self.DEFAULT_FILE_NAME  # the file last saved or restored
+        self.__file_name = self.DEFAULT_FILE_NAME  # the file name last saved or restored, as typed
 
     # Interface required for Main
 
@@ -205,7 +205,8 @@ class Puzzle(ABC):
         if not self.__has_values():
             Display.warn("Nothing to save - the board is empty. ", wait=True)
             return
-        path = Display.ask("Save to file:", self.__file_name)
+        name = Display.ask("Save to file:", self.__file_name)
+        path = name and SaveFile.located(name)
         if not path or os.path.exists(path) and not Display.confirm(f"{path} already exists.  Replace it?"):
             return
         try:
@@ -213,16 +214,16 @@ class Puzzle(ABC):
         except OSError as error:
             Display.warn(f"Cannot save to {path}: {error.strerror}. ", wait=True)
             return
-        self.__file_name = path
+        self.__file_name = name
         Display.warn(f"Saved to {path}. ", wait=True)
 
     def open_(self) -> None:
         """Replace the puzzle with one saved to a file, asking first if that would lose any values"""
-        path = Display.ask("Restore from file:", self.__file_name)
-        saved = path and self.__read_save_file(path)
+        name = Display.ask("Restore from file:", self.__file_name)
+        saved = name and self.__read_save_file(SaveFile.located(name))
         if not saved or self.__has_values() and not Display.confirm("Restoring replaces every value.  Really restore?"):
             return
-        self.__file_name = path
+        self.__file_name = name
         self.__restore(saved)
         self.render()
 

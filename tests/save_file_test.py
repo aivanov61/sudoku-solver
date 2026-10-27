@@ -93,6 +93,22 @@ class TestSaveFile(TestCase):
         with self.assertRaisesRegex(SaveFileError, "damaged"):
             SaveFile.read(self.path)
 
+    def test_bare_file_name_is_located_in_the_saved_games_folder(self):
+        self.assertEqual(SaveFile.located("game.json"), os.path.join(SaveFile.FOLDER, "game.json"))
+
+    def test_file_name_with_a_folder_is_used_as_given(self):
+        for path in (os.path.join("elsewhere", "game.json"), os.path.join(".", "game.json")):
+            self.assertEqual(SaveFile.located(path), path)
+
+    def test_saving_creates_the_missing_saved_games_folder(self):
+        with patch.object(SaveFile, "FOLDER", os.path.join(self.temp_dir.name, "saved_games")):
+            SaveFile.write(SaveFile.located("game.json"), self.SAVED)
+            self.assertTrue(os.path.exists(os.path.join(SaveFile.FOLDER, "game.json")))
+
+    def test_saving_does_not_create_other_missing_folders(self):
+        with self.assertRaises(OSError):
+            SaveFile.write(os.path.join(self.temp_dir.name, "missing", "game.json"), self.SAVED)
+
     # Private functions
 
     def __json(self) -> dict:

@@ -97,7 +97,7 @@ When the last empty cell is filled in, the status line says, until your next key
 
 ## Saving and restoring
 
-Press `s` at any time, in either mode, to save the puzzle to a file. The status line asks for the file name and offers the last one you used (`sudoku.json` in the program's folder the first time). Press `ENTER` to accept it, type to add to it, `Backspace` to change it, or `ESC` to cancel. If the file already exists, it asks before replacing it. If the board is still empty, there's nothing to save, and it just tells you so.
+Press `s` at any time, in either mode, to save the puzzle to a file. The status line asks for the file name and offers the last one you used (`sudoku.json` the first time). A name without a folder is kept in the `saved_games` folder, which is created the first time you save; to put a file anywhere else, include its folder in the name, for example `.\sudoku.json` for the current folder. Press `ENTER` to accept it, type to add to it, `Backspace` to change it, or `ESC` to cancel. If the file already exists, it asks before replacing it. If the board is still empty, there's nothing to save, and it just tells you so.
 
 Press `o` to restore a saved puzzle the same way. It brings back everything: the givens, every value you entered, guesses and their shading, the mode, and where the cursor was. Undo and rewind keep working through the restored moves. The restored puzzle replaces the current one completely, so if the board holds any values, it asks you to confirm first.
 

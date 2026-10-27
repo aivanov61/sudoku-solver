@@ -599,6 +599,17 @@ class TestPuzzle3x3(TestCase):
         ask.assert_not_called()
         self.assertIn("Nothing to save", warn.call_args.args[0])
 
+    def test_bare_file_name_is_saved_in_the_saved_games_folder_and_offered_as_typed(self):
+        self.__cell(0, 0).set(1)
+        with patch.object(SaveFile, "FOLDER", os.path.join(self.temp_dir.name, "saved_games")):
+            with patch("display.Display.ask", return_value="game.json"), patch("display.Display.warn") as warn:
+                self.puzzle.save_()
+            self.assertTrue(os.path.exists(os.path.join(SaveFile.FOLDER, "game.json")))
+            self.assertIn(os.path.join(SaveFile.FOLDER, "game.json"), warn.call_args.args[0])
+            with patch("display.Display.ask", return_value=None) as ask:
+                self.puzzle.open_()
+        self.assertEqual(ask.call_args.args[1], "game.json")
+
     def test_cancelled_save_writes_nothing(self):
         self.__cell(4, 4).set(5)
         with patch("display.Display.ask", return_value=None):
