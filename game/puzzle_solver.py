@@ -90,5 +90,6 @@ class PuzzleSolver:
         """Return a STOPPED move's hint, moving to its cell if it has one; with no move, a guess is needed"""
         if move is None:
             return Message("No obvious next move. You'll have to make a guess. ", MessageKind.WARNING)
-        move.cell is None or self.__puzzle.select(move.cell)
+        if move.cell is not None:
+            self.__puzzle.select(move.cell)
         return Message(move.hint, MessageKind.WARNING)

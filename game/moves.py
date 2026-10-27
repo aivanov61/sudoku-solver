@@ -45,9 +45,11 @@ class Moves:
     def enter(self, cell, value, prim_attr=None) -> None:
         """Enter a value with its primary attribute (None for a typed value) and record it while playing"""
         is_playing = not self.__puzzle.is_initializing()
-        prim_attr == CellAttrs.GUESS and is_playing and self.__one_guess_deeper()
+        if prim_attr == CellAttrs.GUESS and is_playing:
+            self.__one_guess_deeper()
         attr = self.__attributes(prim_attr)
-        is_playing and self.__record(cell, value, attr)
+        if is_playing:
+            self.__record(cell, value, attr)
         cell.set(value, attr)
 
     def is_empty(self) -> bool:
@@ -56,7 +58,8 @@ class Moves:
     def undo(self) -> Cell:
         """Undo the most recent move, putting back the cell's previous value, and return the cell"""
         entry = self.__history.undo()
-        self.__is_guess(entry) and self.__one_guess_shallower()
+        if self.__is_guess(entry):
+            self.__one_guess_shallower()
         previous = entry.previous_valueinfo
         value, attr = (previous.value, self.__attributes(previous.prim_attr)) if previous else (None, ())
         entry.cell.set(value, attr)
@@ -87,7 +90,8 @@ class Moves:
 
     def __set_guess_depth(self, depth) -> None:
         """Change the guess depth, telling the user interface if it changed"""
-        depth != self.__guess_depth and self.__ui.guess_depth_changed(depth)
+        if depth != self.__guess_depth:
+            self.__ui.guess_depth_changed(depth)
         self.__guess_depth = depth
 
     def __attributes(self, prim_attr) -> tuple:

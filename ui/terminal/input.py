@@ -34,7 +34,7 @@ class Input:
             try:
                 with term.cbreak():
                     keystroke = term.inkey(timeout=timeout)
-            except:  # Anything bad, including CTRL-C (KeyboardInterrupt), quits without asking
+            except (KeyboardInterrupt, Exception):  # CTRL-C, or anything wrong with the terminal, quits without asking
                 return Action.FORCE_QUIT, None
             if keystroke == "":
                 return None

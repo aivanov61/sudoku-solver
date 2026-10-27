@@ -22,6 +22,7 @@ sys.path.insert(0, ".")
 from game.actions import Action
 from game.cell_attrs import CellAttrs
 from game.user_interface import Message, MessageKind
+from ui.error_log import ErrorLog
 from ui.terminal.commands import Commands
 from ui.terminal.display import echo
 from ui.terminal.display_attrs import DisplayAttrs
@@ -50,7 +51,8 @@ class TerminalUI:
         """Show the game, then hand it the action for each key, until the game is over"""
         game.render()
         while game.is_playing:
-            self.__display.validate_screen_size() or game.render()
+            if not self.__display.validate_screen_size():
+                game.render()
             self.__display.move_to_cell(*game.selected_cell)
             self.__carry_out(game, *self.__input.get_cmd(self.__offered))
         self.__display.move_to_status_line()
@@ -77,7 +79,8 @@ class TerminalUI:
         """Warn when guesses go from within the shades of gray to deeper than the last one"""
         runs_out = DisplayAttrs.is_beyond_last_shade(depth) and not DisplayAttrs.is_beyond_last_shade(self.__guess_depth)
         self.__guess_depth = depth
-        runs_out and self.inform(Message("No more shades of gray left - repeating last shade. ", MessageKind.WARNING))
+        if runs_out:
+            self.inform(Message("No more shades of gray left - repeating last shade. ", MessageKind.WARNING))
 
     def show_board(self, cells) -> None:
         """Clear the screen and draw every cell whole, and the command panel"""
@@ -92,8 +95,10 @@ class TerminalUI:
         if attrs != cell.attr():
             self.__draw_whole_cell(cell)
             return
-        value != cell.value() and self.__draw_value(cell)
-        possible_values != cell.possible_values() and self.__draw_possible_values(cell)
+        if value != cell.value():
+            self.__draw_value(cell)
+        if possible_values != cell.possible_values():
+            self.__draw_possible_values(cell)
         self.__remember(cell)
 
     def mode_changed(self, mode, actions) -> None:
@@ -111,15 +116,28 @@ class TerminalUI:
             return
         try:
             game.handle(command, digit)
-        except Exception:
-            self.__display.warn(f'This puzzle\'s "{command.value}" command is broken!')
-            command in (Action.QUIT, Action.FORCE_QUIT) and self.__force_quit(game)
+        except Exception as error:
+            self.__report_broken(game, command, error)
 
     def __show_help(self) -> None:
         """Show the commands the mode offers, with their keys, until a key is hit"""
         self.__display.clear_screen()
         print(Commands.long_help(self.__offered))
         self.__display.hit_any_key_to_continue()
+
+    def __report_broken(self, game, command, error) -> None:
+        """
+        Log the error, say what broke, why and where until a key is hit, then show the whole game again,
+        as the message may have scrolled the screen; a broken quit stops the game instead
+        """
+        log = ErrorLog.record(error)
+        details = f"details in {log}" if log else "the details could not be logged"
+        what = f'This puzzle\'s "{command.value}" command is broken: {type(error).__name__}: {error}'
+        self.__display.warn(f"{what} - at {ErrorLog.where(error)} ({details})", wait=True)
+        if command in (Action.QUIT, Action.FORCE_QUIT):
+            self.__force_quit(game)
+        else:
+            game.render()
 
     def __force_quit(self, game) -> None:
         self.__display.move_to_status_line()
@@ -134,7 +152,8 @@ class TerminalUI:
 
     def __draw_panel(self) -> None:
         """Draw the mode's title and its commands beside the puzzle, once a mode has been announced"""
-        self.__mode and self.__display.draw_command_panel(self.__mode.value, Commands.panel(self.__offered))
+        if self.__mode:
+            self.__display.draw_command_panel(self.__mode.value, Commands.panel(self.__offered))
 
     def __draw_whole_cell(self, cell) -> None:
         self.__display.draw_cell(cell.row, cell.col, cell.borders, cell.attr())

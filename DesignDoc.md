@@ -63,6 +63,7 @@ Supporting modules:
 | `game/moves.py` | `Moves` | Enters values, records them in its own `History` for undo and rewind, and keeps the guess shading |
 | `game/save_file.py` | `SaveFile`, `SavedPuzzle`, `SaveFileError` | Writes and reads the versioned save file |
 | `ui/terminal/copyright.py` | `Copyright` | The GPL splash text |
+| `ui/error_log.py` | `ErrorLog` | Appends the traceback of each error the program survives to `sudoku.log`, for any user interface |
 | `game/puzzle.py` | `Puzzle` | The game, played on a board: commands, modes, cursor and screen. Hands work to the helpers below |
 | `game/board.py` | `Board` | The grid of cells: finds cells through the blocks and answers questions about them; an abstract base class for layouts |
 | `game/completion_report.py` | `CompletionReport` | Tells the player when the puzzle becomes complete, solved or with errors |
@@ -150,7 +151,8 @@ A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCE
 - `Input.get_cmd(offered)` reads keys until one is bound and returns its command. Unknown keys are ignored. CTRL-C or any input error gives `FORCE_QUIT`, which stops at once without asking; `q` gives `QUIT`, which asks for confirmation.
 - `TerminalUI` shows the help screen itself, then has the puzzle render again. It hands every action to `puzzle.handle(action, digit)`, the game's one entry point for the player's actions.
 - `handle()` first lets the puzzle react to actions in general (any action ends a notice and the completion report, and any action but `n` cancels a pending `n` move), then calls the puzzle's method for the action with `getattr`, passing the digit for `VALUE` and `GUESS`, and then shows the status.
-- If `handle()` raises an exception, `TerminalUI` warns "This puzzle's "…" command is broken!" and play goes on; if the failing action was `QUIT` or `FORCE_QUIT`, it forces the game to stop (`force_quit_()`).
+- If `handle()` raises an exception, `TerminalUI` appends its traceback to `sudoku.log` (`ErrorLog.record()`; `*.log` is ignored by git) and warns, waiting for a key, what broke, why and where: e.g. "This puzzle's "up" command is broken: KeyError: 5 - at game/puzzle.py:123 in up_ (details in sudoku.log)", where the place is the innermost one on the error's stack (`ErrorLog.where()`). The warning may wrap and scroll the screen, so the whole game is then shown again and play goes on. If the failing action was `QUIT` or `FORCE_QUIT`, it forces the game to stop instead (`force_quit_()`).
+- `except` clauses name what they catch: `KeyboardInterrupt` where CTRL-C cancels a prompt or the splash, and `(KeyboardInterrupt, Exception)` in `Input`, where anything wrong with the terminal quits; nothing catches `SystemExit`.
 
 ### 5.3 Entering a value
 

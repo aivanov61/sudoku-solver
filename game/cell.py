@@ -57,8 +57,10 @@ class Cell:
         before = (self._value, self._attrs)
         self._attrs = attrs
         self.__mark_if_conflicting(value)
-        value != self._value and self.__smart_update(value)
-        (self._value, self._attrs) != before and self.__report_change()
+        if value != self._value:
+            self.__smart_update(value)
+        if (self._value, self._attrs) != before:
+            self.__report_change()
 
     def possible_values(self) -> set:
         return self._solver.possible_values()
@@ -122,12 +124,16 @@ class Cell:
         """
         old_value, self._value = self._value, value
         for cell in self.__related_cells():
-            old_value and cell.add_possible(old_value)
-            old_value and cell.clear_resolved_conflict(old_value)
-            value and cell.remove_possible(value)
-            value and cell.mark_conflicted(value)
-        value and self.__clear_possible()
-        value or self.__restore_possible()
+            if old_value:
+                cell.add_possible(old_value)
+                cell.clear_resolved_conflict(old_value)
+            if value:
+                cell.remove_possible(value)
+                cell.mark_conflicted(value)
+        if value:
+            self.__clear_possible()
+        else:
+            self.__restore_possible()
 
     def __clear_possible(self) -> None:
         """Remove all possible values, reporting the change if there were any"""

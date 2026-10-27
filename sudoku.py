@@ -38,16 +38,18 @@ class Main:
         layouts = PuzzleCatalog.available()
         self.__splash(self.__startup_note(layouts))
         layout = self.__chosen_layout(layouts)
-        layout and self.__play(layout.board_class())
+        if layout:
+            self.__play(layout.board_class())
 
     # Private functions
 
     def __splash(self, note):
         Copyright.splash()
-        note and print(self.__display.term.yellow(note))
+        if note:
+            print(self.__display.term.yellow(note))
         try:
             self.__display.term.inkey(timeout=5.0)
-        except:
+        except KeyboardInterrupt:
             exit(1)
 
     def __startup_note(self, layouts) -> str:

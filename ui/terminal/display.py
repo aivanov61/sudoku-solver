@@ -84,7 +84,7 @@ class Display:
             try:
                 self.term.inkey()
                 self.clear_screen()
-            except:
+            except KeyboardInterrupt:
                 return is_size_ok
         return is_size_ok
 
@@ -160,14 +160,15 @@ class Display:
     def show_on_status_line(self, text, wait=False):
         """Show already styled text on the status line, waiting for a key if asked"""
         with self.__status_line_message(text):
-            wait and self.hit_any_key_to_continue()
+            if wait:
+                self.hit_any_key_to_continue()
 
     def hit_any_key_to_continue(self):
         echo("Hit any key to continue: ")
         try:
             with self.term.cbreak():
                 self.term.inkey()
-        except:
+        except KeyboardInterrupt:
             pass
 
     def confirm(self, msg) -> bool:
@@ -176,7 +177,7 @@ class Display:
             try:
                 with self.term.cbreak():
                     return self.term.inkey() in ("y", "Y")
-            except:
+            except KeyboardInterrupt:
                 return False
 
     def ask(self, msg, default="", suffix="") -> str:
@@ -195,7 +196,7 @@ class Display:
                     if key.name in ("KEY_ENTER", "KEY_ESCAPE"):
                         return text if key.name == "KEY_ENTER" else None
                     text, cursor = self.__edited(text, cursor, key)
-        except:
+        except KeyboardInterrupt:
             return None
 
     # Private functions

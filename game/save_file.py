@@ -58,7 +58,8 @@ class SaveFile:
         return name if os.path.dirname(name) else os.path.join(SaveFile.FOLDER, name)
 
     def write(path, saved: SavedPuzzle) -> None:
-        os.path.dirname(path) == SaveFile.FOLDER and os.makedirs(SaveFile.FOLDER, exist_ok=True)
+        if os.path.dirname(path) == SaveFile.FOLDER:
+            os.makedirs(SaveFile.FOLDER, exist_ok=True)
         with open(path, "w", encoding="utf-8") as file:
             json.dump({"format": SaveFile.FORMAT, "version": SaveFile.VERSION, "state": asdict(saved)}, file, indent=1)
 

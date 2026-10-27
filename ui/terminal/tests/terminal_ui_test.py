@@ -65,7 +65,7 @@ class TestTerminalUI(TestCase):
 
     def test_help_is_shown_without_the_game_and_the_game_is_shown_again_after_it(self):
         game = self.__game()
-        printed = self.__play(game, [(Commands.HELP, None)])
+        printed, record = self.__play(game, [(Commands.HELP, None)])
         printed.assert_any_call(Commands.long_help(()))
         self.display.hit_any_key_to_continue.assert_called_once()
         self.assertEqual(game.handle.call_args_list, [call(Action.QUIT, None)])
@@ -74,14 +74,34 @@ class TestTerminalUI(TestCase):
     def test_help_shows_the_commands_of_the_mode(self):
         game = self.__game()
         self.ui.mode_changed(Mode.SETUP, OFFERED_ACTIONS[Mode.SETUP])
-        printed = self.__play(game, [(Commands.HELP, None)])
+        printed, record = self.__play(game, [(Commands.HELP, None)])
         printed.assert_any_call(Commands.long_help(OFFERED_ACTIONS[Mode.SETUP]))
 
-    def test_a_broken_action_is_reported_and_play_goes_on(self):
+    def test_a_broken_action_is_logged_and_play_goes_on(self):
+        game = self.__game(broken=Action.UP)
+        printed, record = self.__play(game, [(Action.UP, None)])
+        record.assert_called_once()
+        self.assertIsInstance(record.call_args.args[0], RuntimeError)
+        self.assertEqual(game.handle.call_args_list[-1], call(Action.QUIT, None))
+
+    def test_a_broken_action_says_what_broke_where_and_where_the_details_are_then_waits(self):
         game = self.__game(broken=Action.UP)
         self.__play(game, [(Action.UP, None)])
-        self.assertIn('"up" command is broken', self.display.warn.call_args.args[0])
-        self.assertEqual(game.handle.call_args_list[-1], call(Action.QUIT, None))
+        warning = self.display.warn.call_args
+        self.assertIn('"up" command is broken: RuntimeError: broken', warning.args[0])
+        self.assertRegex(warning.args[0], r" - at \S*terminal_ui_test\.py:\d+ in handle ")
+        self.assertTrue(warning.args[0].endswith("(details in sudoku.log)"))
+        self.assertEqual(warning.kwargs, {"wait": True})
+
+    def test_a_broken_action_shows_the_whole_game_again(self):
+        game = self.__game(broken=Action.UP)
+        self.__play(game, [(Action.UP, None)])
+        self.assertEqual(game.render.call_count, 2)
+
+    def test_a_broken_action_says_so_when_the_details_could_not_be_logged(self):
+        game = self.__game(broken=Action.UP)
+        self.__play(game, [(Action.UP, None)], logged_to=None)
+        self.assertTrue(self.display.warn.call_args.args[0].endswith("(the details could not be logged)"))
 
     def test_a_broken_quit_forces_the_game_to_stop(self):
         game = self.__game(broken=Action.QUIT)
@@ -207,13 +227,13 @@ class TestTerminalUI(TestCase):
         game.force_quit_.side_effect = force_quit
         return game
 
-    def __play(self, game, commands, screen_ok=None):
-        """Play the game with the commands, then QUIT; return the patched print"""
+    def __play(self, game, commands, screen_ok=None, logged_to="sudoku.log"):
+        """Play the game with the commands, then QUIT, logging errors to the file given; return the patched print and error log"""
         self.display.validate_screen_size.side_effect = (screen_ok or []) + [True] * 10
-        with patch("builtins.print") as printed:
+        with patch("builtins.print") as printed, patch("ui.terminal.terminal_ui.ErrorLog.record", return_value=logged_to) as record:
             with patch("ui.terminal.terminal_ui.Input.get_cmd", side_effect=commands + [(Action.QUIT, None)]):
                 self.ui.play(game)
-        return printed
+        return printed, record
 
     def __cell(self, row=0, col=0, value=None, attrs=(), possible=frozenset()):
         """A stand-in for a cell as it is at one moment"""
@@ -225,7 +245,8 @@ class TestTerminalUI(TestCase):
 
     def __drawn_after_change(self, before, after):
         """Report the cell as before (if any), then as after; return the display, holding only the second report's drawing"""
-        before and self.ui.cell_changed(before)
+        if before:
+            self.ui.cell_changed(before)
         self.display.reset_mock()
         self.ui.cell_changed(after)
         return self.display

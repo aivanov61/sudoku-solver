@@ -93,14 +93,16 @@ class Puzzle:
     # Interface required for handle(): one method per Action
 
     def quit_(self) -> None:
-        self.__ui.confirm("Really quit?") and self.force_quit_()
+        if self.__ui.confirm("Really quit?"):
+            self.force_quit_()
 
     def value_(self, val) -> None:
         self.__enter(val, None)
 
     def guess_(self, val) -> None:
         """Enter the value as a guess, which rewind can go back to; only while playing"""
-        self.__refused_while_initializing() or self.__enter(val, CellAttrs.GUESS)
+        if not self.__refused_while_initializing():
+            self.__enter(val, CellAttrs.GUESS)
 
     def up_(self) -> None:
         self.__move(-1, 0)
@@ -115,10 +117,12 @@ class Puzzle:
         self.__move(0, 1)
 
     def play_(self) -> None:
-        self.__setup_blocks_playing() or self.__switch_mode(initializing=False)
+        if not self.__setup_blocks_playing():
+            self.__switch_mode(initializing=False)
 
     def init_(self) -> None:
-        self.__check_for_active_play() or self.__switch_mode(initializing=True)
+        if not self.__check_for_active_play():
+            self.__switch_mode(initializing=True)
 
     def del_(self) -> None:
         if not self._initializing:
@@ -129,7 +133,10 @@ class Puzzle:
     def undo_(self) -> None:
         if self.__refused_while_initializing():
             return
-        self.select(self.__moves.undo()) if not self.__moves.is_empty() else self.__warn_nothing_to_undo()
+        if self.__moves.is_empty():
+            self.__warn_nothing_to_undo()
+        else:
+            self.select(self.__moves.undo())
 
     def rewind_(self) -> None:
         if self.__refused_while_initializing():
@@ -141,11 +148,13 @@ class Puzzle:
 
     def next_(self) -> None:
         """Point out the next move and why; the next "n" makes it"""
-        self.__solving_refused() or self.__inform(self.__solver.next())
+        if not self.__solving_refused():
+            self.__inform(self.__solver.next())
 
     def auto_(self) -> None:
         """Make every obvious move, one after another, until the puzzle is complete, a guess is needed or something blocks solving"""
-        self.__solving_refused() or self.__inform(self.__solver.auto())
+        if not self.__solving_refused():
+            self.__inform(self.__solver.auto())
 
     def save_(self) -> None:
         self.__game_file.save()
@@ -216,7 +225,8 @@ class Puzzle:
         """Any action ends the notice and the completion report; any action but "n" cancels the move a previous "n" pointed out"""
         self.__notice = None
         self.__report.seen()
-        action is Action.NEXT or self.__solver.cancel_pending_move()
+        if action is not Action.NEXT:
+            self.__solver.cancel_pending_move()
 
     def __enter(self, val, prim_attr) -> None:
         """Enter the value in the selected cell, with its primary attribute, then point out any dead end"""
@@ -249,7 +259,8 @@ class Puzzle:
 
     def __refused_while_initializing(self) -> bool:
         """Warn that a play command was used in setup mode, returning whether it was"""
-        self._initializing and self.__warn("This works only while playing - ESC starts playing. ")
+        if self._initializing:
+            self.__warn("This works only while playing - ESC starts playing. ")
         return self._initializing
 
     def __move(self, d_row, d_col) -> None:
@@ -272,7 +283,8 @@ class Puzzle:
 
     def __check_for_active_play(self) -> bool:
         is_actively_playing = not self.__moves.is_empty()
-        is_actively_playing and self.__warn("Cannot initialize puzzle while playing - undo everything first. ")
+        if is_actively_playing:
+            self.__warn("Cannot initialize puzzle while playing - undo everything first. ")
         return is_actively_playing
 
     def __warn_nothing_to_undo(self) -> None:
@@ -283,12 +295,14 @@ class Puzzle:
         if self.__refused_while_initializing():
             return True
         is_complete = self.is_complete()
-        is_complete and self.__ui.inform(self.__report.already_complete())
+        if is_complete:
+            self.__ui.inform(self.__report.already_complete())
         return is_complete
 
     def __inform(self, message) -> None:
         """Show the message, if there is one, until the player has seen it"""
-        message and self.__ui.inform(message)
+        if message:
+            self.__ui.inform(message)
 
     def __clear_board(self) -> None:
         """Empty every cell and forget the moves and the last completion report, back in setup mode"""
