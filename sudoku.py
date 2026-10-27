@@ -26,6 +26,7 @@ from input import Input
 from layout_menu import LayoutMenu
 from puzzle import Puzzle
 from puzzle_catalog import PuzzleCatalog
+from terminal_ui import TerminalUI
 
 
 class Main:
@@ -37,7 +38,7 @@ class Main:
         layouts = PuzzleCatalog.available()
         self.__splash(self.__startup_note(layouts))
         layout = self.__chosen_layout(layouts)
-        layout and self.__start(Puzzle(layout.board_class()))
+        layout and self.__start(Puzzle(layout.board_class(), TerminalUI()))
 
     # Private functions
 

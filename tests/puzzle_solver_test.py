@@ -17,12 +17,13 @@
 
 import sys
 from unittest import main, TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 sys.path.insert(0, ".")
 
 from puzzle_solver import PuzzleSolver
 from rules.rule import Move, Outcome, Rule
+from user_interface import MessageKind
 
 
 class TestPuzzleSolver(TestCase):
@@ -55,7 +56,7 @@ class TestPuzzleSolver(TestCase):
     def test_first_next_points_out_the_move_without_making_it(self):
         cell = MagicMock()
         solver = self.__solver_with([Move(Outcome.MOVED, "why", cell, 3)])
-        solver.next()
+        self.assertIsNone(solver.next())
         self.puzzle.select.assert_called_once_with(cell)
         self.puzzle.enter_solved_value.assert_not_called()
         self.assertEqual(solver.pending_hint(), "why")
@@ -81,34 +82,29 @@ class TestPuzzleSolver(TestCase):
     def test_next_warns_about_a_move_that_stops_solving_and_selects_its_cell(self):
         cell = MagicMock()
         solver = self.__solver_with([Move(Outcome.STOPPED, "dead end", cell)])
-        with patch("display.Display.warn") as warn:
-            solver.next()
-        self.assertEqual(warn.call_args.args[0], "dead end")
+        warning = solver.next()
+        self.assertEqual(warning.text, "dead end")
+        self.assertEqual(warning.kind, MessageKind.WARNING)
         self.puzzle.select.assert_called_once_with(cell)
         self.assertIsNone(solver.pending_hint())
 
     def test_next_with_no_move_says_to_guess(self):
-        with patch("display.Display.warn") as warn:
-            self.__solver_with([]).next()
-        self.assertIn("make a guess", warn.call_args.args[0])
+        self.assertIn("make a guess", self.__solver_with([]).next().text)
 
     def test_auto_makes_every_move_then_warns_why_it_stopped(self):
         first, second = MagicMock(), MagicMock()
         moves = [Move(Outcome.MOVED, "why", first, 1), Move(Outcome.MOVED, "why", second, 2)]
-        with patch("display.Display.warn") as warn:
-            self.__solver_with(moves).auto()
+        warning = self.__solver_with(moves).auto()
         self.assertEqual(self.puzzle.enter_solved_value.call_count, 2)
         self.puzzle.select.assert_called_with(second)
-        self.assertIn("make a guess", warn.call_args.args[0])
+        self.assertIn("make a guess", warning.text)
 
     def test_auto_that_completes_the_puzzle_ends_without_a_warning(self):
         def complete(cell, value):
             self.puzzle.is_complete.return_value = True
 
         self.puzzle.enter_solved_value.side_effect = complete
-        with patch("display.Display.warn") as warn:
-            self.__solver_with([Move(Outcome.MOVED, "why", MagicMock(), 1)]).auto()
-        warn.assert_not_called()
+        self.assertIsNone(self.__solver_with([Move(Outcome.MOVED, "why", MagicMock(), 1)]).auto())
 
     # Private functions
 

@@ -19,8 +19,7 @@ import sys
 
 sys.path.insert(0, ".")
 
-from display import Display
-from display_attrs import DisplayAttrs
+from user_interface import Message, MessageKind
 
 
 class CompletionReport:
@@ -37,7 +36,7 @@ class CompletionReport:
 
     # Interface required for the puzzle
 
-    def message(self) -> str:
+    def message(self) -> Message:
         """Return the status line message for a newly changed completion until it is seen, otherwise None"""
         completion = self.__completion()
         if completion != self.__reported:
@@ -45,8 +44,8 @@ class CompletionReport:
             self.__unseen = completion
         return {
             None: None,
-            "solved": Display.styled("The puzzle is solved. ", (DisplayAttrs.SOLVED,)),
-            "errors": Display.term.yellow("Complete, with errors - undo or change values to fix them. "),
+            "solved": Message("The puzzle is solved. ", MessageKind.SUCCESS),
+            "errors": Message("Complete, with errors - undo or change values to fix them. ", MessageKind.WARNING),
         }[self.__unseen]
 
     def seen(self) -> None:
@@ -56,12 +55,13 @@ class CompletionReport:
         """Forget the last report, so the next completion is reported even if it is unchanged"""
         self.__reported = None
 
-    def warn_already_complete(self) -> None:
-        Display.warn(
+    def already_complete(self) -> Message:
+        """Return the warning that the puzzle is already complete, solved or with errors"""
+        return Message(
             "The puzzle is already complete, with errors - undo or change values to fix them. "
             if self.__puzzle.has_conflicts()
             else "The puzzle is already solved. ",
-            wait=True,
+            MessageKind.WARNING,
         )
 
     # Private functions

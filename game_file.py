@@ -20,8 +20,8 @@ import sys
 
 sys.path.insert(0, ".")
 
-from display import Display
 from save_file import SavedPuzzle, SaveFile, SaveFileError
+from user_interface import Message, MessageKind
 
 
 class GameFile:
@@ -29,52 +29,56 @@ class GameFile:
     Save the puzzle to a file, or restore one saved before, asking the player for the file name.
 
     SaveFile writes and reads the file itself.  The puzzle provides layout_name(), has_values(),
-    saved_state() and restore(saved).
+    saved_state() and restore(saved); the user interface asks the player and shows the outcome.
     """
 
     DEFAULT_FILE_NAME = "sudoku.json"
 
-    def __init__(self, puzzle):
+    def __init__(self, puzzle, ui):
         self.__puzzle = puzzle
+        self.__ui = ui
         self.__file_name = self.DEFAULT_FILE_NAME  # the file name last saved or restored, as typed
 
     # Interface required for the puzzle
 
     def save(self) -> None:
         if not self.__puzzle.has_values():
-            Display.warn("Nothing to save - the board is empty. ", wait=True)
+            self.__warn("Nothing to save - the board is empty. ")
             return
-        name = Display.ask("Save to file:", self.__file_name)
+        name = self.__ui.ask_file_name("Save to file:", self.__file_name)
         path = name and SaveFile.located(name)
-        if not path or os.path.exists(path) and not Display.confirm(f"{path} already exists.  Replace it?"):
+        if not path or os.path.exists(path) and not self.__ui.confirm(f"{path} already exists.  Replace it?"):
             return
         try:
             SaveFile.write(path, self.__puzzle.saved_state())
         except OSError as error:
-            Display.warn(f"Cannot save to {path}: {error.strerror}. ", wait=True)
+            self.__warn(f"Cannot save to {path}: {error.strerror}. ")
             return
         self.__file_name = name
-        Display.warn(f"Saved to {path}. ", wait=True)
+        self.__ui.inform(Message(f"Saved to {path}. ", MessageKind.INFO))
 
     def restore(self) -> None:
         """Replace the puzzle with one saved to a file, asking first if that would lose any values"""
-        name = Display.ask("Restore from file:", self.__file_name)
+        name = self.__ui.ask_file_name("Restore from file:", self.__file_name)
         saved = name and self.__read(SaveFile.located(name))
-        if not saved or self.__puzzle.has_values() and not Display.confirm("Restoring replaces every value.  Really restore?"):
+        if not saved or self.__puzzle.has_values() and not self.__ui.confirm("Restoring replaces every value.  Really restore?"):
             return
         self.__file_name = name
         self.__puzzle.restore(saved)
 
     # Private functions
 
+    def __warn(self, text) -> None:
+        self.__ui.inform(Message(text, MessageKind.WARNING))
+
     def __read(self, path) -> SavedPuzzle:
         """Return the puzzle saved in the file, or None after warning why it cannot be restored here"""
         try:
             saved = SaveFile.read(path)
         except SaveFileError as error:
-            Display.warn(str(error), wait=True)
+            self.__warn(str(error))
             return None
         if saved.layout != self.__puzzle.layout_name():
-            Display.warn(f'{path} holds a "{saved.layout}" puzzle - rerun and choose that layout. ', wait=True)
+            self.__warn(f'{path} holds a "{saved.layout}" puzzle - rerun and choose that layout. ')
             return None
         return saved

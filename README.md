@@ -138,6 +138,8 @@ some guidance:
 - cell.py - creates/manages an individual cell; `Cell` class
 - cell_solver.py - keeps the possible values of a cell; `CellSolver` class
 - commands.py - establish the commands for the puzzle; `Commands` class
+- user_interface.py - the port through which the game talks to the player; `UserInterface`, `Message` and `MessageKind`
+- terminal_ui.py - the terminal's user interface: messages and questions on the status line; `TerminalUI` class
 - display.py - manages the terminal display; `Display` class
 - display_attrs.py - turns cell attributes into terminal colors; `DisplayAttrs` class
 - history.py - keeps the history of entries for undo; `History` and `Entry` classes

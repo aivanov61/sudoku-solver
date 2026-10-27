@@ -17,11 +17,12 @@
 
 import sys
 from unittest import main, TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 sys.path.insert(0, ".")
 
 from completion_report import CompletionReport
+from user_interface import MessageKind
 
 
 class TestCompletionReport(TestCase):
@@ -37,15 +38,16 @@ class TestCompletionReport(TestCase):
 
     def test_solved_puzzle_is_reported_until_it_is_seen(self):
         self.puzzle.is_complete.return_value = True
-        self.assertIn("solved", self.report.message())
-        self.assertIn("solved", self.report.message())
+        self.assertIn("solved", self.report.message().text)
+        self.assertEqual(self.report.message().kind, MessageKind.SUCCESS)
         self.report.seen()
         self.assertIsNone(self.report.message())
 
     def test_complete_puzzle_with_conflicts_is_reported_with_how_to_fix_it(self):
         self.puzzle.is_complete.return_value = True
         self.puzzle.has_conflicts.return_value = True
-        self.assertIn("undo or change values", self.report.message())
+        self.assertIn("undo or change values", self.report.message().text)
+        self.assertEqual(self.report.message().kind, MessageKind.WARNING)
 
     def test_completion_is_reported_again_when_it_changes(self):
         self.puzzle.is_complete.return_value = True
@@ -53,7 +55,7 @@ class TestCompletionReport(TestCase):
         self.report.message()
         self.report.seen()
         self.puzzle.has_conflicts.return_value = False
-        self.assertIn("solved", self.report.message())
+        self.assertIn("solved", self.report.message().text)
 
     def test_completion_is_reported_again_after_being_unfinished(self):
         self.puzzle.is_complete.return_value = True
@@ -62,25 +64,22 @@ class TestCompletionReport(TestCase):
         self.puzzle.is_complete.return_value = False
         self.report.message()
         self.puzzle.is_complete.return_value = True
-        self.assertIn("solved", self.report.message())
+        self.assertIn("solved", self.report.message().text)
 
     def test_completion_is_reported_again_after_a_reset(self):
         self.puzzle.is_complete.return_value = True
         self.report.message()
         self.report.seen()
         self.report.reset()
-        self.assertIn("solved", self.report.message())
+        self.assertIn("solved", self.report.message().text)
 
     def test_warning_about_an_already_solved_puzzle(self):
-        with patch("display.Display.warn") as warn:
-            self.report.warn_already_complete()
-        self.assertIn("already solved", warn.call_args.args[0])
+        self.assertIn("already solved", self.report.already_complete().text)
+        self.assertEqual(self.report.already_complete().kind, MessageKind.WARNING)
 
     def test_warning_about_an_already_complete_puzzle_with_conflicts(self):
         self.puzzle.has_conflicts.return_value = True
-        with patch("display.Display.warn") as warn:
-            self.report.warn_already_complete()
-        self.assertIn("undo or change values", warn.call_args.args[0])
+        self.assertIn("undo or change values", self.report.already_complete().text)
 
 
 if __name__ == "__main__":

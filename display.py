@@ -174,7 +174,11 @@ class Display:
         return 0, (Display.geom["v_cells"] or 0) * Display.CELL_HEIGHT + 1
 
     def warn(msg, wait=False):
-        with Display.__status_line_message(msg):
+        Display.show_on_status_line(Display.term.yellow(msg), wait=wait)
+
+    def show_on_status_line(text, wait=False):
+        """Show already styled text on the status line, waiting for a key if asked"""
+        with Display.__status_line_message(text):
             wait and Display.hit_any_key_to_continue()
 
     def hit_any_key_to_continue():
@@ -187,7 +191,7 @@ class Display:
 
     def confirm(msg) -> bool:
         """Ask a yes/no question on the status line; only "y" or "Y" confirms"""
-        with Display.__status_line_message(msg + " (y/n) "):
+        with Display.__status_line_message(Display.term.yellow(msg + " (y/n) ")):
             try:
                 with Display.term.cbreak():
                     return Display.term.inkey() in ("y", "Y")
@@ -200,7 +204,7 @@ class Display:
         try:
             with Display.term.cbreak():
                 while True:
-                    with Display.__status_line_message(f"{msg} {text}"):
+                    with Display.__status_line_message(Display.term.yellow(f"{msg} {text}")):
                         key = Display.term.inkey()
                     if key.name in ("KEY_ENTER", "KEY_ESCAPE"):
                         return text if key.name == "KEY_ENTER" else None
@@ -234,10 +238,10 @@ class Display:
         return getattr(Display.term, Attrs.render_bg(attrs))
 
     @contextmanager
-    def __status_line_message(msg):
-        """Show the message in yellow on the status line, keeping the cursor there until the block ends"""
+    def __status_line_message(text):
+        """Show the styled text on the status line, keeping the cursor there until the block ends"""
         with Display.term.location(*Display.status_line_location()):
-            echo(Display.term.clear_eol + Display.term.yellow(msg))
+            echo(Display.term.clear_eol + text)
             yield
 
     def __edited(text, key) -> str:

@@ -51,6 +51,8 @@ Supporting modules:
 |---|---|---|
 | `commands.py` | `Commands` | Key bindings and help text for each mode |
 | `input.py` | `Input` | Reads a keystroke and turns it into a command name |
+| `user_interface.py` | `UserInterface`, `Message`, `MessageKind` | The port through which the game talks to the player (section 4.4) |
+| `terminal_ui.py` | `TerminalUI` | The terminal's implementation of the port: messages and questions on the status line |
 | `display.py` | `Display`, `Border` | All terminal drawing, through `blessed` |
 | `display_attrs.py` | `DisplayAttrs` | Turns attribute mnemonics into `blessed` style names |
 | `history.py` | `History`, `Entry` | The undo stack |
@@ -97,11 +99,13 @@ class UserInterface(Protocol):
     def cells_changed(self, cells) -> None: ...            # redraw just these, after a command
     def select(self, row, col) -> None: ...
     def mode_changed(self, mode, actions) -> None: ...     # e.g. the terminal's command panel
-    def status(self, message, kind) -> None: ...           # shown until the next command
-    def inform(self, message, kind) -> None: ...           # must be acknowledged before going on
+    def status(self, message) -> None: ...                 # shown until the next command; None blanks it
+    def inform(self, message) -> None: ...                 # must be acknowledged before going on
     def confirm(self, question) -> bool: ...
-    def ask_file_name(self, purpose, default) -> str | None: ...
+    def ask_file_name(self, prompt, default) -> str | None: ...
 ```
+
+A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCESS` or `HINT`. The port, `Message` and `MessageKind` are in `user_interface.py`. The last four methods exist since step 1; the others will be added in later steps.
 
 **What belongs where:**
 
@@ -127,7 +131,7 @@ class UserInterface(Protocol):
 1. Ask `PuzzleCatalog` for the available layouts.
 2. Show the GPL splash; continue after 5 seconds or any key. With a single layout that is broken, or with no layouts at all, a yellow note under the splash says so.
 3. Pick the layout: with several, `LayoutMenu` lets the player choose (see 5.7); with one, it is used directly. If the player quits the menu, or the only layout is broken or missing, exit here.
-4. Create the board, then the puzzle: `Puzzle(layout.board_class())`. The board's `__init__` builds its blocks (9 blocks of 9 cells for `Board3x3`); `Puzzle.__init__` sets the display geometry from the board's size, checks the screen size and creates its helpers (`Moves` creates its own, empty `History`).
+4. Create the board, then the puzzle with its user interface: `Puzzle(layout.board_class(), TerminalUI())`. The board's `__init__` builds its blocks (9 blocks of 9 cells for `Board3x3`); `Puzzle.__init__` sets the display geometry from the board's size, checks the screen size and creates its helpers (`Moves` creates its own, empty `History`).
 5. `render()` draws the whole grid, the command panel and the status line.
 6. Loop while `puzzle.is_playing`: re-check the screen size (redraw if it was resized), move the cursor to the selected cell, read a command and handle it.
 
@@ -200,7 +204,7 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 - **Cancelling:** `Main` calls `puzzle.command_received(cmd)` before carrying out every command. Any command other than `n` drops the pending move (`PuzzleSolver.cancel_pending_move()`), so the following `n` points out a move again instead of filling one in. Keys the program does not recognize are ignored as before and cancel nothing.
 - **The puzzle's interface for the solver:** `first_cell_where(condition)` returns the first cell, left to right and top to bottom, for which the condition holds (it asks every block's `cells_where()`, so only blocks look inside cells, as section 4.2 requires); `select(cell)` moves the cursor; `enter_solved_value(cell, value)` enters a value; `is_complete()` tells `auto()` not to warn once it has filled in the last cell. The other helpers use the same section of the puzzle (`Interface required for the solver and the other helpers`): `is_initializing()`, `has_conflicts()`, `has_values()`, `saved_state()` and `restore(saved)`.
 - **Auto (`a`):** `PuzzleSolver.auto()` makes moves with `find_move()` and `make_move()` while they are `MOVED`, selecting each move's cell, without hints. It ends with the same warning `n` would give: the stopping rule's warning, or the one about making a guess. Each move is a separate `History` entry, so `u` takes them back one at a time.
-- **Notices:** a dead-end warning does not wait for a key. The puzzle keeps it as a notice, which `display_status()` shows in yellow, ahead of the completion report and the `n` hint, until `command_received()` clears it at the next command. (A `Display.warn()` that does not wait would be overwritten at once, because `Main` redraws the status line after every command.)
+- **Notices:** a dead-end warning does not wait for a key. The puzzle keeps it as a notice (a `WARNING` message), which `display_status()` passes to the user interface's `status()` ahead of the completion report and the `n` hint, until `command_received()` clears it at the next command. (A `Display.warn()` that does not wait would be overwritten at once, because `Main` redraws the status line after every command.)
 - **A complete puzzle:** in play mode, once `first_cell_where` finds no empty cell, `CompletionReport` (`completion_report.py`) gives `display_status()` the message that the puzzle is solved (steel blue), or complete with errors (yellow) if any cell is marked in conflict. The report replaces the status line until the next command, and comes back only when the completion changes (including back to unfinished, after undo or rewind empties a cell). With errors, the advice is to undo or change values. `n` and `a` then only warn that the puzzle is already complete; values can still be typed over. When `a` fills in the last cell it ends without a warning.
 - **Making the move:** a `SOLVED` value goes through the same path as a typed value, so it is recorded in `History` with `SOLVED` as its primary attribute. `u` and `r` treat it like any other non-guess entry, and undoing a change restores the steel blue. It also picks up the current guess shading.
 - **Adding a rule** means a new file in `rules/` and one line in `rules/order.py`; nothing else changes. Rules that need whole rows, columns or boxes (rather than single cells) will need a new solver interface, to be designed with the first such rule.
@@ -224,7 +228,7 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 - **`SaveFile`** writes it as JSON: `{"format": "sudoku-save", "version": 1, "state": {...}}`. Reading checks the format marker and the structure, and raises `SaveFileError` with a message for the player if the file is missing, isn't a save file, or is damaged. A version newer than `SaveFile.VERSION` raises an error suggesting the player update the program.
 - **Changing the format:** raise `VERSION` and add an entry to `SaveFile.UPGRADES` that converts the previous version's `state` dictionary to the new one. Reading applies the upgrades one version at a time, so files from any older version still load.
 - **Where files go:** `SaveFile.located(name)` puts a name without a folder in `SaveFile.FOLDER` (`saved_games`, relative to where the program runs); a name with any folder, even `.`, is used as given. `SaveFile.write()` creates `saved_games` when it is missing, but no other folder. `GameFile` remembers the name as typed and shows the located path in its messages. `saved_games/` is in `.gitignore`.
-- **Save (`s`)** warns "Nothing to save - the board is empty." if no cell has a value; otherwise it asks for a file name with `Display.ask()` on the status line, offering the last name saved or restored (`GameFile.DEFAULT_FILE_NAME` at first), and confirms before replacing an existing file. The puzzle's `saved_state()` builds the `SavedPuzzle`; givens are the cells whose attributes include `INITIAL`.
+- **Save (`s`)** warns "Nothing to save - the board is empty." if no cell has a value; otherwise it asks for a file name with the user interface's `ask_file_name()` (on the terminal, `Display.ask()` on the status line), offering the last name saved or restored (`GameFile.DEFAULT_FILE_NAME` at first), and confirms before replacing an existing file. The puzzle's `saved_state()` builds the `SavedPuzzle`; givens are the cells whose attributes include `INITIAL`.
 - **Restore (`o`)** reads the file first, so a bad file or one from another layout only warns and changes nothing. If the board has any values, it then confirms. `GameFile.restore()` hands the `SavedPuzzle` to the puzzle's `restore(saved)`, which empties every cell, clears the moves, enters the givens in setup mode, switches to the saved mode, and replays the moves through `Moves.enter()`, the same path as typed and solved values. Undo, rewind and guess shading then work as if the moves had just been made. After redrawing, it points out any dead end the same way as after a typed value (selecting the first one and showing a notice).
 
 ## 6. Display
@@ -239,8 +243,9 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 - `Display` is a class with class-level state (`term`, `geom`) and functions called on the class, not on an instance.
 - **Command panel:** `Display.draw_command_panel(title, entries)` draws the mode's title (SETUP or PLAY) and one command per line to the right of the grid, keys in red, then clears the rest of every line beside the grid. Each command in `Commands` has a `panel` list of `(keys, name)` lines (empty to leave it out); `Commands.panel()` lists the active ones in order: `ESC`, help, the values, the moves, the mode's other commands, then save, open and quit. Help (`HELP_CMD`) and the moves (`MOVE_CMDS`) are defined once and included in each mode's commands at their place; save, open and quit are the common commands, added after the mode's. The puzzle redraws the panel in `render()` and when the mode changes.
 - **Status line:** blank unless there is something to report: `n`'s hint, a change in completion, a warning or a question.
-- Warnings appear in yellow on the status line. Many of them wait for a key press.
-- `Display.confirm(msg)` asks a yes/no question the same way and returns `True` only for `y` or `Y`. Any other key, or an interrupted prompt, declines. `quit_()` and `rewind_()` use it.
+- **Messages:** the game sends a `Message` with a kind; `TerminalUI` styles it: successes and hints in steel blue (the `SOLVED` style), information and warnings in yellow. `status()` shows it until the next command; `inform()` shows it with `Display.show_on_status_line(text, wait=True)`, which waits for a key press. `Display.warn()` is the yellow shortcut still used by code not yet moved behind the port (`Moves`, `Main`).
+- `Display.confirm(msg)` asks a yes/no question the same way and returns `True` only for `y` or `Y`. Any other key, or an interrupted prompt, declines. `TerminalUI.confirm()` uses it, for `quit_()`, `rewind_()` and the save and restore questions.
+- **Tests** of the game use `tests/recording_ui.py`, a `RecordingUI` that records every message and question and answers as the test tells it, instead of patching `Display`.
 
 ## 7. Conventions
 
@@ -257,7 +262,7 @@ The full list is in `CLAUDE.md`. The main points:
 
 1. **Separate the game from the display** (section 4.4), one step at a time, each with its own commits, all tests passing and a check by hand:
    - Done first: each `Moves` owns its `History`, instead of one global history.
-   - **Step 1, messages and dialogs:** the helpers (`Moves`, `PuzzleSolver`, `CompletionReport`) return results instead of warning; the puzzle sends every message, with its kind, and every dialog through one interface object. The terminal adapter wraps today's `Display`.
+   - Done, **step 1, messages and dialogs:** `PuzzleSolver` and `CompletionReport` return messages instead of warning; the puzzle and `GameFile` send every message, with its kind, and every dialog through the user interface (`user_interface.py`), and `TerminalUI` wraps today's `Display`. Left for step 2: `Moves`' warning about running out of gray shades, which belongs to the terminal.
    - **Step 2, attributes with meaning only:** the game keeps a cell's kind, conflict marks and guess depth; colors and gray levels move to a terminal style table.
    - **Step 3, cells stop drawing:** the board reports changed cells through the port, and block edges become layout data instead of a display `Border`.
    - **Step 4, actions apart from keys:** the game defines its actions; the terminal keeps its key bindings and help text.

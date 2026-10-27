@@ -106,6 +106,33 @@ class TestDisplayStyled(TestCase):
             self.assertEqual(Display.styled("hint", (DisplayAttrs.SOLVED,)), "<steelblue>hint</>")
 
 
+class TestDisplayStatusLine(TestCase):
+    def test_text_is_shown_on_the_status_line_as_given(self):
+        echo, hit_any_key = self.__show("<styled>")
+        echo.assert_called_once_with("<clear><styled>")
+        hit_any_key.assert_not_called()
+
+    def test_text_waits_for_a_key_when_asked(self):
+        echo, hit_any_key = self.__show("<styled>", wait=True)
+        hit_any_key.assert_called_once()
+
+    def test_warning_is_shown_in_yellow(self):
+        with patch("display.echo") as echo, patch.object(Display, "term") as term:
+            term.clear_eol = "<clear>"
+            term.yellow = lambda text: f"<yellow>{text}</yellow>"
+            Display.warn("careful")
+        echo.assert_called_once_with("<clear><yellow>careful</yellow>")
+
+    # Private functions
+
+    def __show(self, text, wait=False):
+        with patch("display.echo") as echo, patch.object(Display, "term") as term:
+            term.clear_eol = "<clear>"
+            with patch("display.Display.hit_any_key_to_continue") as hit_any_key:
+                Display.show_on_status_line(text, wait=wait)
+        return echo, hit_any_key
+
+
 class TestDisplayConfirm(TestCase):
     def test_y_confirms(self):
         self.assertTrue(self.__confirm_with("y"))

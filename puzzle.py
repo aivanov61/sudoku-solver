@@ -22,13 +22,14 @@ sys.path.insert(0, ".")
 from commands import Commands
 from cell import Cell
 from completion_report import CompletionReport
-from display import Display, echo
+from display import Display
 from display_attrs import DisplayAttrs
 from game_file import GameFile
 from moves import Moves
 from puzzle_solver import PuzzleSolver
 from rules.dead_end_rule import DeadEndRule
 from save_file import SavedPuzzle
+from user_interface import Message, MessageKind
 
 
 class Puzzle:
@@ -53,10 +54,11 @@ class Puzzle:
 
     The puzzle hands parts of its work to helpers: Moves (entering values, undo and guess shading),
     PuzzleSolver (next and auto), CompletionReport (telling the player the puzzle is complete) and
-    GameFile (save and restore).
+    GameFile (save and restore).  It shows messages and asks questions only through its user
+    interface (see user_interface.py).
     """
 
-    def __init__(self, board):
+    def __init__(self, board, ui):
         # Public attributes required for all puzzles
         self.selected_cell = (0, 0)  # row, col (NOT x, y)
         self.is_playing = True
@@ -67,10 +69,11 @@ class Puzzle:
         self._initializing = True
         self.__notice = None  # a warning shown on the status line until the next command
         self.__board = board
+        self.__ui = ui
         self.__moves = Moves(self)
         self.__solver = PuzzleSolver(self)
         self.__report = CompletionReport(self)
-        self.__game_file = GameFile(self)
+        self.__game_file = GameFile(self, ui)
 
     # Interface required for Main
 
@@ -82,10 +85,7 @@ class Puzzle:
 
     def display_status(self) -> None:
         """Show a notice, a newly changed completion, or why the move "n" pointed out is right, if any; otherwise leave it blank"""
-        Display.move_to_status_line()
-        hint = self.__solver.pending_hint()
-        status = self.__notice or self.__report.message() or (Display.styled(hint, (DisplayAttrs.SOLVED,)) if hint else "")
-        echo(status + Display.term.clear_eol)
+        self.__ui.status(self.__notice or self.__report.message() or self.__pending_hint())
 
     def command_received(self, cmd) -> None:
         """Any command ends the notice and the completion report; any command other than "n" cancels the move a previous "n" pointed out"""
@@ -99,7 +99,7 @@ class Puzzle:
     # Interface required for Main: one method per command in Commands
 
     def quit_(self) -> None:
-        Display.confirm("Really quit?") and self.force_quit_()
+        self.__ui.confirm("Really quit?") and self.force_quit_()
 
     def help_(self) -> None:
         Display.clear_screen()
@@ -111,7 +111,7 @@ class Puzzle:
         """Enter the value in the selected cell, then point out any dead end"""
         cell = self.__selected_cell()
         if not self._initializing and DisplayAttrs.INITIAL in cell.attr():
-            Display.warn("Cannot change an initial value while playing. ", wait=True)
+            self.__warn("Cannot change an initial value while playing. ")
             return
         self.__moves.enter(cell, val, DisplayAttrs.GUESS if guess else None)
         self.__found_dead_end()
@@ -136,7 +136,7 @@ class Puzzle:
 
     def del_(self) -> None:
         if not self._initializing:
-            Display.warn("Deleting a cell value can only be done while initializing the puzzle. ", wait=True)
+            self.__warn("Deleting a cell value can only be done while initializing the puzzle. ")
             return
         self.__selected_cell().update(None)
 
@@ -150,16 +150,16 @@ class Puzzle:
             return
         if self.__moves.is_empty():
             self.__warn_nothing_to_undo()
-        elif Display.confirm("Rewind cannot be undone.  Really rewind?"):
+        elif self.__ui.confirm("Rewind cannot be undone.  Really rewind?"):
             self.select(self.__moves.rewind())
 
     def next_(self) -> None:
         """Point out the next move and why; the next "n" makes it"""
-        self.__solving_refused() or self.__solver.next()
+        self.__solving_refused() or self.__inform(self.__solver.next())
 
     def auto_(self) -> None:
         """Make every obvious move, one after another, until the puzzle is complete, a guess is needed or something blocks solving"""
-        self.__solving_refused() or self.__solver.auto()
+        self.__solving_refused() or self.__inform(self.__solver.auto())
 
     def save_(self) -> None:
         self.__game_file.save()
@@ -218,8 +218,16 @@ class Puzzle:
     def __draw_commands(self) -> None:
         Display.draw_command_panel("SETUP" if self._initializing else "PLAY", Commands.panel())
 
+    def __pending_hint(self) -> Message:
+        """Return why the move "n" pointed out is right, or None if there is none"""
+        hint = self.__solver.pending_hint()
+        return Message(hint, MessageKind.HINT) if hint else None
+
     def __selected_cell(self) -> Cell:
         return self.__board.cell(*self.selected_cell)
+
+    def __warn(self, text) -> None:
+        self.__ui.inform(Message(text, MessageKind.WARNING))
 
     def __found_dead_end(self) -> bool:
         """Point out the first dead end, if any, moving to it without waiting; return whether there was one"""
@@ -227,10 +235,11 @@ class Puzzle:
         if dead_end is None:
             return False
         self.select(dead_end)
-        self.__notice = Display.term.yellow(
+        self.__notice = Message(
             "This square has no possible values left - change the setup before playing. "
             if self._initializing
-            else DeadEndRule.WARNING
+            else DeadEndRule.WARNING,
+            MessageKind.WARNING,
         )
         return True
 
@@ -244,7 +253,7 @@ class Puzzle:
     def __setup_blocks_playing(self) -> bool:
         """Warn if the setup has conflicts, or a dead end (moving to it), which would block solving"""
         if self.__board.has_conflicts():
-            Display.warn("Resolve the conflicts before playing. ", wait=True)
+            self.__warn("Resolve the conflicts before playing. ")
             return True
         return self.__found_dead_end()
 
@@ -259,26 +268,28 @@ class Puzzle:
 
     def __check_for_active_play(self) -> bool:
         is_actively_playing = not self.__moves.is_empty()
-        is_actively_playing and Display.warn(
-            "Cannot initialize puzzle while playing - undo everything first. ", wait=True
-        )
+        is_actively_playing and self.__warn("Cannot initialize puzzle while playing - undo everything first. ")
         return is_actively_playing
 
     def __refused_while_initializing(self) -> bool:
         """Warn that a play command was used in setup mode, returning whether it was"""
-        self._initializing and Display.warn("This works only while playing - ESC starts playing. ", wait=True)
+        self._initializing and self.__warn("This works only while playing - ESC starts playing. ")
         return self._initializing
 
     def __warn_nothing_to_undo(self) -> None:
-        Display.warn("Cannot undo initialized puzzle.  ESC will re-enter initialization mode. ", wait=True)
+        self.__warn("Cannot undo initialized puzzle.  ESC will re-enter initialization mode. ")
 
     def __solving_refused(self) -> bool:
         """Warn, returning True, if "n" or "a" cannot solve: in setup mode, or once the puzzle is complete"""
         if self.__refused_while_initializing():
             return True
         is_complete = self.is_complete()
-        is_complete and self.__report.warn_already_complete()
+        is_complete and self.__ui.inform(self.__report.already_complete())
         return is_complete
+
+    def __inform(self, message) -> None:
+        """Show the message, if there is one, until the player has seen it"""
+        message and self.__ui.inform(message)
 
     def __clear_board(self) -> None:
         """Empty every cell and forget the moves and the last completion report, back in setup mode"""

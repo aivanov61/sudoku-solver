@@ -19,9 +19,9 @@ import sys
 
 sys.path.insert(0, ".")
 
-from display import Display
 from rules.order import RULES
 from rules.rule import Move, Outcome
+from user_interface import Message, MessageKind
 
 
 class PuzzleSolver:
@@ -39,21 +39,21 @@ class PuzzleSolver:
 
     # Interface required for the puzzle
 
-    def next(self) -> None:
-        """Point out the next move and why; the following next() makes it"""
+    def next(self) -> Message:
+        """Point out the next move and why, the following next() making it; or return why there is no move"""
         if self.__pending_move:
             self.__make_pending_move()
-        else:
-            self.__point_out_next_move()
+            return None
+        return self.__point_out_next_move()
 
-    def auto(self) -> None:
-        """Make every obvious move, one after another, until the puzzle is complete, a guess is needed or something blocks solving"""
+    def auto(self) -> Message:
+        """Make every obvious move, one after another; return why it stopped, or None once the puzzle is complete"""
         move = self.find_move()
         while move and move.outcome is Outcome.MOVED:
             self.__puzzle.select(move.cell)
             self.make_move(move)
             move = self.find_move()
-        self.__puzzle.is_complete() or self.__warn_why_solving_stopped(move)
+        return None if self.__puzzle.is_complete() else self.__why_solving_stopped(move)
 
     def pending_hint(self) -> str:
         """Return why the move pointed out by next() is right, or None if there is none"""
@@ -77,19 +77,18 @@ class PuzzleSolver:
         move, self.__pending_move = self.__pending_move, None
         self.make_move(move)
 
-    def __point_out_next_move(self) -> None:
-        """Move to the next move's cell and keep it as the pending move, or warn why there is none"""
+    def __point_out_next_move(self) -> Message:
+        """Move to the next move's cell and keep it as the pending move, or return why there is none"""
         move = self.find_move()
         if move and move.outcome is Outcome.MOVED:
             self.__puzzle.select(move.cell)
             self.__pending_move = move
-        else:
-            self.__warn_why_solving_stopped(move)
+            return None
+        return self.__why_solving_stopped(move)
 
-    def __warn_why_solving_stopped(self, move) -> None:
-        """Warn with a STOPPED move's hint, moving to its cell if it has one; with no move, a guess is needed"""
+    def __why_solving_stopped(self, move) -> Message:
+        """Return a STOPPED move's hint, moving to its cell if it has one; with no move, a guess is needed"""
         if move is None:
-            Display.warn("No obvious next move. You'll have to make a guess. ", wait=True)
-            return
+            return Message("No obvious next move. You'll have to make a guess. ", MessageKind.WARNING)
         move.cell is None or self.__puzzle.select(move.cell)
-        Display.warn(move.hint, wait=True)
+        return Message(move.hint, MessageKind.WARNING)
