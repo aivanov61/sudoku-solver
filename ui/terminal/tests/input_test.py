@@ -17,7 +17,7 @@
 
 import sys
 from unittest import main, TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock
 
 from blessed.keyboard import Keystroke
 
@@ -33,7 +33,7 @@ PLAY = OFFERED_ACTIONS[Mode.PLAY]
 class TestInput(TestCase):
     def test_get_input(self):
         print('Hit a valid command key, like "?" or CTRL-C, to continue; timeout=2 seconds')
-        cmd = Input.get_cmd(PLAY, timeout=2.0)
+        cmd = Input(Display()).get_cmd(PLAY, timeout=2.0)
         print(f'cmd="{cmd}"')
 
 
@@ -56,9 +56,9 @@ class TestInputDecoding(TestCase):
     # Private functions
 
     def __get_cmd_with(self, keys):
-        with patch.object(Display, "term") as term:
-            term.inkey.side_effect = keys
-            return Input.get_cmd(PLAY)
+        display = MagicMock()
+        display.term.inkey.side_effect = keys
+        return Input(display).get_cmd(PLAY)
 
 
 if __name__ == "__main__":

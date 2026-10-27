@@ -17,14 +17,13 @@
 
 import sys
 from unittest import main, TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from blessed.keyboard import Keystroke
 
 sys.path.insert(0, ".")
 
 from game.puzzle_catalog import PuzzleLayout
-from ui.terminal.display import Display
 from ui.terminal.layout_menu import LayoutMenu
 
 
@@ -134,11 +133,12 @@ class TestLayoutMenu(TestCase):
     # Private functions
 
     def __choose(self, *keys, height=24):
-        with patch("ui.terminal.layout_menu.echo") as self.echo, patch.object(Display, "term") as term:
-            term.height = height
-            term.yellow.side_effect = lambda text: text
-            term.inkey.side_effect = [Keystroke(key) if type(key) is str else key for key in keys]
-            return LayoutMenu(self.layouts).choose()
+        display = MagicMock()
+        display.term.height = height
+        display.term.yellow.side_effect = lambda text: text
+        display.term.inkey.side_effect = [Keystroke(key) if type(key) is str else key for key in keys]
+        with patch("ui.terminal.layout_menu.echo") as self.echo:
+            return LayoutMenu(self.layouts, display).choose()
 
     def __drawn(self) -> str:
         return "".join(str(call.args[0]) for call in self.echo.call_args_list)

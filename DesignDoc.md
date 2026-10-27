@@ -136,10 +136,10 @@ A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCE
 
 ### 5.1 Startup and the main loop (`sudoku.py`)
 
-1. Ask `PuzzleCatalog` for the available layouts.
+1. Create the `Display`, the one object that draws on the terminal, and ask `PuzzleCatalog` for the available layouts.
 2. Show the GPL splash; continue after 5 seconds or any key. With a single layout that is broken, or with no layouts at all, a yellow note under the splash says so.
 3. Pick the layout: with several, `LayoutMenu` lets the player choose (see 5.7); with one, it is used directly. If the player quits the menu, or the only layout is broken or missing, exit here.
-4. Create the board, the user interface and the puzzle: `TerminalUI(board.v_cells, board.h_cells)` sets the display geometry from the board's size and checks the screen size; `Puzzle(board, ui)` announces setup mode and creates its helpers (`Moves` creates its own, empty `History`). The board's `__init__` builds its blocks (9 blocks of 9 cells for `Board3x3`).
+4. Create the board, the user interface and the puzzle: `TerminalUI(display, board.v_cells, board.h_cells)` sets the display's geometry from the board's size, checks the screen size and creates the `Input` that reads keys from the display's terminal; `Puzzle(board, ui)` announces setup mode and creates its helpers (`Moves` creates its own, empty `History`). The board's `__init__` builds its blocks (9 blocks of 9 cells for `Board3x3`).
 5. `ui.play(puzzle)` runs the game. It first calls the puzzle's `render()`, which shows the whole board (through the user interface's `show_board()`, which also draws the command panel) and the status line.
 6. Then it loops while `puzzle.is_playing`: re-check the screen size (render again if it was resized), move the cursor to the puzzle's `selected_cell`, read a command and carry it out (see 5.2).
 
@@ -250,7 +250,7 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
   - *Optional* attributes: `CONFLICTING` gives bold red on bright yellow. `CONFLICTED` gives the primary color on yellow, so the newest entry stands out from the cells it clashes with. A cell carries at most one of the two; `CONFLICTING` wins.
   - Values with no primary attribute are drawn in `darkorange3`.
   - The guess depth travels in the attribute tuple as `{"depth": n}`; the terminal shows it as `gray{10 × n}`, at most `gray100`.
-- `Display` is a class with class-level state (`term`, `geom`) and functions called on the class, not on an instance.
+- `Display` is an object: `Main` creates one, `Display(term)` with a `blessed` `Terminal` (a new one if none is given), and passes it to `LayoutMenu` and `TerminalUI`, which passes it to `Input`. It keeps its terminal (`term`) and the board size (`geom`, set with `geometry(v_cells, h_cells)`). Tests hand `TerminalUI`, `Input` and `LayoutMenu` a stand-in display, and `Display` a stand-in terminal, instead of patching classes.
 - **Command panel:** `Display.draw_command_panel(title, entries)` draws the mode's title (SETUP or PLAY) and one command per line to the right of the grid, keys in red, then clears the rest of every line beside the grid. `Commands.panel(offered)` lists, as `(keys, name)`, the commands the mode offers, in `BINDINGS` order: `ESC`, help, the values, the moves, the mode's other commands, then save, open and quit. `TerminalUI` draws the panel when the puzzle announces a mode (`mode_changed()`) and again in `show_board()`.
 - **Help screen:** `?` shows `Commands.long_help(offered)`: the commands the mode offers, the same ones as the panel, each with its keys and a longer description.
 - **Status line:** blank unless there is something to report: `n`'s hint, a change in completion, a warning or a question.
@@ -278,8 +278,10 @@ The full list is in `CLAUDE.md`. The main points:
    - Done, **step 3, cells stop drawing:** a cell reports each change through its block and the board to the user interface's `cell_changed()`, and `render()` shows the whole board with `show_board()`; `TerminalUI` decides what to redraw. `Cell.update()` is gone (`set()` reports changes), and so are the `render()` methods of cells, blocks and the board. `Border` is layout data in `border.py`.
    - Done, **step 4, actions apart from keys:** `actions.py` defines the game's `Action`s, its `Mode`s and the actions each offers; the puzzle announces its mode with `mode_changed()`. `commands.py` is now the terminal's key-binding table, and `TerminalUI` draws the panel and the help screen. Hidden commands are gone: every key maps to its action and the puzzle refuses what its mode doesn't offer, now including guesses in setup. `Puzzle.help_()` is gone (help is the terminal's), and values and guesses are separate actions (`value_()`, `guess_()`).
    - Done, **step 5, the loop moves to the interface:** `TerminalUI.play(puzzle)` runs the loop: it reads keys, shows help itself and hands each action to `puzzle.handle(action, digit)`. `TerminalUI(v_cells, h_cells)` sets the geometry and checks the screen size, so `Puzzle` no longer uses `Display` at all. `Main` just picks the layout and the user interface.
-   - **Step 6, packages and the instance:**
+   - Done, **step 6, packages and the instance:**
      - Done, **6a, packages:** the game is in `game/` (with `game/rules/` and `game/puzzles/`), the terminal user interface in `ui/terminal/`, and `tests/package_boundary_test.py` checks that nothing in `game/` imports from `ui` or `blessed`.
-     - **6b, `Display` becomes an object:** created by `Main` and passed to `LayoutMenu`, `TerminalUI` and `Input`, instead of class-level state.
+     - Done, **6b, `Display` becomes an object:** created by `Main` and passed to `LayoutMenu`, `TerminalUI` and `Input`, instead of class-level state.
+
+   The separation is complete: the game talks to the player only through the `UserInterface` port, and the terminal is one adapter for it.
 2. **More rules for next and auto:** for example, a value that fits only one cell in a row, column or box.
 3. **Redo**, if wanted.

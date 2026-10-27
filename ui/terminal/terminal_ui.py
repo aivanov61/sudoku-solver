@@ -23,7 +23,7 @@ from game.actions import Action
 from game.cell_attrs import CellAttrs
 from game.user_interface import Message, MessageKind
 from ui.terminal.commands import Commands
-from ui.terminal.display import Display, echo
+from ui.terminal.display import echo
 from ui.terminal.display_attrs import DisplayAttrs
 from ui.terminal.input import Input
 
@@ -34,9 +34,11 @@ class TerminalUI:
     panel, and shows the game's messages and asks its questions on the status line.
     """
 
-    def __init__(self, v_cells, h_cells):
-        Display.geometry({"h_cells": h_cells, "v_cells": v_cells})
-        Display.validate_screen_size()
+    def __init__(self, display, v_cells, h_cells):
+        display.geometry(v_cells, h_cells)
+        display.validate_screen_size()
+        self.__display = display
+        self.__input = Input(display)
         self.__guess_depth = 0
         self.__mode = None
         self.__offered = ()  # the actions the mode offers
@@ -48,26 +50,26 @@ class TerminalUI:
         """Show the game, then hand it the action for each key, until the game is over"""
         game.render()
         while game.is_playing:
-            Display.validate_screen_size() or game.render()
-            Display.move_to_cell(*game.selected_cell)
-            self.__carry_out(game, *Input.get_cmd(self.__offered))
-        Display.move_to_status_line()
+            self.__display.validate_screen_size() or game.render()
+            self.__display.move_to_cell(*game.selected_cell)
+            self.__carry_out(game, *self.__input.get_cmd(self.__offered))
+        self.__display.move_to_status_line()
         print("\n")
 
     # Interface required for the game
 
     def status(self, message) -> None:
-        Display.move_to_status_line()
-        echo((self.__styled(message) if message else "") + Display.term.clear_eol)
+        self.__display.move_to_status_line()
+        echo((self.__styled(message) if message else "") + self.__display.term.clear_eol)
 
     def inform(self, message) -> None:
-        Display.show_on_status_line(self.__styled(message), wait=True)
+        self.__display.show_on_status_line(self.__styled(message), wait=True)
 
     def confirm(self, question) -> bool:
-        return Display.confirm(question)
+        return self.__display.confirm(question)
 
     def ask_file_name(self, prompt, default) -> str:
-        return Display.ask(prompt, default)
+        return self.__display.ask(prompt, default)
 
     def guess_depth_changed(self, depth) -> None:
         """Warn when guesses go from within the shades of gray to deeper than the last one"""
@@ -77,7 +79,7 @@ class TerminalUI:
 
     def show_board(self, cells) -> None:
         """Clear the screen and draw every cell whole, and the command panel"""
-        Display.clear_screen()
+        self.__display.clear_screen()
         for cell in cells:
             self.__draw_whole_cell(cell)
         self.__draw_panel()
@@ -108,41 +110,41 @@ class TerminalUI:
         try:
             game.handle(command, digit)
         except Exception:
-            Display.warn(f'This puzzle\'s "{command.value}" command is broken!')
+            self.__display.warn(f'This puzzle\'s "{command.value}" command is broken!')
             command in (Action.QUIT, Action.FORCE_QUIT) and self.__force_quit(game)
 
     def __show_help(self) -> None:
         """Show the commands the mode offers, with their keys, until a key is hit"""
-        Display.clear_screen()
+        self.__display.clear_screen()
         print(Commands.long_help(self.__offered))
-        Display.hit_any_key_to_continue()
+        self.__display.hit_any_key_to_continue()
 
     def __force_quit(self, game) -> None:
-        Display.move_to_status_line()
-        print("\n" + Display.term.clear_eol + "FORCING quit")
+        self.__display.move_to_status_line()
+        print("\n" + self.__display.term.clear_eol + "FORCING quit")
         game.force_quit_()
 
     def __styled(self, message) -> str:
         """Successes and hints in the solved style (steel blue), everything else in yellow"""
         if message.kind in (MessageKind.SUCCESS, MessageKind.HINT):
-            return Display.styled(message.text, (CellAttrs.SOLVED,))
-        return Display.term.yellow(message.text)
+            return self.__display.styled(message.text, (CellAttrs.SOLVED,))
+        return self.__display.term.yellow(message.text)
 
     def __draw_panel(self) -> None:
         """Draw the mode's title and its commands beside the puzzle, once a mode has been announced"""
-        self.__mode and Display.draw_command_panel(self.__mode.value, Commands.panel(self.__offered))
+        self.__mode and self.__display.draw_command_panel(self.__mode.value, Commands.panel(self.__offered))
 
     def __draw_whole_cell(self, cell) -> None:
-        Display.draw_cell(cell.row, cell.col, cell.borders, cell.attr())
+        self.__display.draw_cell(cell.row, cell.col, cell.borders, cell.attr())
         self.__draw_value(cell)
         self.__draw_possible_values(cell)
         self.__remember(cell)
 
     def __draw_value(self, cell) -> None:
-        Display.draw_cell_value(cell.row, cell.col, cell.value() or " ", cell.attr())
+        self.__display.draw_cell_value(cell.row, cell.col, cell.value() or " ", cell.attr())
 
     def __draw_possible_values(self, cell) -> None:
-        Display.draw_cell_possible_values(cell.row, cell.col, cell.possible_values(), cell.attr())
+        self.__display.draw_cell_possible_values(cell.row, cell.col, cell.possible_values(), cell.attr())
 
     def __remember(self, cell) -> None:
         """Keep what the cell looks like now, copying its possible values, which change in place"""

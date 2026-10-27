@@ -28,12 +28,13 @@ echo = functools.partial(print, end="", flush=True)
 
 class Display:
     """
-    Provides the interface to display to the terminal.
+    Provides the interface to display to the terminal: one object per terminal, created with its
+    blessed Terminal (a new one if none is given).
 
     It establishes the screen size and is able to draw the basic elements
     of the Sudoku puzzle, including managing the keyboard input.
 
-    - geometry(geom) - set horizontal and vertical cell count
+    - geometry(v_cells, h_cells) - set vertical and horizontal cell count
     - geom['h_cells'] = return number of horizontal cells
     - geom['v_cells'] = return number of vertical cells
 
@@ -61,169 +62,170 @@ class Display:
     PANEL_NAME_WIDTH = 8
     MIN_WIDTH = 80
 
-    # Initialize terminal and set basic configuration
-    term = Terminal()
-    geom = {"h_cells": None, "v_cells": None}
+    def __init__(self, term=None):
+        self.term = term or Terminal()  # the blessed terminal to draw on
+        self.geom = {"h_cells": None, "v_cells": None}
 
-    def geometry(geometry):
-        Display.geom["h_cells"] = geometry["h_cells"]
-        Display.geom["v_cells"] = geometry["v_cells"]
+    def geometry(self, v_cells, h_cells):
+        """Set the size of the board, in cells"""
+        self.geom["h_cells"] = h_cells
+        self.geom["v_cells"] = v_cells
 
-    def validate_screen_size():
+    def validate_screen_size(self):
         is_size_ok = True
-        min_width = Display.min_width()
-        min_height = Display.geom["v_cells"] * Display.CELL_HEIGHT + 2
-        while Display.term.is_a_tty and (Display.term.width < min_width or Display.term.height < min_height):
+        min_width = self.min_width()
+        min_height = self.geom["v_cells"] * self.CELL_HEIGHT + 2
+        while self.term.is_a_tty and (self.term.width < min_width or self.term.height < min_height):
             is_size_ok = False
-            Display.clear_screen()
+            self.clear_screen()
             print(f"The terminal must have at least {min_height} lines and {min_width} columns")
-            print(f"It currently has {Display.term.height} lines and {Display.term.width} columns")
+            print(f"It currently has {self.term.height} lines and {self.term.width} columns")
             echo("Please resize it and hit <ENTER> when ready or <CTRL-C> to quit: ")
             try:
-                Display.term.inkey()
-                Display.clear_screen()
+                self.term.inkey()
+                self.clear_screen()
             except:
                 return is_size_ok
         return is_size_ok
 
-    def min_width() -> int:
+    def min_width(self) -> int:
         """The puzzle plus the command panel, and never less than 80 columns"""
-        return max(Display.MIN_WIDTH, Display.__panel_x() + Display.PANEL_KEYS_WIDTH + Display.PANEL_NAME_WIDTH)
+        return max(self.MIN_WIDTH, self.__panel_x() + self.PANEL_KEYS_WIDTH + self.PANEL_NAME_WIDTH)
 
-    def clear_screen():
-        echo(Display.term.home())
-        echo(Display.term.clear())
+    def clear_screen(self):
+        echo(self.term.home())
+        echo(self.term.clear())
 
-    def draw_cell(row=0, col=0, border=Border(), attrs=tuple()):
-        x, y = Display.x(col), Display.y(row)
-        echo(Display.term.move_xy(x, y))
-        Display.__draw_edge_line(border.is_top(), border, attrs)
-        for line_no in range(1, Display.CELL_HEIGHT):
-            echo(Display.term.move_xy(x, y + line_no))
-            Display.__draw_inner_line(border, attrs)
-        echo(Display.term.move_xy(x, y + Display.CELL_HEIGHT))
-        Display.__draw_edge_line(border.is_bottom(), border, attrs)
+    def draw_cell(self, row=0, col=0, border=Border(), attrs=tuple()):
+        x, y = self.x(col), self.y(row)
+        echo(self.term.move_xy(x, y))
+        self.__draw_edge_line(border.is_top(), border, attrs)
+        for line_no in range(1, self.CELL_HEIGHT):
+            echo(self.term.move_xy(x, y + line_no))
+            self.__draw_inner_line(border, attrs)
+        echo(self.term.move_xy(x, y + self.CELL_HEIGHT))
+        self.__draw_edge_line(border.is_bottom(), border, attrs)
 
     # Cell location helpers
-    def x(cell_col):
+    def x(self, cell_col):
         """Return the screen column of the upper-left corner of the cell given its column relative to other cells"""
-        return Display.CELL_WIDTH * cell_col
+        return self.CELL_WIDTH * cell_col
 
-    def y(cell_row):
+    def y(self, cell_row):
         """Return the screen row of the upper-left corner of the cell given its row relative to other cells"""
-        return Display.CELL_HEIGHT * cell_row
+        return self.CELL_HEIGHT * cell_row
 
-    def draw_cell_value(row=0, col=0, value=" ", attrs=dict()):
+    def draw_cell_value(self, row=0, col=0, value=" ", attrs=dict()):
         """Draw the value in the middle of the cell using the rendered attributes"""
-        Display.move_to_cell(row, col)
-        echo(Display.styled(str(value), attrs))
+        self.move_to_cell(row, col)
+        echo(self.styled(str(value), attrs))
 
-    def move_to_cell(row=0, col=0):
+    def move_to_cell(self, row=0, col=0):
         """Move to the middle of the cell"""
-        x = Display.x(col) + Display.CELL_WIDTH // 2
-        y = Display.y(row) + Display.CELL_VALUE_ROW
-        echo(Display.term.move_xy(x, y))
+        x = self.x(col) + self.CELL_WIDTH // 2
+        y = self.y(row) + self.CELL_VALUE_ROW
+        echo(self.term.move_xy(x, y))
 
-    def styled(text, attrs) -> str:
+    def styled(self, text, attrs) -> str:
         """Return the text styled with the attributes' colors, e.g. (CellAttrs.SOLVED,) for steel blue"""
-        return getattr(Display.term, Attrs.render(attrs)) + text + Display.term.normal
+        return getattr(self.term, Attrs.render(attrs)) + text + self.term.normal
 
-    def draw_cell_possible_values(row=0, col=0, values=[], attrs=dict()):
+    def draw_cell_possible_values(self, row=0, col=0, values=[], attrs=dict()):
         """Draw the possible values at the bottom of the cell"""
-        values = sorted(values) if len(values) <= Display.CELL_HORIZONTAL_SIZE else "....."
-        x = Display.x(col) + 1
-        y = Display.y(row) + Display.CELL_VALUES_ROW
-        echo(Display.term.move_xy(x, y))
-        rendered_attrs = Display.__rendered_bg_attrs(attrs)
-        echo(rendered_attrs + " " * (Display.CELL_HORIZONTAL_SIZE - len(values)) + Display.term.normal)
-        echo(rendered_attrs + "".join(str(v).translate(Display.small_nums) for v in values) + Display.term.normal)
+        values = sorted(values) if len(values) <= self.CELL_HORIZONTAL_SIZE else "....."
+        x = self.x(col) + 1
+        y = self.y(row) + self.CELL_VALUES_ROW
+        echo(self.term.move_xy(x, y))
+        rendered_attrs = self.__rendered_bg_attrs(attrs)
+        echo(rendered_attrs + " " * (self.CELL_HORIZONTAL_SIZE - len(values)) + self.term.normal)
+        echo(rendered_attrs + "".join(str(v).translate(self.small_nums) for v in values) + self.term.normal)
 
-    def draw_command_panel(title, entries):
+    def draw_command_panel(self, title, entries):
         """Draw the title, then one command per line (its keys in red, then its name), clearing the rest beside the puzzle"""
-        lines = [Display.term.bold(title), ""]
-        lines += [Display.term.red(keys.ljust(Display.PANEL_KEYS_WIDTH)) + name for keys, name in entries]
-        for y in range(Display.y(Display.geom["v_cells"]) + 1):
+        lines = [self.term.bold(title), ""]
+        lines += [self.term.red(keys.ljust(self.PANEL_KEYS_WIDTH)) + name for keys, name in entries]
+        for y in range(self.y(self.geom["v_cells"]) + 1):
             line = lines[y] if y < len(lines) else ""
-            echo(Display.term.move_xy(Display.__panel_x(), y) + line + Display.term.clear_eol)
+            echo(self.term.move_xy(self.__panel_x(), y) + line + self.term.clear_eol)
 
-    def move_to_status_line():
-        echo(Display.term.move_xy(*Display.status_line_location()))
+    def move_to_status_line(self):
+        echo(self.term.move_xy(*self.status_line_location()))
 
-    def status_line_location():
-        return 0, (Display.geom["v_cells"] or 0) * Display.CELL_HEIGHT + 1
+    def status_line_location(self):
+        return 0, (self.geom["v_cells"] or 0) * self.CELL_HEIGHT + 1
 
-    def warn(msg, wait=False):
-        Display.show_on_status_line(Display.term.yellow(msg), wait=wait)
+    def warn(self, msg, wait=False):
+        self.show_on_status_line(self.term.yellow(msg), wait=wait)
 
-    def show_on_status_line(text, wait=False):
+    def show_on_status_line(self, text, wait=False):
         """Show already styled text on the status line, waiting for a key if asked"""
-        with Display.__status_line_message(text):
-            wait and Display.hit_any_key_to_continue()
+        with self.__status_line_message(text):
+            wait and self.hit_any_key_to_continue()
 
-    def hit_any_key_to_continue():
+    def hit_any_key_to_continue(self):
         echo("Hit any key to continue: ")
         try:
-            with Display.term.cbreak():
-                Display.term.inkey()
+            with self.term.cbreak():
+                self.term.inkey()
         except:
             pass
 
-    def confirm(msg) -> bool:
+    def confirm(self, msg) -> bool:
         """Ask a yes/no question on the status line; only "y" or "Y" confirms"""
-        with Display.__status_line_message(Display.term.yellow(msg + " (y/n) ")):
+        with self.__status_line_message(self.term.yellow(msg + " (y/n) ")):
             try:
-                with Display.term.cbreak():
-                    return Display.term.inkey() in ("y", "Y")
+                with self.term.cbreak():
+                    return self.term.inkey() in ("y", "Y")
             except:
                 return False
 
-    def ask(msg, default="") -> str:
+    def ask(self, msg, default="") -> str:
         """Ask for a line of text on the status line, starting from the default; ENTER accepts it, ESC cancels (None)"""
         text = default
         try:
-            with Display.term.cbreak():
+            with self.term.cbreak():
                 while True:
-                    with Display.__status_line_message(Display.term.yellow(f"{msg} {text}")):
-                        key = Display.term.inkey()
+                    with self.__status_line_message(self.term.yellow(f"{msg} {text}")):
+                        key = self.term.inkey()
                     if key.name in ("KEY_ENTER", "KEY_ESCAPE"):
                         return text if key.name == "KEY_ENTER" else None
-                    text = Display.__edited(text, key)
+                    text = self.__edited(text, key)
         except:
             return None
 
     # Private functions
 
-    def __panel_x() -> int:
+    def __panel_x(self) -> int:
         """The screen column where the command panel starts: past the puzzle's right edge and a gap"""
-        return Display.x(Display.geom["h_cells"]) + 1 + Display.PANEL_GAP
+        return self.x(self.geom["h_cells"]) + 1 + self.PANEL_GAP
 
-    def __draw_edge_line(is_edge, border, attrs):
+    def __draw_edge_line(self, is_edge, border, attrs):
         """Draw the top or bottom line of a cell; is_edge tells whether it lies on the block's outer edge"""
-        left = Display.__border_char(is_edge or border.is_left(), Display.bigplus, attrs)
-        line = Display.__border_char(is_edge, Display.hline, attrs)
-        right = Display.__border_char(is_edge or border.is_right(), Display.bigplus, attrs)
-        echo(left + line * Display.CELL_HORIZONTAL_SIZE + right)
+        left = self.__border_char(is_edge or border.is_left(), self.bigplus, attrs)
+        line = self.__border_char(is_edge, self.hline, attrs)
+        right = self.__border_char(is_edge or border.is_right(), self.bigplus, attrs)
+        echo(left + line * self.CELL_HORIZONTAL_SIZE + right)
 
-    def __border_char(is_outer, inner_char, attrs) -> str:
-        return Attrs.outer_border(Display.fullblock, attrs) if is_outer else Attrs.inner_border(inner_char, attrs)
+    def __border_char(self, is_outer, inner_char, attrs) -> str:
+        return Attrs.outer_border(self.fullblock, attrs) if is_outer else Attrs.inner_border(inner_char, attrs)
 
-    def __draw_inner_line(border, attrs):
-        left = Display.__border_char(border.is_left(), Display.vline, attrs)
-        right = Display.__border_char(border.is_right(), Display.vline, attrs)
-        rendered_str = Display.__rendered_bg_attrs(attrs) + " " * Display.CELL_HORIZONTAL_SIZE + Display.term.normal
+    def __draw_inner_line(self, border, attrs):
+        left = self.__border_char(border.is_left(), self.vline, attrs)
+        right = self.__border_char(border.is_right(), self.vline, attrs)
+        rendered_str = self.__rendered_bg_attrs(attrs) + " " * self.CELL_HORIZONTAL_SIZE + self.term.normal
         echo(left + rendered_str + right)
 
-    def __rendered_bg_attrs(attrs) -> str:
-        return getattr(Display.term, Attrs.render_bg(attrs))
+    def __rendered_bg_attrs(self, attrs) -> str:
+        return getattr(self.term, Attrs.render_bg(attrs))
 
     @contextmanager
-    def __status_line_message(text):
+    def __status_line_message(self, text):
         """Show the styled text on the status line, keeping the cursor there until the block ends"""
-        with Display.term.location(*Display.status_line_location()):
-            echo(Display.term.clear_eol + text)
+        with self.term.location(*self.status_line_location()):
+            echo(self.term.clear_eol + text)
             yield
 
-    def __edited(text, key) -> str:
+    def __edited(self, text, key) -> str:
         """Return the text after a key: backspace removes the last character, other special keys are ignored"""
         if key.name in ("KEY_BACKSPACE", "KEY_DELETE"):
             return text[:-1]

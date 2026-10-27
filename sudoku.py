@@ -34,6 +34,7 @@ class Main:
     """
 
     def run(self):
+        self.__display = Display()
         layouts = PuzzleCatalog.available()
         self.__splash(self.__startup_note(layouts))
         layout = self.__chosen_layout(layouts)
@@ -43,9 +44,9 @@ class Main:
 
     def __splash(self, note):
         Copyright.splash()
-        note and print(Display.term.yellow(note))
+        note and print(self.__display.term.yellow(note))
         try:
-            Display.term.inkey(timeout=5.0)
+            self.__display.term.inkey(timeout=5.0)
         except:
             exit(1)
 
@@ -58,11 +59,11 @@ class Main:
     def __chosen_layout(self, layouts):
         """Return the layout to play (from the menu when there are several), or None to exit"""
         if len(layouts) > 1:
-            return LayoutMenu(layouts).choose()
+            return LayoutMenu(layouts, self.__display).choose()
         return layouts[0] if layouts and not layouts[0].is_broken() else None
 
     def __play(self, board):
-        ui = TerminalUI(board.v_cells, board.h_cells)
+        ui = TerminalUI(self.__display, board.v_cells, board.h_cells)
         ui.play(Puzzle(board, ui))
 
 

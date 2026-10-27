@@ -20,7 +20,7 @@ import sys
 sys.path.insert(0, ".")
 
 from game.puzzle_catalog import PuzzleLayout
-from ui.terminal.display import Display, echo
+from ui.terminal.display import echo
 
 
 class LayoutMenu:
@@ -35,8 +35,9 @@ class LayoutMenu:
     MAX_DIGITS = 9  # always fits in a 32-bit integer; more digits make the number "too big"
     TOO_BIG_MARK = "..."
 
-    def __init__(self, layouts):
+    def __init__(self, layouts, display):
         self.__layouts = layouts
+        self.__display = display
         self.__page = 0
         self.__typed = ""
         self.__too_big = False
@@ -66,14 +67,14 @@ class LayoutMenu:
         page_note = f" (page {self.__page + 1} of {pages})" if pages > 1 else ""
         shown = self.__layouts[first : first + size]
         items = [f"  {number}. {layout.label()}" for number, layout in enumerate(shown, first + 1)]
-        message = Display.term.yellow(self.__message) if self.__message else ""
+        message = self.__display.term.yellow(self.__message) if self.__message else ""
         entry = self.__typed + (self.TOO_BIG_MARK if self.__too_big else "")
         lines = [f"Choose a puzzle layout{page_note}:", "", *items, "", message, self.__prompt(pages) + entry]
-        Display.clear_screen()
+        self.__display.clear_screen()
         echo("\n".join(lines))
 
     def __page_size(self) -> int:
-        return max(1, Display.term.height - self.RESERVED_LINES)
+        return max(1, self.__display.term.height - self.RESERVED_LINES)
 
     def __page_count(self) -> int:
         return -(-len(self.__layouts) // self.__page_size())
@@ -84,8 +85,8 @@ class LayoutMenu:
 
     def __read_key(self) -> str:
         """Return the key pressed: its name (e.g. KEY_ENTER) for special keys, else the character"""
-        with Display.term.cbreak():
-            key = Display.term.inkey()
+        with self.__display.term.cbreak():
+            key = self.__display.term.inkey()
         return key.name if key.is_sequence else str(key)
 
     def __quit_confirmed(self) -> bool:

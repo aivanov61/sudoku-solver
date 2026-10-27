@@ -17,20 +17,23 @@
 
 from game.actions import Action
 from ui.terminal.commands import Commands
-from ui.terminal.display import Display
 
 
 class Input:
     """
-    Get keys from the terminal and decode them into commands (see Commands)
+    Get keys from the display's terminal and decode them into commands (see Commands)
     """
 
-    def get_cmd(offered, timeout=None) -> tuple:
+    def __init__(self, display):
+        self.__display = display
+
+    def get_cmd(self, offered, timeout=None) -> tuple:
         """Return (command, digit) for the next bound key, given the actions the mode offers; None after a timeout"""
+        term = self.__display.term
         while True:
             try:
-                with Display.term.cbreak():
-                    keystroke = Display.term.inkey(timeout=timeout)
+                with term.cbreak():
+                    keystroke = term.inkey(timeout=timeout)
             except:  # Anything bad, including CTRL-C (KeyboardInterrupt), quits without asking
                 return Action.FORCE_QUIT, None
             if keystroke == "":

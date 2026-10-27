@@ -21,7 +21,7 @@ import sys
 sys.path.insert(0, ".")
 
 from unittest import main, TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from blessed.keyboard import Keystroke
 
@@ -30,18 +30,24 @@ from game.cell_attrs import CellAttrs
 from ui.terminal.display import Display
 
 
-class TestDisplay(TestCase):
-    Display.geometry({"h_cells": 9, "v_cells": 9})
+def board_display(term=None) -> Display:
+    """A display for a 9x9 board, on the given terminal (the real one if none)"""
+    display = Display(term)
+    display.geometry(9, 9)
+    return display
 
+
+class TestDisplay(TestCase):
     def setUp(self):
+        self.display = board_display()
         return super().setUp()
 
     def tearDown(self):
-        Display.term.inkey(timeout=1.0)
+        self.display.term.inkey(timeout=1.0)
         return super().tearDown()
 
     def test_screen_size_validation(self):
-        Display.validate_screen_size()
+        self.display.validate_screen_size()
 
     def test_draw_puzzle(self):
         for row in range(3):
@@ -50,33 +56,46 @@ class TestDisplay(TestCase):
         self.fill_blocks()
 
     def test_warn(self0):
-        Display.warn("Testing - this line should be yellow")
+        self0.display.warn("Testing - this line should be yellow")
 
     def draw_block(self, block_row, block_col):
-        Display.draw_cell(row=block_row * 3 + 0, col=block_col * 3 + 0, border=Border({Border.TOP, Border.LEFT}))
-        Display.draw_cell(row=block_row * 3 + 0, col=block_col * 3 + 1, border=Border({Border.TOP}))
-        Display.draw_cell(row=block_row * 3 + 0, col=block_col * 3 + 2, border=Border({Border.TOP, Border.RIGHT}))
+        self.display.draw_cell(row=block_row * 3 + 0, col=block_col * 3 + 0, border=Border({Border.TOP, Border.LEFT}))
+        self.display.draw_cell(row=block_row * 3 + 0, col=block_col * 3 + 1, border=Border({Border.TOP}))
+        self.display.draw_cell(row=block_row * 3 + 0, col=block_col * 3 + 2, border=Border({Border.TOP, Border.RIGHT}))
 
-        Display.draw_cell(row=block_row * 3 + 1, col=block_col * 3 + 0, border=Border({Border.LEFT}))
-        Display.draw_cell(row=block_row * 3 + 1, col=block_col * 3 + 1, border=Border())
-        Display.draw_cell(row=block_row * 3 + 1, col=block_col * 3 + 2, border=Border({Border.RIGHT}))
+        self.display.draw_cell(row=block_row * 3 + 1, col=block_col * 3 + 0, border=Border({Border.LEFT}))
+        self.display.draw_cell(row=block_row * 3 + 1, col=block_col * 3 + 1, border=Border())
+        self.display.draw_cell(row=block_row * 3 + 1, col=block_col * 3 + 2, border=Border({Border.RIGHT}))
 
-        Display.draw_cell(row=block_row * 3 + 2, col=block_col * 3 + 0, border=Border({Border.LEFT, Border.BOTTOM}))
-        Display.draw_cell(row=block_row * 3 + 2, col=block_col * 3 + 1, border=Border({Border.BOTTOM}))
-        Display.draw_cell(row=block_row * 3 + 2, col=block_col * 3 + 2, border=Border({Border.RIGHT, Border.BOTTOM}))
+        self.display.draw_cell(row=block_row * 3 + 2, col=block_col * 3 + 0, border=Border({Border.LEFT, Border.BOTTOM}))
+        self.display.draw_cell(row=block_row * 3 + 2, col=block_col * 3 + 1, border=Border({Border.BOTTOM}))
+        self.display.draw_cell(row=block_row * 3 + 2, col=block_col * 3 + 2, border=Border({Border.RIGHT, Border.BOTTOM}))
 
     def fill_blocks(self):
         for row in range(9):
             for col in range(9):
-                Display.draw_cell_value(row, col, 1 + (row + col) // 2)
-                Display.draw_cell_possible_values(row, col, random.choices(range(1, 10), k=random.randint(0, 6)))
-        Display.move_to_status_line()
+                self.display.draw_cell_value(row, col, 1 + (row + col) // 2)
+                self.display.draw_cell_possible_values(row, col, random.choices(range(1, 10), k=random.randint(0, 6)))
+        self.display.move_to_status_line()
+
+
+class TestDisplayBoardSize(TestCase):
+    def test_each_display_keeps_its_own_board_size(self):
+        small, large = Display(MagicMock()), Display(MagicMock())
+        small.geometry(4, 4)
+        large.geometry(9, 9)
+        self.assertEqual(small.status_line_location(), (0, 13))
+        self.assertEqual(large.status_line_location(), (0, 28))
+
+    def test_a_display_uses_the_terminal_it_is_given(self):
+        term = MagicMock()
+        self.assertIs(Display(term).term, term)
 
 
 class TestDisplayPossibleValues(TestCase):
     @patch("ui.terminal.display.echo")
     def test_possible_values_are_drawn_in_increasing_order(self, echo):
-        Display.draw_cell_possible_values(0, 0, [9, 5, 1])
+        board_display().draw_cell_possible_values(0, 0, [9, 5, 1])
         drawn = echo.call_args_list[-1].args[0]
         self.assertIn("".join(str(v).translate(Display.small_nums) for v in (1, 5, 9)), drawn)
 
@@ -84,27 +103,26 @@ class TestDisplayPossibleValues(TestCase):
 class TestDisplayCommandPanel(TestCase):
     def test_title_and_commands_are_drawn_right_of_the_puzzle(self):
         with patch("ui.terminal.display.echo") as echo:
-            Display.draw_command_panel("PLAY", [("u", "undo"), ("q CTRL-C", "quit")])
+            board_display().draw_command_panel("PLAY", [("u", "undo"), ("q CTRL-C", "quit")])
         drawn = "".join(call.args[0] for call in echo.call_args_list)
         self.assertIn("PLAY", drawn)
         self.assertIn("undo", drawn)
         self.assertIn("quit", drawn)
 
     def test_every_line_beside_the_puzzle_is_cleared(self):
+        display = board_display()
         with patch("ui.terminal.display.echo") as echo:
-            Display.draw_command_panel("PLAY", [])
-        self.assertEqual(echo.call_count, Display.y(Display.geom["v_cells"]) + 1)
+            display.draw_command_panel("PLAY", [])
+        self.assertEqual(echo.call_count, display.y(9) + 1)
 
     def test_minimum_width_is_80_columns(self):
-        self.assertEqual(Display.min_width(), 80)
+        self.assertEqual(board_display().min_width(), 80)
 
 
 class TestDisplayStyled(TestCase):
     def test_text_is_styled_with_the_rendered_attributes(self):
-        with patch.object(Display, "term") as term:
-            term.steelblue = "<steelblue>"
-            term.normal = "</>"
-            self.assertEqual(Display.styled("hint", (CellAttrs.SOLVED,)), "<steelblue>hint</>")
+        term = MagicMock(steelblue="<steelblue>", normal="</>")
+        self.assertEqual(board_display(term).styled("hint", (CellAttrs.SOLVED,)), "<steelblue>hint</>")
 
 
 class TestDisplayStatusLine(TestCase):
@@ -118,19 +136,18 @@ class TestDisplayStatusLine(TestCase):
         hit_any_key.assert_called_once()
 
     def test_warning_is_shown_in_yellow(self):
-        with patch("ui.terminal.display.echo") as echo, patch.object(Display, "term") as term:
-            term.clear_eol = "<clear>"
-            term.yellow = lambda text: f"<yellow>{text}</yellow>"
-            Display.warn("careful")
+        term = MagicMock(clear_eol="<clear>")
+        term.yellow = lambda text: f"<yellow>{text}</yellow>"
+        with patch("ui.terminal.display.echo") as echo:
+            board_display(term).warn("careful")
         echo.assert_called_once_with("<clear><yellow>careful</yellow>")
 
     # Private functions
 
     def __show(self, text, wait=False):
-        with patch("ui.terminal.display.echo") as echo, patch.object(Display, "term") as term:
-            term.clear_eol = "<clear>"
-            with patch("ui.terminal.display.Display.hit_any_key_to_continue") as hit_any_key:
-                Display.show_on_status_line(text, wait=wait)
+        display = board_display(MagicMock(clear_eol="<clear>"))
+        with patch("ui.terminal.display.echo") as echo, patch.object(display, "hit_any_key_to_continue") as hit_any_key:
+            display.show_on_status_line(text, wait=wait)
         return echo, hit_any_key
 
 
@@ -151,9 +168,10 @@ class TestDisplayConfirm(TestCase):
     # Private functions
 
     def __confirm_with(self, key):
-        with patch("ui.terminal.display.echo"), patch.object(Display, "term") as term:
-            term.inkey.side_effect = [key]
-            return Display.confirm("Really?")
+        term = MagicMock()
+        term.inkey.side_effect = [key]
+        with patch("ui.terminal.display.echo"):
+            return board_display(term).confirm("Really?")
 
 
 class TestDisplayAsk(TestCase):
@@ -181,12 +199,13 @@ class TestDisplayAsk(TestCase):
     # Private functions
 
     def __key(self, name) -> Keystroke:
-        return Keystroke("", code=1, name=name)
+        return Keystroke("", code=1, name=name)
 
     def __ask_with(self, keys, default):
-        with patch("ui.terminal.display.echo"), patch.object(Display, "term") as term:
-            term.inkey.side_effect = keys
-            return Display.ask("File:", default)
+        term = MagicMock()
+        term.inkey.side_effect = keys
+        with patch("ui.terminal.display.echo"):
+            return board_display(term).ask("File:", default)
 
 
 if __name__ == "__main__":

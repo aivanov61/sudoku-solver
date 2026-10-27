@@ -170,11 +170,11 @@ the Sudoku program entails:
 
 #### Display
 
-Initializes the `blessed` terminal and provides class functions for manipulating
-the display.  Key functions/attributes in this class are:
+Draws on a `blessed` terminal; `Main` creates one `Display` and passes it to
+the code that draws.  Key methods/attributes are:
 
 - term - an instance of the `blessed` Terminal()
-- geometry() - establish the horizontal and vertical sizes of the puzzle
+- geometry(v_cells, h_cells) - establish the vertical and horizontal sizes of the puzzle
 - geom - access the geometry `h_cells` and `v_cells` (horizontal and vertical respectively)
 - CONSTANTS for the puzzle cell sizes
 - y() - return the terminal y offset for a given row
