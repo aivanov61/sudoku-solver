@@ -24,6 +24,7 @@ from unittest import main, TestCase
 from unittest.mock import patch
 
 from display import Display, Border
+from display_attrs import DisplayAttrs
 
 
 class TestDisplay(TestCase):
@@ -75,6 +76,14 @@ class TestDisplayPossibleValues(TestCase):
         Display.draw_cell_possible_values(0, 0, [9, 5, 1])
         drawn = echo.call_args_list[-1].args[0]
         self.assertIn("".join(str(v).translate(Display.small_nums) for v in (1, 5, 9)), drawn)
+
+
+class TestDisplayStyled(TestCase):
+    def test_text_is_styled_with_the_rendered_attributes(self):
+        with patch.object(Display, "term") as term:
+            term.steelblue = "<steelblue>"
+            term.normal = "</>"
+            self.assertEqual(Display.styled("hint", (DisplayAttrs.SOLVED,)), "<steelblue>hint</>")
 
 
 class TestDisplayConfirm(TestCase):

@@ -20,15 +20,13 @@ import sys
 sys.path.insert(0, ".")
 
 from cell import Cell
-from display import Display
-from rules.rule import Outcome, Rule
+from rules.rule import Move, Outcome, Rule
 
 
 class ConflictsRule(Rule):
     """Solving cannot go on while values conflict"""
 
-    def apply(self, puzzle) -> Outcome:
+    def find(self, puzzle) -> Move:
         if puzzle.first_cell_where(Cell.is_marked_in_conflict) is None:
-            return Outcome.NONE
-        Display.warn("Resolve the conflicts first. ", wait=True)
-        return Outcome.STOPPED
+            return None
+        return Move(Outcome.STOPPED, "Resolve the conflicts first. ")

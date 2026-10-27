@@ -15,18 +15,16 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-"""Shared by the rule tests: apply a rule to a mock puzzle"""
+"""Shared by the rule tests: ask a rule for its move in a mock puzzle"""
 
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 sys.path.insert(0, ".")
 
 
-def apply_rule(rule, cell):
-    """Apply the rule to a mock puzzle whose first matching cell is the given one"""
+def find_with(rule, cell):
+    """Return the rule's move in a mock puzzle whose first matching cell is the given one, and the puzzle"""
     puzzle = MagicMock()
     puzzle.first_cell_where.return_value = cell
-    with patch("display.Display.warn") as warn:
-        outcome = rule.apply(puzzle)
-    return outcome, puzzle, warn
+    return rule.find(puzzle), puzzle

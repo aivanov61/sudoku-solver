@@ -48,6 +48,7 @@ class Puzzle(ABC):
     And the following methods:
         render() -
         display_status() -
+        command_received(cmd) - called before each command is carried out
         force_quit_() - stop playing at once, without asking (CTRL-C)
 
     In addition, the puzzle should support all the commands available in commands.py.  Function
@@ -68,6 +69,7 @@ class Puzzle(ABC):
         self._initializing = True
         self._bg_level = 0
         self.__solver = PuzzleSolver(self)
+        self.__pending_move = None  # a move shown as a hint by "n", made by the next "n"
 
     # Interface required for Main
 
@@ -78,8 +80,16 @@ class Puzzle(ABC):
         self.display_status()
 
     def display_status(self) -> None:
+        """Show the pending move's hint, if any, otherwise the command summary"""
         Display.move_to_status_line()
-        echo(Commands.short_help() + Display.term.clear_eol)
+        pending = self.__pending_move
+        status = Display.styled(pending.hint, (DisplayAttrs.SOLVED,)) if pending else Commands.short_help()
+        echo(status + Display.term.clear_eol)
+
+    def command_received(self, cmd) -> None:
+        """Any command other than "n" cancels the move a previous "n" pointed out"""
+        if cmd != "next_":
+            self.__pending_move = None
 
     def force_quit_(self) -> None:
         self.is_playing = False
@@ -152,8 +162,11 @@ class Puzzle(ABC):
             self.__rewind_history()
 
     def next_(self) -> None:
-        if self.__solver.next_move() is Outcome.NONE:
-            Display.warn("No obvious next move. You'll have to make a guess. ", wait=True)
+        """Point out the next move and why; the next "n" makes it"""
+        if self.__pending_move:
+            self.__make_pending_move()
+        else:
+            self.__point_out_next_move()
 
     # Interface required for the solver
 
@@ -253,3 +266,19 @@ class Puzzle(ABC):
         while not History.is_empty() and not self.__is_guess(History.last()):
             self.__undo_history()
         History.is_empty() or self.select(History.last().cell)
+
+    def __make_pending_move(self) -> None:
+        move, self.__pending_move = self.__pending_move, None
+        self.__solver.make_move(move)
+
+    def __point_out_next_move(self) -> None:
+        """Move to the next move's cell; show its hint (made by the next "n") or its warning"""
+        move = self.__solver.find_move()
+        if move is None:
+            Display.warn("No obvious next move. You'll have to make a guess. ", wait=True)
+            return
+        move.cell is None or self.select(move.cell)
+        if move.outcome is Outcome.STOPPED:
+            Display.warn(move.hint, wait=True)
+        else:
+            self.__pending_move = move

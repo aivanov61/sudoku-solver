@@ -20,17 +20,15 @@ import sys
 sys.path.insert(0, ".")
 
 from cell import Cell
-from display import Display
-from rules.rule import Outcome, Rule
+from rules.rule import Move, Outcome, Rule
 
 
 class DeadEndRule(Rule):
     """Solving cannot go on when an empty cell has no possible value left"""
 
-    def apply(self, puzzle) -> Outcome:
+    def find(self, puzzle) -> Move:
         cell = puzzle.first_cell_where(Cell.is_dead_end)
         if cell is None:
-            return Outcome.NONE
-        puzzle.select(cell)
-        Display.warn("Dead end - try undoing until this square shows at least one possible value. ", wait=True)
-        return Outcome.STOPPED
+            return None
+        warning = "Dead end - try undoing until this square shows at least one possible value. "
+        return Move(Outcome.STOPPED, warning, cell)

@@ -92,6 +92,7 @@ Every cell stores its **puzzle-wide** `row` and `col` (0–8), set by `Rectangul
 
 - `Commands.CMDS` maps command names to their keys and help text. It is swapped between `COMMON_CMDS + INIT_COMMANDS` and `COMMON_CMDS + PLAY_COMMANDS` when the mode changes.
 - `Input.get_cmd()` reads a key. Digits and shifted digits are returned as the character itself. Other keys become the command name plus `_` (for example `up_`), so they can't clash with Python reserved words. Unknown keys are ignored. `q` gives `quit_`, which asks for confirmation. CTRL-C or any input error gives `force_quit_`, which stops at once without asking.
+- Before carrying out any command, `Main` calls `puzzle.command_received(cmd)`, so the puzzle can react to commands in general (today: any command but `n` cancels a pending `n` move).
 - `Main` sends values to `puzzle.value_(value, guess)`. For anything else, it calls the puzzle method of that name with `getattr`. A missing method gives "This puzzle does not support the "…" command". A method that raises an exception gives "This puzzle's "…" command is broken!". If the failing command was `quit_` or `force_quit_`, `Main` forces the program to quit.
 
 ### 5.3 Entering a value
@@ -138,18 +139,22 @@ Puzzle.value_(val, guess)
 
 ### 5.6 Next: the obvious next move
 
-`next_()` asks the puzzle's `PuzzleSolver` for the next move. The solver applies the rules listed in `rules/order.py`, in that order, and stops at the first one that acts:
+`n` teaches as it goes, in two steps. The first press asks the puzzle's `PuzzleSolver` for the next move, moves the cursor to its cell and shows *why* in place of the command summary on the status line, in steel blue like the solved values. The second press fills it in. The next press starts over with the following move.
 
-1. **`ConflictsRule`:** if any cell carries a conflict mark, it warns "Resolve the conflicts first." and stops.
-2. **`DeadEndRule`:** if an empty cell has no possible values, it moves the cursor there and warns "Dead end - try undoing until this square shows at least one possible value." It suggests undoing rather than rewinding, because a rewind could go back further than needed.
-3. **`SingleValueRule`:** it fills in a cell whose only possible value is left, as a `SOLVED` value, and moves the cursor there.
+The solver consults the rules listed in `rules/order.py`, in that order, and takes the move of the first one that has one:
 
-If none acts, `next_()` warns "No obvious next move. You'll have to make a guess."
+1. **`ConflictsRule`:** if any cell carries a conflict mark, the move is the warning "Resolve the conflicts first."
+2. **`DeadEndRule`:** if an empty cell has no possible values, the cursor moves there and the warning is "Dead end - try undoing until this square shows at least one possible value." It suggests undoing rather than rewinding, because a rewind could go back further than needed.
+3. **`SingleValueRule`:** a cell whose only possible value is left; the hint is "Only 9 fits here: every other value is already in its row, column or box."
 
-- **Rules** live in `rules/`, one file each. Each is a `Rule` subclass with `apply(puzzle) -> Outcome`, where `Outcome` is `NONE` (nothing to do), `MOVED` (a cell was filled in) or `STOPPED` (something blocks solving, and the rule warned about it). Rules that stop solving come before rules that make moves. A test checks that every rule in `rules/` is listed in `rules/order.py`.
-- **The puzzle's interface for the solver** is all a rule uses: `first_cell_where(condition)` returns the first cell, left to right and top to bottom, for which the condition holds (it asks every block's `cells_where()`, so only blocks look inside cells, as section 4.2 requires); `select(cell)` moves the cursor; `enter_solved_value(cell, value)` enters a value.
+The first two *stop* solving: every `n` repeats their warning, and there is nothing to fill in. If no rule has a move, `next_()` warns "No obvious next move. You'll have to make a guess."
+
+- **Rules** live in `rules/`, one file each. Each is a `Rule` subclass with `find(puzzle)`, which returns a `Move` or `None` without changing anything. A `Move` holds its `outcome` (`MOVED` for a value to fill in, `STOPPED` for a warning), its `hint` (the explanation or the warning), its `cell` and its `value`. Rules that stop solving come before rules that make moves. A test checks that every rule in `rules/` is listed in `rules/order.py`.
+- **The solver** has `find_move()` (the first rule's move) and `make_move(move)` (fill in its value through the puzzle). The puzzle keeps a found move as its *pending move* between the two presses of `n`.
+- **Cancelling:** `Main` calls `puzzle.command_received(cmd)` before carrying out every command. Any command other than `n` drops the pending move, so the following `n` points out a move again instead of filling one in. Keys the program does not recognize are ignored as before and cancel nothing.
+- **The puzzle's interface for the solver:** `first_cell_where(condition)` returns the first cell, left to right and top to bottom, for which the condition holds (it asks every block's `cells_where()`, so only blocks look inside cells, as section 4.2 requires); `select(cell)` moves the cursor; `enter_solved_value(cell, value)` enters a value.
 - **Making the move:** a `SOLVED` value goes through the same path as a typed value, so it is recorded in `History` with `SOLVED` as its primary attribute. `u` and `r` treat it like any other non-guess entry, and undoing a change restores the steel blue. It also picks up the current guess shading.
-- **Adding a rule** means a new file in `rules/` and one line in `rules/order.py`; nothing else changes. `auto_()` can call `PuzzleSolver.next_move()` while it returns `MOVED`. Rules that need whole rows, columns or boxes (rather than single cells) will need a new solver interface, to be designed with the first such rule.
+- **Adding a rule** means a new file in `rules/` and one line in `rules/order.py`; nothing else changes. Auto (`a`) will find and make moves one after another, without hints. Rules that need whole rows, columns or boxes (rather than single cells) will need a new solver interface, to be designed with the first such rule.
 - **Rules and several layouts (planned, not built yet):** today every layout uses the shared list in `rules/order.py`. The intended direction:
   - **Shared rules stay shared** by working through units the layout supplies (the groups of cells that must each hold every value once: rows, columns and boxes, or a jigsaw's regions, an X-Sudoku's diagonals, and so on), the way `related_cells` already comes from the blocks.
   - **Layout-specific rules** (such as Killer Sudoku cage sums) live with their layout, for example in a `puzzles/<layout>/` package, rather than in the shared `rules/` folder.
@@ -190,6 +195,6 @@ The full list is in `CLAUDE.md`. The main points:
 
 ## 8. Next steps
 
-1. **Auto:** add `auto_` to `Puzzle`, calling `PuzzleSolver.next_move()` while it returns `MOVED`.
+1. **Auto:** add `auto_` to `Puzzle`, finding and making moves with `PuzzleSolver` while they are `MOVED`, without hints.
 2. **More rules for next:** for example, a value that fits only one cell in a row, column or box.
 3. **Redo**, if wanted.

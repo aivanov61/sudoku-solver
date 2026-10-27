@@ -22,38 +22,45 @@ from unittest.mock import MagicMock
 sys.path.insert(0, ".")
 
 from puzzle_solver import PuzzleSolver
-from rules.rule import Outcome, Rule
+from rules.rule import Move, Outcome, Rule
 
 
 class TestPuzzleSolver(TestCase):
     def setUp(self):
-        self.applied = []
+        self.consulted = []
+        self.puzzle = MagicMock()
         return super().setUp()
 
-    def test_outcome_of_the_first_rule_that_acts_is_returned(self):
-        solver = PuzzleSolver(MagicMock(), [self.__rule("a", Outcome.NONE), self.__rule("b", Outcome.MOVED)])
-        self.assertIs(solver.next_move(), Outcome.MOVED)
+    def test_move_of_the_first_rule_that_has_one_is_found(self):
+        move = Move(Outcome.MOVED, "hint", MagicMock(), 3)
+        solver = PuzzleSolver(self.puzzle, [self.__rule("a", None), self.__rule("b", move)])
+        self.assertIs(solver.find_move(), move)
 
-    def test_rules_after_the_first_that_acts_are_not_applied(self):
-        rules = [self.__rule("a", Outcome.STOPPED), self.__rule("b", Outcome.MOVED)]
-        PuzzleSolver(MagicMock(), rules).next_move()
-        self.assertEqual(self.applied, ["a"])
+    def test_rules_after_the_first_with_a_move_are_not_consulted(self):
+        stop = Move(Outcome.STOPPED, "warning")
+        PuzzleSolver(self.puzzle, [self.__rule("a", stop), self.__rule("b", stop)]).find_move()
+        self.assertEqual(self.consulted, ["a"])
 
-    def test_nothing_to_do_when_no_rule_acts(self):
-        solver = PuzzleSolver(MagicMock(), [self.__rule("a", Outcome.NONE), self.__rule("b", Outcome.NONE)])
-        self.assertIs(solver.next_move(), Outcome.NONE)
-        self.assertEqual(self.applied, ["a", "b"])
+    def test_no_move_when_no_rule_has_one(self):
+        solver = PuzzleSolver(self.puzzle, [self.__rule("a", None), self.__rule("b", None)])
+        self.assertIsNone(solver.find_move())
+        self.assertEqual(self.consulted, ["a", "b"])
+
+    def test_making_a_move_enters_its_value(self):
+        cell = MagicMock()
+        PuzzleSolver(self.puzzle, []).make_move(Move(Outcome.MOVED, "hint", cell, 3))
+        self.puzzle.enter_solved_value.assert_called_once_with(cell, 3)
 
     # Private functions
 
-    def __rule(self, name, outcome):
-        """A rule class that records being applied and returns the outcome"""
-        applied = self.applied
+    def __rule(self, name, move):
+        """A rule class that records being consulted and returns the move"""
+        consulted = self.consulted
 
         class FakeRule(Rule):
-            def apply(self, puzzle):
-                applied.append(name)
-                return outcome
+            def find(self, puzzle):
+                consulted.append(name)
+                return move
 
         return FakeRule
 

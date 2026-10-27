@@ -47,7 +47,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | Shifted `1`–`9` (`!` `@` `#` `$` `%` `^` `&` `*` `(` on a US keyboard) | Enter a **guess** (see below) |
 | `u` | Undo your last entry |
 | `r` | Rewind: undo everything entered after your most recent guess, keeping the guess (or undo everything, if there's no guess). Asks you to confirm, since it can't be undone. |
-| `n` | Next: fill in an obvious next move for you (see below) |
+| `n` | Next: show an obvious next move and why; press `n` again to fill it in (see below) |
 | `ESC` | Go back to setup mode (only once everything has been undone) |
 | `?` | Show all commands, including ones not listed on the status line |
 | `q` | Quit (asks you to confirm) |
@@ -63,13 +63,17 @@ When you're stuck and need to try a value, enter it as a guess with a shifted di
 
 Every value you enter after a guess gets the same gray background, so you can see everything that depends on it. Each new guess makes the gray a shade lighter. If a guess turns out wrong, press `r` to rewind: everything entered after the guess is undone, and the cursor lands on the guessed cell so you can type a different guess over it. Pressing `r` again also undoes that guess and rewinds to the guess before it. After ten nested guesses there are no lighter shades left, and the program warns you and reuses the last one.
 
+Guesses also make good checkpoints, even for values you're sure of: see "Next: an obvious move" below.
+
 ## Conflicts
 
 If you enter a value that's already in the same row, column or box, the cell turns **bold red on bright yellow**, and each cell it clashes with gets a **yellow background**. Replace, delete or undo the clashing value, and the cells go back to normal. A cell that clashes with more than one other cell stays marked until all of its clashes are gone.
 
 ## Next: an obvious move
 
-Press `n` to have the program make the next obvious move. It looks, left to right and top to bottom, for an empty cell with only one possible value, moves the cursor there and fills it in, in steel blue. Press `u` to take it back.
+Press `n` to be shown the next obvious move. It looks, left to right and top to bottom, for an empty cell whose value can be worked out from the board, moves the cursor there and explains on the bottom line, in steel blue, why that value must go there. Press `n` again to fill it in (also in steel blue), or press any other key to carry on yourself. Press `u` to take a filled-in move back.
+
+You don't have to press `n` the second time: with the cursor already on the cell, you can type the value yourself. You can even enter it as a guess, with a shifted digit, although it isn't really a guess. That turns it into a checkpoint. `r` rewinds to the most recent guess, and everything entered after it is shaded, so making guesses at the points you consider key decisions lets you solve the puzzle in stages and step back to any of them.
 
 It won't move if:
 - **There are conflicts on the board:** it asks you to resolve them first.
@@ -91,7 +95,7 @@ It won't move if:
 ## Current limitations
 
 - **Auto (`a`)** is listed in the help but not available yet. Pressing it shows a "does not support" warning.
-- **Next (`n`)** only knows one rule so far: a cell with a single possible value.
+- **Next (`n`)** knows only a few solving techniques so far, so on harder puzzles it will often tell you to make a guess.
 - There's no redo, and puzzles can't be saved.
 
 ## Troubleshooting

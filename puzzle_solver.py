@@ -20,24 +20,25 @@ import sys
 sys.path.insert(0, ".")
 
 from rules.order import RULES
-from rules.rule import Outcome
+from rules.rule import Move
 
 
 class PuzzleSolver:
     """
     Find and make the next obvious move in a puzzle.
 
-    The rules come from rules/order.py and are applied in that order.
+    The rules come from rules/order.py and are consulted in that order.
     """
 
     def __init__(self, puzzle, rules=RULES):
         self.__puzzle = puzzle
         self.__rules = [rule() for rule in rules]
 
-    def next_move(self) -> Outcome:
-        """Apply the rules in order; return the outcome of the first one that acts, or Outcome.NONE"""
-        for rule in self.__rules:
-            outcome = rule.apply(self.__puzzle)
-            if outcome is not Outcome.NONE:
-                return outcome
-        return Outcome.NONE
+    def find_move(self) -> Move:
+        """Return the move of the first rule that has one, or None"""
+        moves = (rule.find(self.__puzzle) for rule in self.__rules)
+        return next((move for move in moves if move), None)
+
+    def make_move(self, move) -> None:
+        """Fill in the value of a move that fills a cell"""
+        self.__puzzle.enter_solved_value(move.cell, move.value)

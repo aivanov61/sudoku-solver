@@ -76,6 +76,7 @@ class Main:
 
     def __process_user_input(self):
         cmd = Input.get_cmd()
+        self._puzzle.command_received(cmd)
         self.__handle_puzzle_value(cmd) if Commands.is_value(cmd) else self.__handle_puzzle_func(cmd)
 
     def __handle_puzzle_value(self, cmd):

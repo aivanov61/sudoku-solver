@@ -200,10 +200,73 @@ class TestPuzzle3x3(TestCase):
         self.assertFalse(self.puzzle.is_playing)
         confirm.assert_not_called()
 
+    def test_first_next_moves_to_the_cell_and_shows_why_without_filling_it(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"), patch("puzzle.echo") as echo:
+            self.puzzle.next_()
+            self.puzzle.display_status()
+        self.assertIsNone(self.__cell(0, 8).value())
+        self.assertEqual(self.puzzle.selected_cell, (0, 8))
+        status = echo.call_args.args[0]
+        self.assertIn("Only 9 fits here", status)
+        self.assertNotIn("HELP=", status)
+
+    def test_third_next_shows_the_following_move(self):
+        self.__fill_row(4, 0, range(1, 9))
+        self.__fill_row(2, 1, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            for _ in range(3):
+                self.puzzle.next_()
+        self.assertEqual(self.__cell(2, 0).value(), 9)
+        self.assertIsNone(self.__cell(4, 8).value())
+        self.assertEqual(self.puzzle.selected_cell, (4, 8))
+
+    def test_another_command_between_next_presses_cancels_the_move(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.puzzle.next_()
+            self.puzzle.command_received("down_")
+            self.puzzle.down_()
+            self.puzzle.next_()
+            self.assertIsNone(self.__cell(0, 8).value())
+            self.assertEqual(self.puzzle.selected_cell, (0, 8))
+            self.puzzle.next_()
+        self.assertEqual(self.__cell(0, 8).value(), 9)
+
+    def test_next_command_itself_does_not_cancel_the_move(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.puzzle.command_received("next_")
+            self.puzzle.next_()
+            self.puzzle.command_received("next_")
+            self.puzzle.next_()
+        self.assertEqual(self.__cell(0, 8).value(), 9)
+
+    def test_status_line_shows_the_command_summary_when_no_move_is_pending(self):
+        with patch("puzzle.echo") as echo:
+            self.puzzle.display_status()
+        self.assertIn("HELP=", echo.call_args.args[0])
+
+    def test_stop_warnings_repeat_on_every_next(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.puzzle.play_()
+        with patch("cell.Display"), patch("display.Display.warn") as warn:
+            self.puzzle.next_()
+            self.puzzle.next_()
+        self.assertEqual(warn.call_count, 2)
+        self.assertIsNone(self.__cell(0, 8).value())
+
     def test_next_fills_in_a_cell_with_a_single_possible_value(self):
         self.__fill_row(0, 0, range(1, 9))
         self.puzzle.play_()
         with patch("cell.Display"):
+            self.puzzle.next_()
             self.puzzle.next_()
         self.assertEqual(self.__cell(0, 8).value(), 9)
         self.assertEqual(self.__cell(0, 8).attr(), (DisplayAttrs.SOLVED,))
@@ -215,6 +278,7 @@ class TestPuzzle3x3(TestCase):
         self.puzzle.play_()
         with patch("cell.Display"):
             self.puzzle.next_()
+            self.puzzle.next_()
         self.assertEqual(self.__cell(2, 0).value(), 9)
         self.assertIsNone(self.__cell(4, 8).value())
 
@@ -223,6 +287,7 @@ class TestPuzzle3x3(TestCase):
         self.puzzle.play_()
         with patch("cell.Display"):
             self.puzzle.next_()
+            self.puzzle.next_()
             self.puzzle.undo_()
         self.assertIsNone(self.__cell(0, 8).value())
 
@@ -230,6 +295,7 @@ class TestPuzzle3x3(TestCase):
         self.__fill_row(0, 0, range(1, 9))
         self.puzzle.play_()
         with patch("cell.Display"):
+            self.puzzle.next_()
             self.puzzle.next_()
             self.__enter(0, 8, 5)
             self.puzzle.undo_()
@@ -241,6 +307,7 @@ class TestPuzzle3x3(TestCase):
         self.puzzle.play_()
         with patch("cell.Display"):
             self.__enter(8, 0, 9, guess=True)
+            self.puzzle.next_()
             self.puzzle.next_()
         self.assertEqual(self.__cell(0, 8).attr(), (DisplayAttrs.SOLVED, dict(level=10)))
 

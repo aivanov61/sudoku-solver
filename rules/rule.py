@@ -16,23 +16,33 @@
 # -----------------------------------------------------------------------------
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from enum import Enum
 
 
 class Outcome(Enum):
-    NONE = "none"  # the rule found nothing to do
-    MOVED = "moved"  # the rule filled in a cell
-    STOPPED = "stopped"  # the rule found something that blocks solving, and warned about it
+    MOVED = "moved"  # the move fills in a cell
+    STOPPED = "stopped"  # the move is a warning about something that blocks solving
+
+
+@dataclass(frozen=True)
+class Move:
+    """A move found by a rule: a value to fill in (MOVED), or a warning that stops solving (STOPPED)"""
+
+    outcome: Outcome
+    hint: str  # why this is the next move, or the warning that stops solving
+    cell: object = None  # the cell to fill in or to point the player at, if any
+    value: int = None  # the value to fill in (MOVED only)
 
 
 class Rule(ABC):
     """
-    A solving rule: it looks at the puzzle and makes at most one move.
+    A solving rule: it looks at the puzzle and returns at most one move, without making it.
 
-    Rules use only the puzzle's interface for the solver: first_cell_where(), select() and
-    enter_solved_value().
+    Rules use only the puzzle's interface for the solver (first_cell_where()); the solver and the
+    puzzle make the move.
     """
 
     @abstractmethod
-    def apply(self, puzzle) -> Outcome:
-        """Look for this rule's move in the puzzle and make it, if any"""
+    def find(self, puzzle) -> Move:
+        """Return this rule's move in the puzzle, or None if it has none"""

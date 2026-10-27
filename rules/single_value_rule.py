@@ -20,16 +20,16 @@ import sys
 sys.path.insert(0, ".")
 
 from cell import Cell
-from rules.rule import Outcome, Rule
+from rules.rule import Move, Outcome, Rule
 
 
 class SingleValueRule(Rule):
     """A cell with only one possible value must hold that value"""
 
-    def apply(self, puzzle) -> Outcome:
+    def find(self, puzzle) -> Move:
         cell = puzzle.first_cell_where(Cell.single_possible_value)
         if cell is None:
-            return Outcome.NONE
-        puzzle.select(cell)
-        puzzle.enter_solved_value(cell, cell.single_possible_value())
-        return Outcome.MOVED
+            return None
+        value = cell.single_possible_value()
+        hint = f"Only {value} fits here: every other value is already in its row, column or box."
+        return Move(Outcome.MOVED, hint, cell, value)

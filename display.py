@@ -126,14 +126,17 @@ class Display:
     def draw_cell_value(row=0, col=0, value=" ", attrs=dict()):
         """Draw the value in the middle of the cell using the rendered attributes"""
         Display.move_to_cell(row, col)
-        rendered_attrs = Display.__rendered_attrs(attrs)
-        echo(rendered_attrs + str(value) + Display.term.normal)
+        echo(Display.styled(str(value), attrs))
 
     def move_to_cell(row=0, col=0):
         """Move to the middle of the cell"""
         x = Display.x(col) + Display.CELL_WIDTH // 2
         y = Display.y(row) + Display.CELL_VALUE_ROW
         echo(Display.term.move_xy(x, y))
+
+    def styled(text, attrs) -> str:
+        """Return the text styled with the attributes' colors, e.g. (DisplayAttrs.SOLVED,) for steel blue"""
+        return getattr(Display.term, Attrs.render(attrs)) + text + Display.term.normal
 
     def draw_cell_possible_values(row=0, col=0, values=[], attrs=dict()):
         """Draw the possible values at the bottom of the cell"""
@@ -189,9 +192,6 @@ class Display:
         right = Display.__border_char(border.is_right(), Display.vline, attrs)
         rendered_str = Display.__rendered_bg_attrs(attrs) + " " * Display.CELL_HORIZONTAL_SIZE + Display.term.normal
         echo(left + rendered_str + right)
-
-    def __rendered_attrs(attrs) -> str:
-        return getattr(Display.term, Attrs.render(attrs))
 
     def __rendered_bg_attrs(attrs) -> str:
         return getattr(Display.term, Attrs.render_bg(attrs))
