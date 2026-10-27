@@ -26,7 +26,8 @@ from unittest.mock import patch
 from blessed.keyboard import Keystroke
 
 from cell_attrs import CellAttrs
-from display import Display, Border
+from border import Border
+from display import Display
 
 
 class TestDisplay(TestCase):

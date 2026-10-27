@@ -37,22 +37,22 @@ class TestMoves(TestCase):
     def test_typed_value_while_playing_is_entered_and_recorded(self):
         cell = self.__cell(1, 2)
         self.moves.enter(cell, 5)
-        cell.update.assert_called_with(5, ())
+        cell.set.assert_called_with(5, ())
         self.assertEqual(self.moves.recorded(), [(1, 2, 5, None)])
 
     def test_value_entered_during_setup_is_a_given_and_not_recorded(self):
         self.puzzle.is_initializing.return_value = True
         cell = self.__cell()
         self.moves.enter(cell, 5)
-        cell.update.assert_called_with(5, (CellAttrs.INITIAL,))
+        cell.set.assert_called_with(5, (CellAttrs.INITIAL,))
         self.assertTrue(self.moves.is_empty())
 
     def test_guess_puts_itself_and_every_value_entered_after_it_one_guess_deep(self):
         guess, later = self.__cell(0, 0), self.__cell(0, 1)
         self.moves.enter(guess, 3, CellAttrs.GUESS)
         self.moves.enter(later, 4)
-        guess.update.assert_called_with(3, (CellAttrs.GUESS, dict(depth=1)))
-        later.update.assert_called_with(4, (dict(depth=1),))
+        guess.set.assert_called_with(3, (CellAttrs.GUESS, dict(depth=1)))
+        later.set.assert_called_with(4, (dict(depth=1),))
 
     def test_every_change_of_guess_depth_is_reported(self):
         self.moves.enter(self.__cell(0, 0), 3, CellAttrs.GUESS)
@@ -68,13 +68,13 @@ class TestMoves(TestCase):
         self.moves.enter(self.__cell(0, 0), 3, CellAttrs.GUESS)
         self.moves.enter(self.__cell(0, 1), 4, CellAttrs.GUESS)
         self.moves.enter(later, 5)
-        later.update.assert_called_with(5, (dict(depth=2),))
+        later.set.assert_called_with(5, (dict(depth=2),))
 
     def test_undo_restores_the_previous_value_and_returns_its_cell(self):
         cell = self.__cell(value=7, attr=(CellAttrs.SOLVED,))
         self.moves.enter(cell, 5)
         self.assertIs(self.moves.undo(), cell)
-        cell.update.assert_called_with(7, (CellAttrs.SOLVED,))
+        cell.set.assert_called_with(7, (CellAttrs.SOLVED,))
         self.assertTrue(self.moves.is_empty())
 
     def test_undoing_a_guess_lightens_the_shading_again(self):
@@ -82,7 +82,7 @@ class TestMoves(TestCase):
         self.moves.undo()
         later = self.__cell(0, 1)
         self.moves.enter(later, 4)
-        later.update.assert_called_with(4, ())
+        later.set.assert_called_with(4, ())
 
     def test_rewind_undoes_back_to_the_most_recent_guess_and_returns_its_cell(self):
         guess = self.__cell(0, 0)
@@ -106,7 +106,7 @@ class TestMoves(TestCase):
         later = self.__cell(0, 1)
         self.moves.enter(later, 4)
         self.assertEqual(self.moves.recorded(), [(0, 1, 4, None)])
-        later.update.assert_called_with(4, ())
+        later.set.assert_called_with(4, ())
 
     def test_each_moves_keeps_its_own_history(self):
         self.moves.enter(self.__cell(), 1)

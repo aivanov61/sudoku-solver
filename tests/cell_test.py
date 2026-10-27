@@ -17,7 +17,7 @@
 
 import sys
 from unittest import main, TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 sys.path.insert(0, ".")
 
@@ -91,46 +91,45 @@ class TestCell(TestCase):
         self.cell.remove_possible(5)
         self.assertNotIn(5, self.cell.possible_values())
 
-    # Drawing
+    # Changes
 
-    @patch("cell.Display.draw_cell_possible_values")
-    def test_cell_draws_possible_values_when_value_added(self, draw):
+    def test_cell_reports_a_change_when_a_possible_value_is_added_back(self):
         self.cell.remove_possible(5)
-        draw.reset_mock()
+        self.parent.cell_changed.reset_mock()
         self.cell.add_possible(5)
-        draw.assert_called_once_with(0, 0, self.cell.possible_values(), self.cell.attr())
+        self.parent.cell_changed.assert_called_once_with(self.cell)
 
-    @patch("cell.Display.draw_cell_possible_values")
-    def test_cell_does_not_draw_when_added_value_was_already_possible(self, draw):
+    def test_cell_reports_no_change_when_added_value_was_already_possible(self):
         self.cell.add_possible(5)
-        draw.assert_not_called()
+        self.parent.cell_changed.assert_not_called()
 
-    @patch("cell.Display.draw_cell_possible_values")
-    def test_cell_draws_possible_values_when_value_removed(self, draw):
+    def test_cell_reports_a_change_when_a_possible_value_is_removed(self):
         self.cell.remove_possible(5)
-        draw.assert_called_once_with(0, 0, self.cell.possible_values(), self.cell.attr())
+        self.parent.cell_changed.assert_called_once_with(self.cell)
 
-    @patch("cell.Display.draw_cell_possible_values")
-    def test_cell_does_not_draw_when_removed_value_was_not_possible(self, draw):
+    def test_cell_reports_no_change_when_removed_value_was_not_possible(self):
         self.cell.remove_possible(5)
-        draw.reset_mock()
+        self.parent.cell_changed.reset_mock()
         self.cell.remove_possible(5)
-        draw.assert_not_called()
+        self.parent.cell_changed.assert_not_called()
 
-    @patch("cell.Display.draw_cell_possible_values")
-    def test_cell_draws_empty_possible_values_when_value_is_set(self, draw):
+    def test_cell_reports_a_change_when_its_value_changes(self):
         self.cell.set(8)
-        draw.assert_called_once_with(0, 0, set(), self.cell.attr())
-
-    @patch("cell.Display.draw_cell_possible_values")
-    def test_cell_does_not_redraw_possible_values_when_value_changes(self, draw):
-        self.cell.set(8)
-        draw.reset_mock()
+        self.parent.cell_changed.reset_mock()
         self.cell.set(4)
-        draw.assert_not_called()
+        self.parent.cell_changed.assert_called_once_with(self.cell)
 
-    def test_cell_can_render(self):
-        self.cell.render()
+    def test_cell_reports_a_change_when_its_attributes_change(self):
+        self.cell.set(8)
+        self.parent.cell_changed.reset_mock()
+        self.cell.set(8, (CellAttrs.GUESS,))
+        self.parent.cell_changed.assert_called_once_with(self.cell)
+
+    def test_cell_reports_no_change_when_set_to_what_it_already_holds(self):
+        self.cell.set(8, (CellAttrs.GUESS,))
+        self.parent.cell_changed.reset_mock()
+        self.cell.set(8, (CellAttrs.GUESS,))
+        self.parent.cell_changed.assert_not_called()
 
     # Conflicts
 
@@ -161,38 +160,37 @@ class TestCell(TestCase):
         self.cell.set(4)
         related.clear_resolved_conflict.assert_called_once_with(8)
 
-    @patch("cell.Display")
-    def test_cell_mark_conflicted_marks_cell_holding_the_value(self, display):
+    def test_cell_mark_conflicted_marks_cell_holding_the_value(self):
         self.cell.set(8, (CellAttrs.INITIAL,))
+        self.parent.cell_changed.reset_mock()
         self.cell.mark_conflicted(8)
         self.assertEqual(self.cell.attr(), (CellAttrs.INITIAL, CellAttrs.CONFLICTED))
-        display.draw_cell.assert_called_once()
+        self.parent.cell_changed.assert_called_once_with(self.cell)
 
-    @patch("cell.Display")
-    def test_cell_mark_conflicted_ignores_other_values(self, display):
+    def test_cell_mark_conflicted_ignores_other_values(self):
         self.cell.set(8)
+        self.parent.cell_changed.reset_mock()
         self.cell.mark_conflicted(5)
         self.assertNotIn(CellAttrs.CONFLICTED, self.cell.attr())
-        display.draw_cell.assert_not_called()
+        self.parent.cell_changed.assert_not_called()
 
-    @patch("cell.Display")
-    def test_cell_mark_conflicted_does_not_mark_a_conflicting_cell_again(self, display):
+    def test_cell_mark_conflicted_does_not_mark_a_conflicting_cell_again(self):
         self.__related_cell(value=8)
         self.cell.set(8)
         self.cell.mark_conflicted(8)
         self.assertEqual(self.cell.attr(), (CellAttrs.CONFLICTING,))
 
-    @patch("cell.Display")
-    def test_cell_clear_resolved_conflict_clears_marks_when_no_related_cell_holds_value(self, display):
+    def test_cell_clear_resolved_conflict_clears_marks_when_no_related_cell_holds_value(self):
         related = self.__related_cell(value=8)
         self.cell.set(8, (CellAttrs.GUESS,))
         self.cell.mark_conflicted(8)
         related.value.return_value = None
+        self.parent.cell_changed.reset_mock()
         self.cell.clear_resolved_conflict(8)
         self.assertEqual(self.cell.attr(), (CellAttrs.GUESS,))
+        self.parent.cell_changed.assert_called_once_with(self.cell)
 
-    @patch("cell.Display")
-    def test_cell_clear_resolved_conflict_keeps_mark_while_a_related_cell_holds_value(self, display):
+    def test_cell_clear_resolved_conflict_keeps_mark_while_a_related_cell_holds_value(self):
         self.cell.set(8)
         self.cell.mark_conflicted(8)
         self.__related_cell(value=8)
@@ -231,6 +229,7 @@ class TestCell(TestCase):
         Mock 'parent' needs to provide:
         1. values() - range of legal values
         2. related_cells() - the cells in the same block, row or column (none until a test adds some)
+        3. cell_changed(cell) - hears of every change to the cell
         """
         self.parent = MagicMock()
         self.parent.values.return_value = range(1, self.MAX_VALUE)

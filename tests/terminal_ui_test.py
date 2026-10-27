@@ -17,7 +17,7 @@
 
 import sys
 from unittest import main, TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, ".")
 
@@ -63,6 +63,47 @@ class TestTerminalUI(TestCase):
             self.assertEqual(self.ui.ask_file_name("Save to file:", "sudoku.json"), "game.json")
         ask.assert_called_once_with("Save to file:", "sudoku.json")
 
+    def test_show_board_clears_the_screen_and_draws_every_cell_whole(self):
+        cells = [self.__cell(0, 0, value=5), self.__cell(0, 1, possible={1, 2})]
+        with patch("terminal_ui.Display") as display:
+            self.ui.show_board(cells)
+        display.clear_screen.assert_called_once()
+        self.assertEqual(display.draw_cell.call_count, 2)
+        display.draw_cell_value.assert_any_call(0, 0, 5, ())
+        display.draw_cell_possible_values.assert_any_call(0, 1, {1, 2}, ())
+
+    def test_a_cell_not_yet_drawn_is_drawn_whole(self):
+        display = self.__drawn_after_change(None, self.__cell(2, 3, value=4))
+        display.draw_cell.assert_called_once()
+        display.draw_cell_value.assert_called_once_with(2, 3, 4, ())
+
+    def test_changed_attributes_redraw_the_whole_cell(self):
+        cell = self.__cell(value=4)
+        display = self.__drawn_after_change(cell, self.__cell(value=4, attrs=(CellAttrs.GUESS,)))
+        display.draw_cell.assert_called_once()
+        display.draw_cell_value.assert_called_once()
+        display.draw_cell_possible_values.assert_called_once()
+
+    def test_a_changed_value_redraws_only_the_value(self):
+        display = self.__drawn_after_change(self.__cell(value=4), self.__cell(value=6))
+        display.draw_cell.assert_not_called()
+        display.draw_cell_value.assert_called_once_with(0, 0, 6, ())
+        display.draw_cell_possible_values.assert_not_called()
+
+    def test_an_empty_cell_is_drawn_blank(self):
+        display = self.__drawn_after_change(self.__cell(value=4), self.__cell(value=None))
+        display.draw_cell_value.assert_called_once_with(0, 0, " ", ())
+
+    def test_changed_possible_values_redraw_only_the_possible_values(self):
+        display = self.__drawn_after_change(self.__cell(possible={1, 2}), self.__cell(possible={2}))
+        display.draw_cell.assert_not_called()
+        display.draw_cell_value.assert_not_called()
+        display.draw_cell_possible_values.assert_called_once_with(0, 0, {2}, ())
+
+    def test_an_unchanged_cell_is_not_redrawn(self):
+        display = self.__drawn_after_change(self.__cell(value=4), self.__cell(value=4))
+        self.assertEqual(display.method_calls, [])
+
     def test_guesses_going_deeper_than_the_last_shade_warn(self):
         self.assertEqual(self.__warnings_for_depths([10, 11]), ["No more shades of gray left - repeating last shade. "])
 
@@ -76,6 +117,22 @@ class TestTerminalUI(TestCase):
         self.assertEqual(self.__warnings_for_depths([1, 2, 10, 9, 0]), [])
 
     # Private functions
+
+    def __cell(self, row=0, col=0, value=None, attrs=(), possible=frozenset()):
+        """A stand-in for a cell as it is at one moment"""
+        cell = MagicMock(row=row, col=col)
+        cell.value.return_value = value
+        cell.attr.return_value = attrs
+        cell.possible_values.return_value = set(possible)
+        return cell
+
+    def __drawn_after_change(self, before, after):
+        """Report the cell as before (if any), then as after; return the patched Display used for the second report"""
+        with patch("terminal_ui.Display"):
+            before and self.ui.cell_changed(before)
+        with patch("terminal_ui.Display") as display:
+            self.ui.cell_changed(after)
+        return display
 
     def __warnings_for_depths(self, depths) -> list:
         """Report each guess depth in turn; return the text of every warning shown"""

@@ -17,7 +17,6 @@
 
 import sys
 from unittest import main, TestCase
-from unittest.mock import patch
 
 sys.path.insert(0, ".")
 
@@ -102,14 +101,23 @@ class TestBoard(TestCase):
     def test_clear_empties_every_cell(self):
         self.board.cell(1, 1).set(4)
         self.board.cell(4, 0).set(5)
-        with patch("cell.Display"):
-            self.board.clear()
+        self.board.clear()
         self.assertFalse(self.board.has_values())
 
-    def test_render_draws_every_cell(self):
-        with patch("cell.Display") as display:
-            self.board.render()
-        self.assertEqual(display.draw_cell.call_count, 81)
+    def test_cells_are_every_cell_left_to_right_top_to_bottom(self):
+        positions = [self.__position(cell) for cell in self.board.cells()]
+        self.assertEqual(positions, [(row, col) for row in range(9) for col in range(9)])
+
+    def test_cell_changes_are_reported_to_the_listener(self):
+        changed = []
+        self.board.report_changes_to(changed.append)
+        self.board.cell(4, 4).set(5)
+        self.assertIn(self.board.cell(4, 4), changed)
+        self.assertIn(self.board.cell(4, 0), changed)
+
+    def test_cell_changes_are_ignored_until_there_is_a_listener(self):
+        self.board.cell(4, 4).set(5)
+        self.assertEqual(self.board.cell(4, 4).value(), 5)
 
     # Private functions
 

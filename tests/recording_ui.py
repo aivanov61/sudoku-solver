@@ -27,6 +27,8 @@ class RecordingUI:
         self.informed = []  # every message shown with inform()
         self.questions = []  # every question asked with confirm(), and (prompt, default) for each ask_file_name()
         self.guess_depths = []  # every guess depth reported
+        self.shown_boards = []  # the cells of every board shown whole
+        self.changed_cells = []  # every cell reported changed
 
     # Interface required for the game
 
@@ -46,6 +48,12 @@ class RecordingUI:
 
     def guess_depth_changed(self, depth) -> None:
         self.guess_depths.append(depth)
+
+    def show_board(self, cells) -> None:
+        self.shown_boards.append(list(cells))
+
+    def cell_changed(self, cell) -> None:
+        self.changed_cells.append(cell)
 
     # Interface required for tests
 

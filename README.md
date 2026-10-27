@@ -140,6 +140,7 @@ some guidance:
 - commands.py - establish the commands for the puzzle; `Commands` class
 - user_interface.py - the port through which the game talks to the player; `UserInterface`, `Message` and `MessageKind`
 - terminal_ui.py - the terminal's user interface: messages and questions on the status line; `TerminalUI` class
+- border.py - which sides of a cell lie on its block's edge; `Border` class
 - display.py - manages the terminal display; `Display` class
 - cell_attrs.py - what a cell's attributes mean (given, guess, solved, conflicts, guess depth); `CellAttrs` class
 - display_attrs.py - turns cell attributes into terminal colors; `DisplayAttrs` class

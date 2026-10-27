@@ -15,10 +15,9 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-from cell_solver import CellSolver
-from copy import deepcopy
+from border import Border
 from cell_attrs import CellAttrs
-from display import Display, Border
+from cell_solver import CellSolver
 
 
 class Cell:
@@ -31,7 +30,7 @@ class Cell:
     It is able to perform the following:
     1. Store and retrieve a value with set()/value()
     1. Honor legal values provided by the block
-    1. Display itself on the terminal
+    1. Report every change to its value, attributes or possible values to its parent, so they can be shown
     1. Trigger recalculation of other puzzle cell values when this cell value changes
     """
 
@@ -52,30 +51,19 @@ class Cell:
         return self._attrs
 
     def set(self, value, attrs=()) -> None:
-        """Set the cell value but not the display"""
+        """Set the cell value and attributes, reporting any change"""
         if value and value not in self._parent.values():
             raise ValueError(f"Cell value must be in {self._parent.values()}")
+        before = (self._value, self._attrs)
         self._attrs = attrs
         self.__mark_if_conflicting(value)
         value != self._value and self.__smart_update(value)
+        (self._value, self._attrs) != before and self.__report_change()
 
     def possible_values(self) -> set:
         return self._solver.possible_values()
 
-    # Interface required for puzzles
-
-    def update(self, value, attrs=tuple()) -> None:
-        """Update the cell value and display it"""
-        prev_attr = deepcopy(self._attrs)
-        self.set(value, attrs)
-        self.__draw_cell_values() if prev_attr == self._attrs else self.render()
-
     # Interface required for blocks
-
-    def render(self) -> None:
-        """Draw the cell and its current value"""
-        Display.draw_cell(self.row, self.col, self.borders, self._attrs)
-        self.__draw_cell_values()
 
     def single_possible_value(self) -> int:
         return self._solver.single_possible_value()
@@ -93,25 +81,25 @@ class Cell:
         """Add back a possible value, unless the cell has a value or a related cell holds it"""
         if not self._value and value not in self.possible_values() and not self.__is_held_by_related_cell(value):
             self._solver.add_possible(value)
-            self.__draw_possible_values()
+            self.__report_change()
 
     def remove_possible(self, value) -> None:
-        """Remove a possible value and redraw the possible values if they changed"""
+        """Remove a possible value, reporting the change if it was possible"""
         if value in self.possible_values():
             self._solver.remove_possible(value)
-            self.__draw_possible_values()
+            self.__report_change()
 
     def mark_conflicted(self, value) -> None:
         """Mark the cell as conflicted if it holds the value just entered in a related cell"""
         if value == self._value and not self.is_marked_in_conflict():
             self.__add_attr(CellAttrs.CONFLICTED)
-            self.render()
+            self.__report_change()
 
     def clear_resolved_conflict(self, value) -> None:
         """Clear the cell's conflict mark if it holds the value and no related cell holds it any more"""
         if value == self._value and self.is_marked_in_conflict() and not self.__is_held_by_related_cell(value):
             self._attrs = tuple(attr for attr in self._attrs if attr not in CellAttrs.CONFLICT_ATTRS)
-            self.render()
+            self.__report_change()
 
     # Private functions
 
@@ -142,19 +130,15 @@ class Cell:
         value or self.__restore_possible()
 
     def __clear_possible(self) -> None:
-        """Remove all possible values and redraw the possible values if they changed"""
+        """Remove all possible values, reporting the change if there were any"""
         if self.possible_values():
             self._solver.clear_possible()
-            self.__draw_possible_values()
+            self.__report_change()
 
     def __restore_possible(self) -> None:
         """Add back every value that no related cell holds"""
         for value in self._parent.values():
             self.add_possible(value)
 
-    def __draw_cell_values(self) -> None:
-        Display.draw_cell_value(self.row, self.col, self._value or " ", self._attrs)
-        self.__draw_possible_values()
-
-    def __draw_possible_values(self) -> None:
-        Display.draw_cell_possible_values(self.row, self.col, self.possible_values(), self._attrs)
+    def __report_change(self) -> None:
+        self._parent.cell_changed(self)

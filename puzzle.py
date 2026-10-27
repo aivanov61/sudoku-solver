@@ -70,6 +70,7 @@ class Puzzle:
         self.__notice = None  # a warning shown on the status line until the next command
         self.__board = board
         self.__ui = ui
+        board.report_changes_to(ui.cell_changed)
         self.__moves = Moves(self, ui)
         self.__solver = PuzzleSolver(self)
         self.__report = CompletionReport(self)
@@ -78,8 +79,7 @@ class Puzzle:
     # Interface required for Main
 
     def render(self) -> None:
-        Display.clear_screen()
-        self.__board.render()
+        self.__ui.show_board(self.__board.cells())
         self.__draw_commands()
         self.display_status()
 
@@ -138,7 +138,7 @@ class Puzzle:
         if not self._initializing:
             self.__warn("Deleting a cell value can only be done while initializing the puzzle. ")
             return
-        self.__selected_cell().update(None)
+        self.__selected_cell().set(None)
 
     def undo_(self) -> None:
         if self.__refused_while_initializing():

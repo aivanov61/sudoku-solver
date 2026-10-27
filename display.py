@@ -20,31 +20,10 @@ import functools
 from contextlib import contextmanager
 
 from blessed import Terminal
+from border import Border
 from display_attrs import DisplayAttrs as Attrs
 
 echo = functools.partial(print, end="", flush=True)
-
-
-class Border:
-    TOP = "top"
-    LEFT = "left"
-    RIGHT = "right"
-    BOTTOM = "bottom"
-
-    def __init__(self, borders=frozenset()):
-        self.__borders = borders
-
-    def is_top(self):
-        return self.TOP in self.__borders
-
-    def is_left(self):
-        return self.LEFT in self.__borders
-
-    def is_right(self):
-        return self.RIGHT in self.__borders
-
-    def is_bottom(self):
-        return self.BOTTOM in self.__borders
 
 
 class Display:

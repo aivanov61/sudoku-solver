@@ -57,3 +57,9 @@ class UserInterface(Protocol):
 
     def guess_depth_changed(self, depth) -> None:
         """Hear that values are now entered depth guesses deep (0 when no guess is in play)"""
+
+    def show_board(self, cells) -> None:
+        """Show the whole board afresh: every cell, with its block edges (cell.borders)"""
+
+    def cell_changed(self, cell) -> None:
+        """Hear that the cell's value, attributes or possible values changed, to show it as it is now"""

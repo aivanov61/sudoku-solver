@@ -41,7 +41,7 @@ Main (sudoku.py)  ── gets the layout from PuzzleCatalog, reads keys via Inpu
   └── Puzzle                  the game: commands, modes, cursor, screen; helpers do moves, solving, completion, files
         └── Board3x3 (a Board)    Board: finding and asking about cells; Board3x3: only the 3x3 block layout
               └── RectangularBlock ×9   knows its cells and which lie in a given row or column
-                    └── Cell ×9          holds a value, display attributes and a CellSolver
+                    └── Cell ×9          holds a value, attributes (CellAttrs) and a CellSolver; reports its changes
                           └── CellSolver  holds the set of possible values
 ```
 
@@ -53,7 +53,8 @@ Supporting modules:
 | `input.py` | `Input` | Reads a keystroke and turns it into a command name |
 | `user_interface.py` | `UserInterface`, `Message`, `MessageKind` | The port through which the game talks to the player (section 4.4) |
 | `terminal_ui.py` | `TerminalUI` | The terminal's implementation of the port: messages and questions on the status line |
-| `display.py` | `Display`, `Border` | All terminal drawing, through `blessed` |
+| `border.py` | `Border` | Which sides of a cell lie on its block's edge (layout data) |
+| `display.py` | `Display` | All terminal drawing, through `blessed` |
 | `cell_attrs.py` | `CellAttrs` | What a cell's attributes mean: how its value got there, conflict marks, guess depth |
 | `display_attrs.py` | `DisplayAttrs` | The terminal's style table: turns a cell's attributes into `blessed` style names |
 | `history.py` | `History`, `Entry` | The undo stack |
@@ -79,7 +80,8 @@ Blocks decide which cells are related; cells act on them:
 - **A block** gives a cell its *related cells* (every other cell in the same box, row or column, once each) through the generator `related_cells(row, col)`. It yields its own box cells first, then the row and column cells it gets from the board, skipping any in its own box. Besides that, it gives cells the legal `values()`.
 - **A cell** acts on its related cells directly: it gives them back an old value (`add_possible`), removes a new one (`remove_possible`), and marks or clears conflicts (`mark_conflicted`, `clear_resolved_conflict`). It checks whether a related cell holds a value with `any()`, which stops at the first match. New cross-cell behavior is added to `Cell` alone, so blocks, the board and the puzzle stay unchanged.
 - **The board** knows only its block layout. Its single method for blocks, `cells_in_row_or_col(row, col)`, yields from every block's `cells_in_row_or_col`. Each block decides which of its own cells are in the row or column. The board passes those cells along but never reads or changes them, because in other Sudoku layouts the blocks may not form a regular grid, and only a block knows which of its cells lie in a given row or column.
-- **The puzzle** reaches cells only through its board: `first_cell_where`, `is_full`, `has_conflicts`, `has_values`, `first_dead_end`, `givens`, `clear` and `render`.
+- **The puzzle** reaches cells only through its board: `first_cell_where`, `is_full`, `has_conflicts`, `has_values`, `first_dead_end`, `givens`, `clear` and `cells`.
+- **Changes travel up:** a cell never draws itself. Whenever its value, attributes or possible values change, it calls its parent's `cell_changed(cell)`; the block passes that on to the board, and the board to the listener the puzzle gave it with `report_changes_to()`: the user interface's `cell_changed()`. A full draw is the puzzle's `render()`, which hands the board's `cells()` to the user interface's `show_board()`.
 - **The one exception** is a cell by position. The cursor moves by row and column, and a Sudoku's outer edge is always rectangular, so the board offers `cell(row, col)` (through the layout's `_block_at`) for the selected cell and for replaying a saved game. Revisit this if a puzzle with a non-rectangular outer edge is ever designed.
 
 Each class groups its methods under comments naming who calls them, for example `# Interface required for cells` in `RectangularBlock` and `# Interface required for related cells` in `Cell`, with private methods last under `# Private functions`.
@@ -96,8 +98,8 @@ Every cell stores its **puzzle-wide** `row` and `col` (0–8), set by `Rectangul
 
 ```python
 class UserInterface(Protocol):
-    def show_board(self, board_view) -> None: ...          # full draw: shape, block edges, every cell
-    def cells_changed(self, cells) -> None: ...            # redraw just these, after a command
+    def show_board(self, cells) -> None: ...               # full draw: every cell, with its block edges
+    def cell_changed(self, cell) -> None: ...              # the moment a cell changes; redraw what differs
     def select(self, row, col) -> None: ...
     def mode_changed(self, mode, actions) -> None: ...     # e.g. the terminal's command panel
     def status(self, message) -> None: ...                 # shown until the next command; None blanks it
@@ -107,7 +109,7 @@ class UserInterface(Protocol):
     def guess_depth_changed(self, depth) -> None: ...      # every change; the interface decides what to show
 ```
 
-A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCESS` or `HINT`. The port, `Message` and `MessageKind` are in `user_interface.py`. `status`, `inform`, `confirm` and `ask_file_name` exist since step 1, and `guess_depth_changed` since step 2; the others will be added in later steps.
+A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCESS` or `HINT`. The port, `Message` and `MessageKind` are in `user_interface.py`. `status`, `inform`, `confirm` and `ask_file_name` exist since step 1, `guess_depth_changed` since step 2, and `show_board` and `cell_changed` since step 3; the others will be added in later steps.
 
 **What belongs where:**
 
@@ -117,7 +119,7 @@ A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCE
 | Receiving one action at a time: `game.handle(action)` | The main loop: reading input and calling the game (a GUI toolkit owns its own event loop) |
 | A cell's state: value, kind (given, typed, guess, solved), conflict marks, guess depth, possible values | Colors and shading for each kind and depth, and what to do when it runs out of shades |
 | Which sides of a cell are block edges | How edges are drawn |
-| Which cells changed | Redrawing them |
+| Which cells changed, as they change | Redrawing what differs from what it last showed |
 | Messages as plain text with a kind (warning, success, hint) and whether they must be acknowledged | Styling messages, and how they are acknowledged |
 | The list of layouts | The layout menu, startup notes and screen-size checks |
 | The save file format | File-name prompts or file dialogs |
@@ -134,7 +136,7 @@ A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCE
 2. Show the GPL splash; continue after 5 seconds or any key. With a single layout that is broken, or with no layouts at all, a yellow note under the splash says so.
 3. Pick the layout: with several, `LayoutMenu` lets the player choose (see 5.7); with one, it is used directly. If the player quits the menu, or the only layout is broken or missing, exit here.
 4. Create the board, then the puzzle with its user interface: `Puzzle(layout.board_class(), TerminalUI())`. The board's `__init__` builds its blocks (9 blocks of 9 cells for `Board3x3`); `Puzzle.__init__` sets the display geometry from the board's size, checks the screen size and creates its helpers (`Moves` creates its own, empty `History`).
-5. `render()` draws the whole grid, the command panel and the status line.
+5. `render()` shows the whole board (through the user interface's `show_board()`), the command panel and the status line.
 6. Loop while `puzzle.is_playing`: re-check the screen size (redraw if it was resized), move the cursor to the selected cell, read a command and handle it.
 
 ### 5.2 Command dispatch
@@ -153,8 +155,7 @@ Puzzle.value_(val, guess)
        ├─ guess (in play mode) → one guess deeper
        ├─ attributes           → INITIAL (init mode) or the primary attribute, plus the guess depth if any
        ├─ play mode            → History.add(Entry(cell, new value, previous value))
-       └─ Cell.update(val, attrs)
-            └─ Cell.set()
+       └─ Cell.set(val, attrs)
                  ├─ a related cell holds the value? → add CONFLICTING (even if the value is unchanged)
                  └─ value changed → __smart_update(value)
                       ├─ assign the new value (before notifying, so related cells see the board as it now is)
@@ -167,12 +168,13 @@ Puzzle.value_(val, guess)
                       │    └─ new value → cell.mark_conflicted(...)           is marked CONFLICTED if it holds it
                       ├─ new value → the cell clears its own possible values
                       └─ no value  → the cell adds back every value no related cell holds
+                 └─ value or attributes changed → report the change (parent.cell_changed(cell))
   └─ __found_dead_end()   the first empty cell with no possible values, if any: select it and set the notice
                           (DeadEndRule.WARNING in play mode, the setup warning in init mode)
 ```
 
-- A cell redraws its possible values only when they actually change.
-- `update()` then redraws the cell: only its value and possible values if its attributes are unchanged, or the whole cell if they changed.
+- A cell reports a change only when something actually changed: its value or attributes (in `set()`), or its possible values (each related cell, as it gains or loses one).
+- `TerminalUI` remembers what it last drew for each cell. On `cell_changed()` it redraws the whole cell if the attributes changed, otherwise only the value or the possible values that differ.
 
 **Conflicts** are worked out from the values on the board, never from a cell's possible values. A cell checks its related cells (its box first, then the row and column). Its own position is never among them, so its current value never counts against it. The same check decides whether a value can be given back: a cell regains a value only if no related cell holds it, so a duplicate left on the board keeps the value blocked.
 
@@ -185,7 +187,7 @@ Puzzle.value_(val, guess)
 
 - `History` is a list of `Entry(cell, valueinfo, previous_valueinfo)`; each `Moves` creates and owns one, so there is no shared, global history. `ValueInfo` stores the value and its primary attribute (`INITIAL`, `GUESS` or `None`).
 - `Moves` (`moves.py`) is the only code that uses its `History`; the puzzle's `undo_()` and `rewind_()` call its `undo()` and `rewind()`, which return the cell for the cursor.
-- `undo_()` pops the last entry, moves the cursor to that cell and restores the previous value with `cell.update()`. With nothing to undo, it warns "Cannot undo initialized puzzle. ESC will re-enter initialization mode."
+- `undo_()` pops the last entry, moves the cursor to that cell and restores the previous value with `cell.set()`. With nothing to undo, it warns "Cannot undo initialized puzzle. ESC will re-enter initialization mode."
 - `rewind_()` undoes at least one entry, then keeps undoing until the most recent remaining entry is a guess (primary attribute `GUESS`), or until the history is empty. The guess stays on the board and the cursor moves to it, ready for a different value to be typed over it. Pressing `r` again undoes that guess and rewinds to the one before. It uses `History.last()` to look at the most recent entry without removing it. With nothing to undo, it gives the same warning as `undo_()`. Otherwise it asks for confirmation first, since a rewind can't be undone.
 - **Guess shading:** each guess makes the guess depth kept by `Moves` one deeper. Every value entered afterwards, guess or not, carries that depth, which shows what depends on the guess; undoing a guess makes it one shallower. The terminal shows depth as gray: `DisplayAttrs.GRAY_STEP` (10) lighter per guess, up to `MAX_GRAY_LEVEL` (100). Deeper than that it reuses the last shade. `Moves` reports every change of depth through the user interface's `guess_depth_changed()`, and `TerminalUI` warns "No more shades of gray left - repeating last shade." whenever the depth goes from within the shades to beyond the last one; deeper guesses stay quiet, and coming back within the shades lets it warn again. The game itself never knows about shades.
 
@@ -266,7 +268,7 @@ The full list is in `CLAUDE.md`. The main points:
    - Done first: each `Moves` owns its `History`, instead of one global history.
    - Done, **step 1, messages and dialogs:** `PuzzleSolver` and `CompletionReport` return messages instead of warning; the puzzle and `GameFile` send every message, with its kind, and every dialog through the user interface (`user_interface.py`), and `TerminalUI` wraps today's `Display`. Left for step 2: `Moves`' warning about running out of gray shades, which belongs to the terminal.
    - Done, **step 2, attributes with meaning only:** `CellAttrs` (`cell_attrs.py`) defines what the attributes mean, and the game uses only it. `Moves` keeps a guess depth instead of a gray level. `DisplayAttrs` is now just the terminal's style table, turning depth into gray. `Moves` reports every change of depth through the new `guess_depth_changed()` port method, and `TerminalUI` warns when the depth crosses beyond its last shade.
-   - **Step 3, cells stop drawing:** the board reports changed cells through the port, and block edges become layout data instead of a display `Border`.
+   - Done, **step 3, cells stop drawing:** a cell reports each change through its block and the board to the user interface's `cell_changed()`, and `render()` shows the whole board with `show_board()`; `TerminalUI` decides what to redraw. `Cell.update()` is gone (`set()` reports changes), and so are the `render()` methods of cells, blocks and the board. `Border` is layout data in `border.py`.
    - **Step 4, actions apart from keys:** the game defines its actions; the terminal keeps its key bindings and help text.
    - **Step 5, the loop moves to the interface:** the terminal adapter reads keys and calls `game.handle(action)`; `Main` just picks the interface and the layout.
    - **Step 6, packages and the instance:** `game/` and `ui/terminal/` folders, `Display` becomes the `TerminalUI` instance, and a test checks that nothing in `game/` imports `ui/`.

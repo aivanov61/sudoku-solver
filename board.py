@@ -37,12 +37,17 @@ class Board(ABC):
     def __init__(self, v_cells, h_cells):
         self.v_cells = v_cells
         self.h_cells = h_cells
+        self.__listener = lambda cell: None  # hears of every change to a cell
 
     # Interface required for the puzzle
 
-    def render(self) -> None:
-        for block in self._blocks():
-            block.render()
+    def report_changes_to(self, listener) -> None:
+        """Have listener(cell) called whenever a cell's value, attributes or possible values change"""
+        self.__listener = listener
+
+    def cells(self) -> list:
+        """Return every cell, left to right and top to bottom"""
+        return self.cells_where(lambda cell: True)
 
     def cell(self, row, col) -> Cell:
         return self._block_at(row, col).cell(row, col)
@@ -77,7 +82,7 @@ class Board(ABC):
     def clear(self) -> None:
         """Empty every cell"""
         for cell in self.cells_where(lambda cell: cell.value() is not None):
-            cell.update(None)
+            cell.set(None)
 
     # Interface required for blocks
 
@@ -85,6 +90,9 @@ class Board(ABC):
         """Yield the cells in the given row or column, as identified by each block"""
         for block in self._blocks():
             yield from block.cells_in_row_or_col(row, col)
+
+    def cell_changed(self, cell) -> None:
+        self.__listener(cell)
 
     # Interface required from layout subclasses
 

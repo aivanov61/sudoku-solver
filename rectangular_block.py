@@ -19,8 +19,8 @@ import sys
 
 sys.path.insert(0, ".")
 
+from border import Border
 from cell import Cell
-from display import Border
 
 
 class RectangularBlock:
@@ -49,10 +49,6 @@ class RectangularBlock:
 
     # Interface required for boards
 
-    def render(self) -> None:
-        for cell in self.__cells():
-            cell.render()
-
     def cell(self, row, col) -> Cell:
         return self._cells[row % self.rows][col % self.cols]
 
@@ -68,6 +64,9 @@ class RectangularBlock:
 
     def values(self) -> range:
         return range(1, self.rows * self.cols + 1)
+
+    def cell_changed(self, cell) -> None:
+        self.parent.cell_changed(cell)
 
     def related_cells(self, row, col):
         """Yield, once each, every other cell in the same block, row or column as the cell at row, col"""

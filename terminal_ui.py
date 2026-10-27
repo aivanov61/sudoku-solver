@@ -32,6 +32,7 @@ class TerminalUI:
 
     def __init__(self):
         self.__guess_depth = 0
+        self.__drawn = {}  # (row, col): (attributes, value, possible values) of each cell as last drawn
 
     # Interface required for the game
 
@@ -54,6 +55,22 @@ class TerminalUI:
         self.__guess_depth = depth
         runs_out and self.inform(Message("No more shades of gray left - repeating last shade. ", MessageKind.WARNING))
 
+    def show_board(self, cells) -> None:
+        """Clear the screen and draw every cell whole"""
+        Display.clear_screen()
+        for cell in cells:
+            self.__draw_whole_cell(cell)
+
+    def cell_changed(self, cell) -> None:
+        """Redraw only what differs from what was last drawn: the whole cell when its attributes changed"""
+        attrs, value, possible_values = self.__drawn.get((cell.row, cell.col), (None, None, None))
+        if attrs != cell.attr():
+            self.__draw_whole_cell(cell)
+            return
+        value != cell.value() and self.__draw_value(cell)
+        possible_values != cell.possible_values() and self.__draw_possible_values(cell)
+        self.__remember(cell)
+
     # Private functions
 
     def __styled(self, message) -> str:
@@ -61,3 +78,19 @@ class TerminalUI:
         if message.kind in (MessageKind.SUCCESS, MessageKind.HINT):
             return Display.styled(message.text, (CellAttrs.SOLVED,))
         return Display.term.yellow(message.text)
+
+    def __draw_whole_cell(self, cell) -> None:
+        Display.draw_cell(cell.row, cell.col, cell.borders, cell.attr())
+        self.__draw_value(cell)
+        self.__draw_possible_values(cell)
+        self.__remember(cell)
+
+    def __draw_value(self, cell) -> None:
+        Display.draw_cell_value(cell.row, cell.col, cell.value() or " ", cell.attr())
+
+    def __draw_possible_values(self, cell) -> None:
+        Display.draw_cell_possible_values(cell.row, cell.col, cell.possible_values(), cell.attr())
+
+    def __remember(self, cell) -> None:
+        """Keep what the cell looks like now, copying its possible values, which change in place"""
+        self.__drawn[(cell.row, cell.col)] = (cell.attr(), cell.value(), set(cell.possible_values()))

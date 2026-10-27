@@ -48,7 +48,7 @@ class Moves:
         prim_attr == CellAttrs.GUESS and is_playing and self.__one_guess_deeper()
         attr = self.__attributes(prim_attr)
         is_playing and self.__record(cell, value, attr)
-        cell.update(value, attr)
+        cell.set(value, attr)
 
     def is_empty(self) -> bool:
         return self.__history.is_empty()
@@ -59,7 +59,7 @@ class Moves:
         self.__is_guess(entry) and self.__one_guess_shallower()
         previous = entry.previous_valueinfo
         value, attr = (previous.value, self.__attributes(previous.prim_attr)) if previous else (None, ())
-        entry.cell.update(value, attr)
+        entry.cell.set(value, attr)
         return entry.cell
 
     def rewind(self) -> Cell:

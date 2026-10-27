@@ -34,11 +34,10 @@ class TestRectangularBlock(TestCase):
         self.block = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
         return super().setUp()
 
-    def test_block_can_render(self):
-        block1 = RectangularBlock(self.parent, 0, 0, self.BLOCK_ROWS, self.BLOCK_COLS)
-        block2 = RectangularBlock(self.parent, 0, 2, self.BLOCK_ROWS, self.BLOCK_COLS)
-        block1.render()
-        block2.render()
+    def test_cell_changes_are_passed_on_to_the_parent(self):
+        cell = self.block.cell(1, 7)
+        self.block.cell_changed(cell)
+        self.parent.cell_changed.assert_called_once_with(cell)
 
     def test_related_cells_are_the_other_cells_in_the_block_then_the_parents_row_and_col_cells(self):
         other_cell = self.__other_cell()
