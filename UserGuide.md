@@ -48,6 +48,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | `u` | Undo your last entry |
 | `r` | Rewind: undo everything entered after your most recent guess, keeping the guess (or undo everything, if there's no guess). Asks you to confirm, since it can't be undone. |
 | `n` | Next: show an obvious next move and why; press `n` again to fill it in (see below) |
+| `a` | Auto: fill in every obvious move, one after another (see below) |
 | `ESC` | Go back to setup mode (only once everything has been undone) |
 | `?` | Show all commands, including ones not listed on the status line |
 | `q` | Quit (asks you to confirm) |
@@ -80,6 +81,14 @@ It won't move if:
 - **An empty cell has no possible values left:** it moves the cursor there and suggests undoing (`u`) until that cell shows at least one possible value, because an earlier entry or guess must be wrong.
 - **There's no obvious move:** it tells you that you'll have to make a guess.
 
+## Auto: all the obvious moves
+
+Press `a` to fill in, without explanations, every move that `n` would find, one after another, until there are none left. The values are shown in steel blue, the cursor ends on the last one filled in, and the bottom line tells you why it stopped, for the same reasons as `n`. Each value is a separate entry, so `u` takes them back one at a time. To take them all back at once, enter a guess before pressing `a` and use `r`.
+
+## Finishing the puzzle
+
+When the last empty cell is filled in, the status line says, until your next key, that the puzzle is **solved** (in steel blue) or **complete, with errors** (in yellow) if any values clash. You can still type over values, or undo, to fix errors. If the clashing values are givens from the setup, and you haven't entered anything since, it tells you to press `ESC` to go back to setup mode and change them there. The status line reports again whenever that changes: once the errors are fixed, or when the puzzle is complete again after undo or rewind emptied a cell. `n` and `a` have nothing left to do, so they just remind you that the puzzle is solved, or that it's complete with errors and you should undo or change values to fix them.
+
 ## Colors at a glance
 
 | Looks like | Meaning |
@@ -87,15 +96,14 @@ It won't move if:
 | Purple on lavender | A given number from setup |
 | Orange | A value you entered |
 | Green on gray | A guess; gray backgrounds also mark values entered after a guess |
-| Steel blue | A value filled in by `n` |
+| Steel blue | A value filled in by `n` or `a`; "solved" on the status line |
 | Bold red on bright yellow | The value you just entered is already in the same row, column or box |
 | Usual color on yellow | Holds a value that a newer entry clashes with |
 | Yellow text on the status line | A warning. If it waits, press any key to continue. |
 
 ## Current limitations
 
-- **Auto (`a`)** is listed in the help but not available yet. Pressing it shows a "does not support" warning.
-- **Next (`n`)** knows only a few solving techniques so far, so on harder puzzles it will often tell you to make a guess.
+- **Next (`n`) and auto (`a`)** know only a few solving techniques so far, so on harder puzzles they will often tell you to make a guess.
 - There's no redo, and puzzles can't be saved.
 
 ## Troubleshooting

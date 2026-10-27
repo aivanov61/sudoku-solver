@@ -19,7 +19,7 @@ The code is also meant as an example of clean, object-oriented Python built with
 | Conflict marking | The cell just entered is marked `CONFLICTING` (bold red on bright yellow), and every related cell already holding the value is marked `CONFLICTED` (its usual color on yellow). Marks clear when the value is deleted, changed or undone, once no related cell still holds it. |
 | Rewind (`r`) | Working |
 | Next (`n`) | Working for the first rule: a cell with a single possible value (see 5.6) |
-| Auto (`a`) | **Not implemented.** The key is defined in `Commands`, but `Puzzle` has no `auto_` method, so `Main` shows "This puzzle does not support…". |
+| Auto (`a`) | Working: makes every move `n` would, one after another (see 5.6) |
 | Redo | Not implemented. |
 
 ## 3. Running and testing
@@ -153,8 +153,10 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 - **The solver** has `find_move()` (the first rule's move) and `make_move(move)` (fill in its value through the puzzle). The puzzle keeps a found move as its *pending move* between the two presses of `n`.
 - **Cancelling:** `Main` calls `puzzle.command_received(cmd)` before carrying out every command. Any command other than `n` drops the pending move, so the following `n` points out a move again instead of filling one in. Keys the program does not recognize are ignored as before and cancel nothing.
 - **The puzzle's interface for the solver:** `first_cell_where(condition)` returns the first cell, left to right and top to bottom, for which the condition holds (it asks every block's `cells_where()`, so only blocks look inside cells, as section 4.2 requires); `select(cell)` moves the cursor; `enter_solved_value(cell, value)` enters a value.
+- **Auto (`a`):** `auto_()` makes moves with `find_move()` and `make_move()` while they are `MOVED`, selecting each move's cell, without hints. It ends with the same warning `n` would give: the stopping rule's warning, or the one about making a guess. Each move is a separate `History` entry, so `u` takes them back one at a time.
+- **A complete puzzle:** in play mode, once `first_cell_where` finds no empty cell, `display_status()` reports that the puzzle is solved (steel blue), or complete with errors (yellow) if any cell is marked in conflict. The report replaces the status line until the next command, and comes back only when the completion changes (including back to unfinished, after undo or rewind empties a cell). With errors, the advice is to undo or change values, or, if `History` is empty (so the errors are among the givens), to use `ESC` and then change values. `n` and `a` then only warn that the puzzle is already complete; values can still be typed over. When `a` fills in the last cell it ends without a warning.
 - **Making the move:** a `SOLVED` value goes through the same path as a typed value, so it is recorded in `History` with `SOLVED` as its primary attribute. `u` and `r` treat it like any other non-guess entry, and undoing a change restores the steel blue. It also picks up the current guess shading.
-- **Adding a rule** means a new file in `rules/` and one line in `rules/order.py`; nothing else changes. Auto (`a`) will find and make moves one after another, without hints. Rules that need whole rows, columns or boxes (rather than single cells) will need a new solver interface, to be designed with the first such rule.
+- **Adding a rule** means a new file in `rules/` and one line in `rules/order.py`; nothing else changes. Rules that need whole rows, columns or boxes (rather than single cells) will need a new solver interface, to be designed with the first such rule.
 - **Rules and several layouts (planned, not built yet):** today every layout uses the shared list in `rules/order.py`. The intended direction:
   - **Shared rules stay shared** by working through units the layout supplies (the groups of cells that must each hold every value once: rows, columns and boxes, or a jigsaw's regions, an X-Sudoku's diagonals, and so on), the way `related_cells` already comes from the blocks.
   - **Layout-specific rules** (such as Killer Sudoku cage sums) live with their layout, for example in a `puzzles/<layout>/` package, rather than in the shared `rules/` folder.
@@ -165,7 +167,7 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 
 - **`Puzzle`** (`puzzle.py`) is an abstract base class (`abc.ABC`) holding everything that does not depend on the block layout. A layout subclass sets `NAME`, calls `super().__init__(v_cells, h_cells)`, builds its blocks, and implements the two `@abstractmethod` hooks `_blocks()` and `_block_at(row, col)`. Python refuses to create a layout that is missing a hook.
 - **`PuzzleCatalog.available()`** imports every module in `puzzles/` and returns a `PuzzleLayout` for each `Puzzle` subclass that has its own `NAME` (classes without one, such as shared base classes, are skipped), sorted by name. A new layout is just a new file there.
-- **Notes for the player:** a layout is *broken* if its file cannot be loaded or a hook is missing (the class is still abstract), and *not fully functional* if a command in `Commands` has no matching puzzle method (`#` maps to `value_`, every other command to its name plus `_`). `PuzzleLayout.label()` shows these after the name, e.g. "Standard 9x9 (not fully functional, missing: auto)". Detecting them never creates the puzzle, so it has no side effects.
+- **Notes for the player:** a layout is *broken* if its file cannot be loaded or a hook is missing (the class is still abstract), and *not fully functional* if a command in `Commands` has no matching puzzle method (`#` maps to `value_`, every other command to its name plus `_`). `PuzzleLayout.label()` shows these after the name, e.g. "Standard 9x9 (not fully functional, missing: next)". Detecting them never creates the puzzle, so it has no side effects.
 - **With one layout**, its note, if any, is shown under the splash screen; a broken layout then exits instead of starting.
 - **With several layouts**, `LayoutMenu` (`layout_menu.py`) lists them all with their notes after the splash. The player types a number and presses ENTER (Backspace corrects it); numbers stay the same on every page. At most 9 digits are kept, so the number always fits in a 32-bit integer; a further digit shows `...` after them and makes the entry too big (ENTER then says "Number too big"), and Backspace removes the `...` before any digit. As many layouts are shown as fit the terminal's height; when they don't all fit, (p)revious and (n)ext turn the page (doing nothing at either end). (q)uit is always offered and asks "Really quit? (y/n)" on the message line (only y confirms); p, n and q act on a single key, even with a number half typed. CTRL-C quits at once. Choosing a broken layout, or a number that isn't listed, shows a yellow message and keeps the menu open.
 
@@ -195,6 +197,5 @@ The full list is in `CLAUDE.md`. The main points:
 
 ## 8. Next steps
 
-1. **Auto:** add `auto_` to `Puzzle`, finding and making moves with `PuzzleSolver` while they are `MOVED`, without hints.
-2. **More rules for next:** for example, a value that fits only one cell in a row, column or box.
-3. **Redo**, if wanted.
+1. **More rules for next and auto:** for example, a value that fits only one cell in a row, column or box.
+2. **Redo**, if wanted.

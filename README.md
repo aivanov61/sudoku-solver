@@ -1,8 +1,8 @@
 # sudoku-solver
 
 Play sudoku puzzles in the terminal - written in python.  The program shows each
-cell's possible values and highlights conflicts as you play; auto-solving with
-hints is planned.
+cell's possible values and highlights conflicts as you play, and can point out
+obvious moves (n) or make them all at once (a).
 
 ## Requirements
 
@@ -87,8 +87,7 @@ them, get a gray background so you can see what depends on the guess.  Use "r"
 to rewind back to the most recent guess and try a different one.
 
 *[Not completed]*
-Auto-play (a) is listed in the help but not implemented yet, and next (n) knows
-only a few solving techniques so far.
+Next (n) and auto (a) know only a few solving techniques so far.
 
 See [UserGuide.md](UserGuide.md) for the full list of keys and colors.
 

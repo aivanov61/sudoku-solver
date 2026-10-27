@@ -70,6 +70,8 @@ class Puzzle(ABC):
         self._bg_level = 0
         self.__solver = PuzzleSolver(self)
         self.__pending_move = None  # a move shown as a hint by "n", made by the next "n"
+        self.__reported_completion = None  # the completion last reported on the status line
+        self.__unseen_completion = None  # a completion shown on the status line until the next command
 
     # Interface required for Main
 
@@ -80,14 +82,16 @@ class Puzzle(ABC):
         self.display_status()
 
     def display_status(self) -> None:
-        """Show the pending move's hint, if any, otherwise the command summary"""
+        """Show a newly changed completion, or the pending move's hint, if any, otherwise the command summary"""
         Display.move_to_status_line()
         pending = self.__pending_move
-        status = Display.styled(pending.hint, (DisplayAttrs.SOLVED,)) if pending else Commands.short_help()
+        hint = Display.styled(pending.hint, (DisplayAttrs.SOLVED,)) if pending else None
+        status = self.__completion_message() or hint or Commands.short_help()
         echo(status + Display.term.clear_eol)
 
     def command_received(self, cmd) -> None:
-        """Any command other than "n" cancels the move a previous "n" pointed out"""
+        """Any command ends the completion report; any command other than "n" cancels the move a previous "n" pointed out"""
+        self.__unseen_completion = None
         if cmd != "next_":
             self.__pending_move = None
 
@@ -163,10 +167,24 @@ class Puzzle(ABC):
 
     def next_(self) -> None:
         """Point out the next move and why; the next "n" makes it"""
-        if self.__pending_move:
+        if self.__is_complete():
+            self.__warn_already_complete()
+        elif self.__pending_move:
             self.__make_pending_move()
         else:
             self.__point_out_next_move()
+
+    def auto_(self) -> None:
+        """Make every obvious move, one after another, until the puzzle is complete, a guess is needed or something blocks solving"""
+        if self.__is_complete():
+            self.__warn_already_complete()
+            return
+        move = self.__solver.find_move()
+        while move and move.outcome is Outcome.MOVED:
+            self.select(move.cell)
+            self.__solver.make_move(move)
+            move = self.__solver.find_move()
+        self.__is_complete() or self.__warn_why_solving_stopped(move)
 
     # Interface required for the solver
 
@@ -193,6 +211,35 @@ class Puzzle(ABC):
         """Return the block that holds the cell at the given puzzle row and column"""
 
     # Private functions
+
+    def __completion_message(self) -> str:
+        """Report the puzzle's completion when it changes: solved in steel blue, or with errors in yellow"""
+        completion = self.__completion()
+        if completion != self.__reported_completion:
+            self.__reported_completion = completion
+            self.__unseen_completion = completion
+        return {
+            None: None,
+            "solved": Display.styled("The puzzle is solved. ", (DisplayAttrs.SOLVED,)),
+            "errors": Display.term.yellow(f"The puzzle is complete, with errors - {self.__how_to_fix_errors()}. "),
+        }[self.__unseen_completion]
+
+    def __completion(self) -> str:
+        """None until the puzzle is complete, then 'solved' or 'errors'"""
+        if not self.__is_complete():
+            return None
+        return "errors" if self.__has_errors() else "solved"
+
+    def __is_complete(self) -> bool:
+        """True while playing once every cell holds a value"""
+        return not self._initializing and self.first_cell_where(lambda cell: cell.value() is None) is None
+
+    def __has_errors(self) -> bool:
+        return self.first_cell_where(Cell.is_marked_in_conflict) is not None
+
+    def __how_to_fix_errors(self) -> str:
+        """Values entered while playing can be undone or changed; with none entered, the errors are in the setup"""
+        return "use ESC and then change values to fix them" if History.is_empty() else "undo or change values to fix them"
 
     def __increment_bg_level(self) -> None:
         self._bg_level += self.BG_LEVEL_DELTA
@@ -267,18 +314,31 @@ class Puzzle(ABC):
             self.__undo_history()
         History.is_empty() or self.select(History.last().cell)
 
+    def __warn_already_complete(self) -> None:
+        Display.warn(
+            f"The puzzle is already complete, with errors - {self.__how_to_fix_errors()}. "
+            if self.__has_errors()
+            else "The puzzle is already solved. ",
+            wait=True,
+        )
+
     def __make_pending_move(self) -> None:
         move, self.__pending_move = self.__pending_move, None
         self.__solver.make_move(move)
 
     def __point_out_next_move(self) -> None:
-        """Move to the next move's cell; show its hint (made by the next "n") or its warning"""
+        """Move to the next move's cell and show its hint (made by the next "n"), or warn why there is none"""
         move = self.__solver.find_move()
+        if move and move.outcome is Outcome.MOVED:
+            self.select(move.cell)
+            self.__pending_move = move
+        else:
+            self.__warn_why_solving_stopped(move)
+
+    def __warn_why_solving_stopped(self, move) -> None:
+        """Warn with a STOPPED move's hint, moving to its cell if it has one; with no move, a guess is needed"""
         if move is None:
             Display.warn("No obvious next move. You'll have to make a guess. ", wait=True)
             return
         move.cell is None or self.select(move.cell)
-        if move.outcome is Outcome.STOPPED:
-            Display.warn(move.hint, wait=True)
-        else:
-            self.__pending_move = move
+        Display.warn(move.hint, wait=True)

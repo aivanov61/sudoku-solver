@@ -336,6 +336,149 @@ class TestPuzzle3x3(TestCase):
             self.puzzle.next_()
         self.assertIn("No obvious next move. You'll have to make a guess.", warn.call_args.args[0])
 
+    def test_auto_makes_moves_until_none_is_obvious(self):
+        self.__fill_row(4, 0, range(1, 9))
+        self.__fill_row(2, 1, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"), patch("display.Display.warn") as warn:
+            self.puzzle.auto_()
+        self.assertEqual(self.__cell(2, 0).value(), 9)
+        self.assertEqual(self.__cell(4, 8).value(), 9)
+        self.assertEqual(self.__cell(4, 8).attr(), (DisplayAttrs.SOLVED,))
+        self.assertEqual(self.puzzle.selected_cell, (4, 8))
+        self.assertIn("No obvious next move. You'll have to make a guess.", warn.call_args.args[0])
+
+    def test_auto_moves_are_undone_one_at_a_time(self):
+        self.__fill_row(4, 0, range(1, 9))
+        self.__fill_row(2, 1, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"), patch("display.Display.warn"):
+            self.puzzle.auto_()
+            self.puzzle.undo_()
+        self.assertEqual(self.__cell(2, 0).value(), 9)
+        self.assertIsNone(self.__cell(4, 8).value())
+
+    def test_auto_stops_at_a_dead_end(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.__cell(5, 8).set(9)
+        self.puzzle.play_()
+        with patch("cell.Display"), patch("display.Display.warn") as warn:
+            self.puzzle.auto_()
+        self.assertIn("try undoing until this square shows at least one possible value", warn.call_args.args[0])
+        self.assertEqual(self.puzzle.selected_cell, (0, 8))
+
+    def test_auto_refuses_while_there_are_conflicts(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.__cell(4, 4).set(5)
+        self.__cell(4, 0).set(5)
+        self.puzzle.play_()
+        with patch("cell.Display"), patch("display.Display.warn") as warn:
+            self.puzzle.auto_()
+        self.assertIn("conflicts", warn.call_args.args[0])
+        self.assertIsNone(self.__cell(0, 8).value())
+
+    def test_auto_cancels_the_move_pointed_out_by_next(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"), patch("display.Display.warn"), patch("puzzle.echo") as echo:
+            self.puzzle.next_()
+            self.puzzle.command_received("auto_")
+            self.puzzle.auto_()
+            self.puzzle.display_status()
+        self.assertIn("HELP=", echo.call_args.args[0])
+
+    def test_status_reports_solved_instead_of_the_summary_once_the_last_value_is_entered(self):
+        self.__fill_solution(skip=(8, 8))
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.__enter(8, 8, self.__solution(8, 8))
+        status = self.__status()
+        self.assertIn("solved", status)
+        self.assertNotIn("HELP=", status)
+
+    def test_status_reports_completion_until_the_next_command(self):
+        self.__fill_solution(skip=(8, 8))
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.__enter(8, 8, self.__solution(8, 8))
+        self.assertIn("solved", self.__status())
+        self.puzzle.command_received("up_")
+        self.assertIn("HELP=", self.__status())
+
+    def test_status_reports_errors_when_complete_with_conflicts(self):
+        self.__fill_solution()
+        self.puzzle.play_()
+        self.puzzle.command_received("value_")
+        with patch("cell.Display"):
+            self.__enter(0, 0, self.__solution(0, 1))
+        self.assertIn("errors", self.__status())
+        self.assertEqual(self.__cell(0, 0).value(), self.__solution(0, 1))
+
+    def test_status_says_to_use_esc_when_the_errors_are_in_the_setup(self):
+        self.__fill_solution()
+        self.__cell(0, 0).set(self.__solution(0, 1))
+        self.puzzle.play_()
+        self.assertIn("use ESC and then change values to fix them", self.__status())
+
+    def test_next_says_to_use_esc_when_the_errors_are_in_the_setup(self):
+        self.__fill_solution()
+        self.__cell(0, 0).set(self.__solution(0, 1))
+        self.puzzle.play_()
+        with patch("display.Display.warn") as warn:
+            self.puzzle.next_()
+        self.assertIn("use ESC and then change values to fix them", warn.call_args.args[0])
+
+    def test_status_reports_solved_again_once_errors_are_fixed(self):
+        self.__fill_solution()
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.puzzle.command_received("value_")
+            self.__enter(0, 0, self.__solution(0, 1))
+            self.__status()
+            self.puzzle.command_received("value_")
+            self.__enter(0, 0, self.__solution(0, 0))
+        self.assertIn("solved", self.__status())
+
+    def test_status_reports_completion_again_after_undo_empties_a_cell(self):
+        self.__fill_solution(skip=(8, 8))
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.__enter(8, 8, self.__solution(8, 8))
+            self.__status()
+            self.puzzle.command_received("undo_")
+            self.puzzle.undo_()
+            self.assertIn("HELP=", self.__status())
+            self.puzzle.command_received("value_")
+            self.__enter(8, 8, self.__solution(8, 8))
+        self.assertIn("solved", self.__status())
+
+    def test_status_reports_no_completion_while_initializing(self):
+        self.__fill_solution()
+        self.assertIn("HELP=", self.__status())
+
+    def test_next_on_a_solved_puzzle_warns_it_is_already_solved(self):
+        self.__fill_solution()
+        self.puzzle.play_()
+        with patch("display.Display.warn") as warn:
+            self.puzzle.next_()
+        self.assertIn("already solved", warn.call_args.args[0])
+
+    def test_auto_on_a_complete_puzzle_with_errors_says_to_undo_or_change_values(self):
+        self.__fill_solution()
+        self.puzzle.play_()
+        with patch("cell.Display"), patch("display.Display.warn") as warn:
+            self.__enter(0, 0, self.__solution(0, 1))
+            self.puzzle.auto_()
+        self.assertIn("undo or change values", warn.call_args.args[0])
+
+    def test_auto_filling_the_last_cell_ends_without_a_warning(self):
+        self.__fill_solution(skip=(8, 8))
+        self.puzzle.play_()
+        with patch("cell.Display"), patch("display.Display.warn") as warn:
+            self.puzzle.auto_()
+        self.assertEqual(self.__cell(8, 8).value(), self.__solution(8, 8))
+        warn.assert_not_called()
+
     def test_cell_already_holding_the_value_is_marked_conflicted(self):
         self.__cell(4, 4).set(5)
         self.__cell(4, 0).set(5)
@@ -436,6 +579,12 @@ class TestPuzzle3x3(TestCase):
         self.puzzle.selected_cell = (row, col)
         self.puzzle.value_(value, guess)
 
+    def __status(self) -> str:
+        """Show the status line and return what it shows"""
+        with patch("puzzle.echo") as echo:
+            self.puzzle.display_status()
+        return echo.call_args.args[0]
+
     def __rewind(self):
         with patch("display.Display.confirm", return_value=True):
             self.puzzle.rewind_()
@@ -443,6 +592,15 @@ class TestPuzzle3x3(TestCase):
     def __fill_row(self, row, start_col, values):
         for col, value in enumerate(values, start_col):
             self.__cell(row, col).set(value)
+
+    def __fill_solution(self, skip=None):
+        """Fill every cell, except the skipped (row, col), with a valid solution"""
+        for row in range(self.SIZE):
+            for col in range(self.SIZE):
+                (row, col) == skip or self.__cell(row, col).set(self.__solution(row, col))
+
+    def __solution(self, row, col) -> int:
+        return (row * 3 + row // 3 + col) % self.SIZE + 1
 
 
 if __name__ == "__main__":
