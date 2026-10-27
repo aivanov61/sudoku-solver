@@ -100,7 +100,7 @@ Every cell stores its **puzzle-wide** `row` and `col` (0–8), set by `Rectangul
 
 - `Commands.CMDS` maps command names to their keys and help text. It is swapped between `COMMON_CMDS + INIT_COMMANDS` and `COMMON_CMDS + PLAY_COMMANDS` when the mode changes.
 - `Input.get_cmd()` reads a key. Digits and shifted digits are returned as the character itself. Other keys become the command name plus `_` (for example `up_`), so they can't clash with Python reserved words. Unknown keys are ignored. `q` gives `quit_`, which asks for confirmation. CTRL-C or any input error gives `force_quit_`, which stops at once without asking.
-- Before carrying out any command, `Main` calls `puzzle.command_received(cmd)`, so the puzzle can react to commands in general (today: any command but `n` cancels a pending `n` move).
+- Before carrying out any command, `Main` calls `puzzle.command_received(cmd)`, so the puzzle can react to commands in general (today: any command ends a notice and the completion report, and any command but `n` cancels a pending `n` move).
 - `Main` sends values to `puzzle.value_(value, guess)`. For anything else, it calls the puzzle method of that name with `getattr`. A missing method gives "This puzzle does not support the "…" command". A method that raises an exception gives "This puzzle's "…" command is broken!". If the failing command was `quit_` or `force_quit_`, `Main` forces the program to quit.
 
 ### 5.3 Entering a value
@@ -108,7 +108,7 @@ Every cell stores its **puzzle-wide** `row` and `col` (0–8), set by `Rectangul
 ```
 Puzzle.value_(val, guess)
   ├─ refuse to change an INITIAL cell in play mode (warning)
-  └─ Moves.enter(cell, val, GUESS or None)
+  ├─ Moves.enter(cell, val, GUESS or None)
        ├─ guess (in play mode) → raise the gray level
        ├─ attributes           → INITIAL (init mode) or the primary attribute, plus the gray level if any
        ├─ play mode            → History.add(Entry(cell, new value, previous value))
@@ -126,6 +126,8 @@ Puzzle.value_(val, guess)
                       │    └─ new value → cell.mark_conflicted(...)           is marked CONFLICTED if it holds it
                       ├─ new value → the cell clears its own possible values
                       └─ no value  → the cell adds back every value no related cell holds
+  └─ __found_dead_end()   the first empty cell with no possible values, if any: select it and set the notice
+                          (DeadEndRule.WARNING in play mode, the setup warning in init mode)
 ```
 
 - A cell redraws its possible values only when they actually change.
@@ -135,7 +137,7 @@ Puzzle.value_(val, guess)
 
 ### 5.4 Modes
 
-- **Initialization mode** (the start mode): values get `INITIAL` and are not recorded in `History`. `Delete` clears a cell. `u`, `r`, `a` and `n` are hidden setup commands: they are left out of the panel, marked `[hidden]` in the help, and only warn "This works only while playing - ESC starts playing." `ESC` calls `play_()`, which is refused while any cell is marked in conflict ("Resolve the conflicts before playing.") or while an empty cell has no possible values (it selects that cell and warns "This square has no possible values left - change the setup before playing."), so play never starts from a broken setup.
+- **Initialization mode** (the start mode): values get `INITIAL` and are not recorded in `History`. `Delete` clears a cell. `u`, `r`, `a` and `n` are hidden setup commands: they are left out of the panel, marked `[hidden]` in the help, and only warn "This works only while playing - ESC starts playing." `ESC` calls `play_()`, which is refused while any cell is marked in conflict ("Resolve the conflicts before playing.") or while an empty cell has no possible values (it selects that cell and shows "This square has no possible values left - change the setup before playing." as a notice, the same check and warning that follow every value entered in setup and restoring a game saved in setup), so play never starts from a broken setup.
 - **Play mode:** values are recorded in `History`. `ESC` calls `init_()`, which is refused while there is anything to undo ("Cannot initialize puzzle while playing - undo everything first."). `Delete` is mapped to `del_()` only to show a warning.
 
 ### 5.5 Undo and guess shading
@@ -163,6 +165,7 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 - **Cancelling:** `Main` calls `puzzle.command_received(cmd)` before carrying out every command. Any command other than `n` drops the pending move (`PuzzleSolver.cancel_pending_move()`), so the following `n` points out a move again instead of filling one in. Keys the program does not recognize are ignored as before and cancel nothing.
 - **The puzzle's interface for the solver:** `first_cell_where(condition)` returns the first cell, left to right and top to bottom, for which the condition holds (it asks every block's `cells_where()`, so only blocks look inside cells, as section 4.2 requires); `select(cell)` moves the cursor; `enter_solved_value(cell, value)` enters a value; `is_complete()` tells `auto()` not to warn once it has filled in the last cell. The other helpers use the same section of the puzzle (`Interface required for the solver and the other helpers`): `is_initializing()`, `has_conflicts()`, `has_values()`, `saved_state()` and `restore(saved)`.
 - **Auto (`a`):** `PuzzleSolver.auto()` makes moves with `find_move()` and `make_move()` while they are `MOVED`, selecting each move's cell, without hints. It ends with the same warning `n` would give: the stopping rule's warning, or the one about making a guess. Each move is a separate `History` entry, so `u` takes them back one at a time.
+- **Notices:** a dead-end warning does not wait for a key. The puzzle keeps it as a notice, which `display_status()` shows in yellow, ahead of the completion report and the `n` hint, until `command_received()` clears it at the next command. (A `Display.warn()` that does not wait would be overwritten at once, because `Main` redraws the status line after every command.)
 - **A complete puzzle:** in play mode, once `first_cell_where` finds no empty cell, `CompletionReport` (`completion_report.py`) gives `display_status()` the message that the puzzle is solved (steel blue), or complete with errors (yellow) if any cell is marked in conflict. The report replaces the status line until the next command, and comes back only when the completion changes (including back to unfinished, after undo or rewind empties a cell). With errors, the advice is to undo or change values. `n` and `a` then only warn that the puzzle is already complete; values can still be typed over. When `a` fills in the last cell it ends without a warning.
 - **Making the move:** a `SOLVED` value goes through the same path as a typed value, so it is recorded in `History` with `SOLVED` as its primary attribute. `u` and `r` treat it like any other non-guess entry, and undoing a change restores the steel blue. It also picks up the current guess shading.
 - **Adding a rule** means a new file in `rules/` and one line in `rules/order.py`; nothing else changes. Rules that need whole rows, columns or boxes (rather than single cells) will need a new solver interface, to be designed with the first such rule.
@@ -187,7 +190,7 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 - **Changing the format:** raise `VERSION` and add an entry to `SaveFile.UPGRADES` that converts the previous version's `state` dictionary to the new one. Reading applies the upgrades one version at a time, so files from any older version still load.
 - **Where files go:** `SaveFile.located(name)` puts a name without a folder in `SaveFile.FOLDER` (`saved_games`, relative to where the program runs); a name with any folder, even `.`, is used as given. `SaveFile.write()` creates `saved_games` when it is missing, but no other folder. `GameFile` remembers the name as typed and shows the located path in its messages. `saved_games/` is in `.gitignore`.
 - **Save (`s`)** warns "Nothing to save - the board is empty." if no cell has a value; otherwise it asks for a file name with `Display.ask()` on the status line, offering the last name saved or restored (`GameFile.DEFAULT_FILE_NAME` at first), and confirms before replacing an existing file. The puzzle's `saved_state()` builds the `SavedPuzzle`; givens are the cells whose attributes include `INITIAL`.
-- **Restore (`o`)** reads the file first, so a bad file or one from another layout only warns and changes nothing. If the board has any values, it then confirms. `GameFile.restore()` hands the `SavedPuzzle` to the puzzle's `restore(saved)`, which empties every cell, clears the moves, enters the givens in setup mode, switches to the saved mode, and replays the moves through `Moves.enter()`, the same path as typed and solved values. Undo, rewind and guess shading then work as if the moves had just been made.
+- **Restore (`o`)** reads the file first, so a bad file or one from another layout only warns and changes nothing. If the board has any values, it then confirms. `GameFile.restore()` hands the `SavedPuzzle` to the puzzle's `restore(saved)`, which empties every cell, clears the moves, enters the givens in setup mode, switches to the saved mode, and replays the moves through `Moves.enter()`, the same path as typed and solved values. Undo, rewind and guess shading then work as if the moves had just been made. After redrawing, it points out any dead end the same way as after a typed value (selecting the first one and showing a notice).
 
 ## 6. Display
 

@@ -26,9 +26,10 @@ from rules.rule import Move, Outcome, Rule
 class DeadEndRule(Rule):
     """Solving cannot go on when an empty cell has no possible value left"""
 
+    WARNING = "Dead end - try undoing until this square shows at least one possible value. "
+
     def find(self, puzzle) -> Move:
         cell = puzzle.first_cell_where(Cell.is_dead_end)
         if cell is None:
             return None
-        warning = "Dead end - try undoing until this square shows at least one possible value. "
-        return Move(Outcome.STOPPED, warning, cell)
+        return Move(Outcome.STOPPED, self.WARNING, cell)

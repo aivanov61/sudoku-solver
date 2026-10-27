@@ -62,6 +62,10 @@ When the program asks you to confirm, press `y` to go ahead. Any other key cance
 
 You can't change the puzzle's given numbers during play. To fix a typo in the setup, undo all your moves, press `ESC` to go back to setup mode, correct it and press `ESC` again.
 
+## Dead ends
+
+A dead end is an empty cell with no possible values left. Whenever you enter a value, in either mode, or restore a saved puzzle, and the board has a dead end, the cursor moves to the first one and the bottom line warns you until your next key, without stopping you. During play it suggests undoing (`u`) until that cell shows at least one possible value; during setup it asks you to change the setup. The warning comes after every value you enter until the dead end is gone.
+
 ## Guesses
 
 When you're stuck and need to try a value, enter it as a guess with a shifted digit. Guesses are shown in green on a gray background.

@@ -206,9 +206,52 @@ class TestPuzzle3x3(TestCase):
         self.__cell(5, 8).set(9)
         with patch("display.Display.warn") as warn:
             self.puzzle.play_()
-        self.assertIn("no possible values left", warn.call_args.args[0])
+        warn.assert_not_called()
+        self.assertIn("no possible values left", self.__status())
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
         self.assertTrue(self.puzzle._initializing)
+
+    def test_entering_a_value_that_leaves_a_dead_end_shows_it_without_waiting_and_moves_to_it(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"), patch("display.Display.warn") as warn:
+            self.__enter(5, 8, 9)
+        warn.assert_not_called()
+        self.assertIn("try undoing until this square shows at least one possible value", self.__status())
+        self.assertEqual(self.puzzle.selected_cell, (0, 8))
+
+    def test_dead_end_status_lasts_until_the_next_command(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.__enter(5, 8, 9)
+        self.assertIn("try undoing until this square shows at least one possible value", self.__status())
+        self.puzzle.command_received("left_")
+        self.assertNotIn("try undoing until this square shows at least one possible value", self.__status())
+
+    def test_entering_any_value_while_a_dead_end_remains_shows_it_again(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.__enter(5, 8, 9)
+            self.puzzle.command_received("value_")
+            self.__enter(7, 3, 1)
+        self.assertIn("try undoing until this square shows at least one possible value", self.__status())
+        self.assertEqual(self.puzzle.selected_cell, (0, 8))
+
+    def test_entering_a_value_that_leaves_a_dead_end_in_setup_says_to_change_the_setup(self):
+        self.__fill_row(0, 0, range(1, 9))
+        with patch("cell.Display"):
+            self.__enter(5, 8, 9)
+        self.assertIn("change the setup before playing", self.__status())
+        self.assertEqual(self.puzzle.selected_cell, (0, 8))
+
+    def test_entering_a_value_without_a_dead_end_shows_no_dead_end(self):
+        self.puzzle.play_()
+        with patch("cell.Display"):
+            self.__enter(4, 4, 5)
+        self.assertNotIn("try undoing until this square shows at least one possible value", self.__status())
+        self.assertEqual(self.puzzle.selected_cell, (4, 4))
 
     def test_play_commands_are_refused_in_setup_mode(self):
         self.__fill_row(0, 0, range(1, 9))
@@ -525,6 +568,25 @@ class TestPuzzle3x3(TestCase):
         self.assertTrue(restored._initializing)
         self.assertEqual(self.__cell_of(restored, 0, 0).attr(), (DisplayAttrs.INITIAL,))
 
+    def test_restoring_a_dead_end_shows_it_and_moves_to_it(self):
+        with patch("cell.Display"):
+            self.__enter_row(0, 0, range(1, 9))
+            self.puzzle.play_()
+            self.__enter(5, 8, 9)
+            self.puzzle.selected_cell = (4, 4)
+        restored = self.__restored_puzzle()
+        self.assertIn("try undoing until this square shows at least one possible value", self.__status_of(restored))
+        self.assertEqual(restored.selected_cell, (0, 8))
+
+    def test_restoring_a_dead_end_in_setup_says_to_change_the_setup(self):
+        with patch("cell.Display"):
+            self.__enter_row(0, 0, range(1, 9))
+            self.__enter(5, 8, 9)
+            self.puzzle.selected_cell = (4, 4)
+        restored = self.__restored_puzzle()
+        self.assertIn("change the setup before playing", self.__status_of(restored))
+        self.assertEqual(restored.selected_cell, (0, 8))
+
     def test_cell_already_holding_the_value_is_marked_conflicted(self):
         self.__cell(4, 4).set(5)
         self.__cell(4, 0).set(5)
@@ -627,8 +689,11 @@ class TestPuzzle3x3(TestCase):
 
     def __status(self) -> str:
         """Show the status line and return what it shows"""
+        return self.__status_of(self.puzzle)
+
+    def __status_of(self, puzzle) -> str:
         with patch("puzzle.echo") as echo:
-            self.puzzle.display_status()
+            puzzle.display_status()
         return echo.call_args.args[0]
 
     def __play_a_few_moves(self):
@@ -660,6 +725,11 @@ class TestPuzzle3x3(TestCase):
     def __fill_row(self, row, start_col, values):
         for col, value in enumerate(values, start_col):
             self.__cell(row, col).set(value)
+
+    def __enter_row(self, row, start_col, values):
+        """Like __fill_row, but entered by the player, so the values are saved"""
+        for col, value in enumerate(values, start_col):
+            self.__enter(row, col, value)
 
     def __fill_solution(self, skip=None):
         """Fill every cell, except the skipped (row, col), with a valid solution"""

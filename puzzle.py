@@ -27,6 +27,7 @@ from display_attrs import DisplayAttrs
 from game_file import GameFile
 from moves import Moves
 from puzzle_solver import PuzzleSolver
+from rules.dead_end_rule import DeadEndRule
 from save_file import SavedPuzzle
 
 
@@ -64,6 +65,7 @@ class Puzzle:
         Display.validate_screen_size()
 
         self._initializing = True
+        self.__notice = None  # a warning shown on the status line until the next command
         self.__board = board
         self.__moves = Moves(self)
         self.__solver = PuzzleSolver(self)
@@ -79,14 +81,15 @@ class Puzzle:
         self.display_status()
 
     def display_status(self) -> None:
-        """Show a newly changed completion, or why the move "n" pointed out is right, if any; otherwise leave it blank"""
+        """Show a notice, a newly changed completion, or why the move "n" pointed out is right, if any; otherwise leave it blank"""
         Display.move_to_status_line()
         hint = self.__solver.pending_hint()
-        status = self.__report.message() or (Display.styled(hint, (DisplayAttrs.SOLVED,)) if hint else "")
+        status = self.__notice or self.__report.message() or (Display.styled(hint, (DisplayAttrs.SOLVED,)) if hint else "")
         echo(status + Display.term.clear_eol)
 
     def command_received(self, cmd) -> None:
-        """Any command ends the completion report; any command other than "n" cancels the move a previous "n" pointed out"""
+        """Any command ends the notice and the completion report; any command other than "n" cancels the move a previous "n" pointed out"""
+        self.__notice = None
         self.__report.seen()
         cmd == "next_" or self.__solver.cancel_pending_move()
 
@@ -105,12 +108,13 @@ class Puzzle:
         self.render()
 
     def value_(self, val, guess=False) -> None:
+        """Enter the value in the selected cell, then point out any dead end"""
         cell = self.__selected_cell()
-        (
+        if not self._initializing and DisplayAttrs.INITIAL in cell.attr():
             Display.warn("Cannot change an initial value while playing. ", wait=True)
-            if not self._initializing and DisplayAttrs.INITIAL in cell.attr()
-            else self.__moves.enter(cell, val, DisplayAttrs.GUESS if guess else None)
-        )
+            return
+        self.__moves.enter(cell, val, DisplayAttrs.GUESS if guess else None)
+        self.__found_dead_end()
 
     def up_(self) -> None:
         self.__move(-1, 0)
@@ -198,7 +202,7 @@ class Puzzle:
         return SavedPuzzle(board.NAME, self._initializing, self.selected_cell, board.givens(), self.__moves.recorded())
 
     def restore(self, saved) -> None:
-        """Empty the board, enter the givens in setup mode, then replay the moves in the saved mode"""
+        """Empty the board, enter the givens in setup mode, replay the moves in the saved mode, then point out any dead end"""
         self.__clear_board()
         for row, col, value in saved.givens:
             self.__moves.enter(self.__board.cell(row, col), value)
@@ -207,6 +211,7 @@ class Puzzle:
             self.__moves.enter(self.__board.cell(row, col), value, prim_attr)
         self.selected_cell = saved.selected_cell
         self.render()
+        self.__found_dead_end()
 
     # Private functions
 
@@ -215,6 +220,19 @@ class Puzzle:
 
     def __selected_cell(self) -> Cell:
         return self.__board.cell(*self.selected_cell)
+
+    def __found_dead_end(self) -> bool:
+        """Point out the first dead end, if any, moving to it without waiting; return whether there was one"""
+        dead_end = self.__board.first_dead_end()
+        if dead_end is None:
+            return False
+        self.select(dead_end)
+        self.__notice = Display.term.yellow(
+            "This square has no possible values left - change the setup before playing. "
+            if self._initializing
+            else DeadEndRule.WARNING
+        )
+        return True
 
     def __move(self, d_row, d_col) -> None:
         """Move the selected cell, stopping at the edges of the board"""
@@ -228,12 +246,7 @@ class Puzzle:
         if self.__board.has_conflicts():
             Display.warn("Resolve the conflicts before playing. ", wait=True)
             return True
-        dead_end = self.__board.first_dead_end()
-        if dead_end is None:
-            return False
-        self.select(dead_end)
-        Display.warn("This square has no possible values left - change the setup before playing. ", wait=True)
-        return True
+        return self.__found_dead_end()
 
     def __switch_mode(self, initializing) -> None:
         self.__use_mode(initializing)
