@@ -24,10 +24,10 @@ from game.actions import Action, Mode, OFFERED_ACTIONS
 
 
 class TestActions(TestCase):
-    def test_both_modes_offer_values_moves_configure_save_open_and_quit(self):
+    def test_both_modes_offer_values_moves_tag_configure_save_open_and_quit(self):
         shared = (
-            Action.VALUE, Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT, Action.CONFIGURE, Action.SAVE, Action.OPEN,
-            Action.QUIT,
+            Action.VALUE, Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT, Action.TAG, Action.CONFIGURE, Action.SAVE,
+            Action.OPEN, Action.QUIT,
         )
         for mode in Mode:
             for action in shared:

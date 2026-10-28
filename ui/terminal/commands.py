@@ -137,6 +137,13 @@ class Commands:
             "long": 'Use "n" to auto-play the next "must be" cell value',
         },
         {
+            "command": Action.TAG,
+            "keys": "mM",
+            "label": "m",
+            "name": "tag",
+            "long": 'Use "m" to tag (mark) a cell, or untag it - while empty, it shows its small digits in steel blue',
+        },
+        {
             "command": Action.CONFIGURE,
             "keys": "cC",
             "label": "c",

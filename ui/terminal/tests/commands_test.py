@@ -36,7 +36,7 @@ class TestCommands(TestCase):
             [
                 ("ESC", "SETUP"), ("?", "help"), ("1-9", "value"), ("shift 1-9", "guess"),
                 ("k ↑", "up"), ("j ↓", "down"), ("h ←", "left"), ("l →", "right"),
-                ("u", "undo"), ("r", "rewind"), ("a", "auto"), ("n", "next"), ("c", "config"),
+                ("u", "undo"), ("r", "rewind"), ("a", "auto"), ("n", "next"), ("m", "tag"), ("c", "config"),
                 ("s", "save"), ("o", "open"), ("q CTRL-C", "quit"),
             ],
         )
@@ -47,7 +47,7 @@ class TestCommands(TestCase):
             [
                 ("ESC", "PLAY"), ("?", "help"), ("1-9", "value"),
                 ("k ↑", "up"), ("j ↓", "down"), ("h ←", "left"), ("l →", "right"),
-                ("Del", "clear"), ("c", "config"), ("s", "save"), ("o", "open"), ("q CTRL-C", "quit"),
+                ("Del", "clear"), ("m", "tag"), ("c", "config"), ("s", "save"), ("o", "open"), ("q CTRL-C", "quit"),
             ],
         )
 

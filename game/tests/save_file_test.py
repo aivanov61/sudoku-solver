@@ -36,6 +36,7 @@ class TestSaveFile(TestCase):
         initializing=False,
         settings=Settings({MarksSetting.NAME: MarksSetting(3, MarksSetting.EVERY_HOUSE)}),
         selected_cell=(4, 7),
+        tags=[(1, 2), (6, 0)],
         givens=[(0, 0, 5), (8, 8, 1)],
         moves=[(0, 1, 3, None), (2, 2, 7, "guess"), (3, 3, 9, "solved")],
     )
@@ -72,6 +73,13 @@ class TestSaveFile(TestCase):
         SaveFile.write(self.path, self.SAVED)
         marks = {"threshold": 3, "kinds": ["box", "row", "column"]}
         self.assertEqual(self.__json()["state"]["settings"], {"marks": marks})
+
+    def test_a_file_saved_without_tags_is_read_with_none(self):
+        SaveFile.write(self.path, self.SAVED)
+        data = self.__json()
+        del data["state"]["tags"]
+        self.__write_json(data)
+        self.assertEqual(SaveFile.read(self.path).tags, [])
 
     def test_a_file_saved_without_settings_is_read_with_the_default_settings(self):
         SaveFile.write(self.path, self.SAVED)

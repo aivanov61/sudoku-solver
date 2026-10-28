@@ -110,14 +110,18 @@ class TerminalUI:
         self.__draw_panel()
 
     def cell_changed(self, cell) -> None:
-        """Redraw only what differs from what was last drawn: the whole cell when its attributes changed"""
-        attrs, value, possible_values, marks = self.__drawn.get((cell.row, cell.col), (None, None, None, None))
+        """
+        Redraw only what differs from what was last drawn: the whole cell when its attributes changed, and the
+        small digits (marks and possible values) when its tag changed
+        """
+        attrs, value, possible_values, marks, tagged = self.__drawn.get((cell.row, cell.col), (None,) * 5)
         if attrs != cell.attr():
             self.__draw_whole_cell(cell)
             return
-        if value != cell.value() or marks != cell.marks():
+        is_retagged = tagged != cell.is_tagged()
+        if is_retagged or value != cell.value() or marks != cell.marks():
             self.__draw_middle(cell)
-        if possible_values != cell.possible_values():
+        if is_retagged or possible_values != cell.possible_values():
             self.__draw_possible_values(cell)
         self.__remember(cell)
 
@@ -211,13 +215,15 @@ class TerminalUI:
 
     def __draw_middle(self, cell) -> None:
         """Draw the middle line: the marks (none on a filled cell), then the value on top of them, if any"""
-        self.__display.draw_cell_marks(cell.row, cell.col, cell.marks(), cell.attr())
+        self.__display.draw_cell_marks(cell.row, cell.col, cell.marks(), cell.attr(), cell.is_tagged())
         if cell.value():
             self.__display.draw_cell_value(cell.row, cell.col, cell.value(), cell.attr())
 
     def __draw_possible_values(self, cell) -> None:
-        self.__display.draw_cell_possible_values(cell.row, cell.col, cell.possible_values(), cell.attr())
+        display = self.__display
+        display.draw_cell_possible_values(cell.row, cell.col, cell.possible_values(), cell.attr(), cell.is_tagged())
 
     def __remember(self, cell) -> None:
         """Keep what the cell looks like now, copying its possible values, which change in place"""
-        self.__drawn[(cell.row, cell.col)] = (cell.attr(), cell.value(), set(cell.possible_values()), cell.marks())
+        drawn = (cell.attr(), cell.value(), set(cell.possible_values()), cell.marks(), cell.is_tagged())
+        self.__drawn[(cell.row, cell.col)] = drawn

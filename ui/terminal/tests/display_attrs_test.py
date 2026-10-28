@@ -76,6 +76,14 @@ class TestDisplayRenderAttrs(TestCase):
         out = DisplayAttrs.render((CellAttrs.GUESS, dict(depth=12)))
         self.assertEqual(out, "green_on_gray100")
 
+    def test_small_digits_of_an_untagged_cell_render_only_the_background(self):
+        self.assertEqual(DisplayAttrs.render_small_digits((), False), "normal")
+        self.assertEqual(DisplayAttrs.render_small_digits((dict(depth=2),), False), "on_gray20")
+
+    def test_small_digits_of_a_tagged_cell_render_in_the_tag_color(self):
+        self.assertEqual(DisplayAttrs.render_small_digits((), True), "steelblue")
+        self.assertEqual(DisplayAttrs.render_small_digits((dict(depth=2),), True), "steelblue_on_gray20")
+
     def test_only_a_depth_beyond_the_last_shade_runs_out_of_shades(self):
         self.assertFalse(DisplayAttrs.is_beyond_last_shade(0))
         self.assertFalse(DisplayAttrs.is_beyond_last_shade(10))

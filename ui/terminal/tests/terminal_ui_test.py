@@ -154,7 +154,7 @@ class TestTerminalUI(TestCase):
     def test_the_next_status_draws_the_cell_as_it_is_again(self):
         self.__status(Message("stuck", MessageKind.WARNING, (self.__cell(2, 5, attrs=("a",), marks=(4,)), 4)))
         self.__status(None)
-        self.display.draw_cell_marks.assert_called_once_with(2, 5, (4,), ("a",))
+        self.display.draw_cell_marks.assert_called_once_with(2, 5, (4,), ("a",), False)
         self.display.draw_cell_value.assert_not_called()
 
     def test_a_status_without_a_missing_value_draws_no_cell(self):
@@ -193,7 +193,7 @@ class TestTerminalUI(TestCase):
         self.display.clear_screen.assert_called_once()
         self.assertEqual(self.display.draw_cell.call_count, 2)
         self.display.draw_cell_value.assert_any_call(0, 0, 5, ())
-        self.display.draw_cell_possible_values.assert_any_call(0, 1, {1, 2}, ())
+        self.display.draw_cell_possible_values.assert_any_call(0, 1, {1, 2}, (), False)
 
     def test_a_new_mode_draws_its_panel(self):
         self.ui.mode_changed(Mode.PLAY, OFFERED_ACTIONS[Mode.PLAY])
@@ -220,33 +220,44 @@ class TestTerminalUI(TestCase):
 
     def test_a_whole_empty_cell_is_drawn_with_its_marks(self):
         display = self.__drawn_after_change(None, self.__cell(2, 3, marks=(5, 8)))
-        display.draw_cell_marks.assert_called_once_with(2, 3, (5, 8), ())
+        display.draw_cell_marks.assert_called_once_with(2, 3, (5, 8), (), False)
         display.draw_cell_value.assert_not_called()
+
+    def test_a_tagged_cell_draws_its_marks_and_possible_values_as_tagged(self):
+        display = self.__drawn_after_change(None, self.__cell(2, 3, possible={1, 5}, marks=(5,), tagged=True))
+        display.draw_cell_marks.assert_called_once_with(2, 3, (5,), (), True)
+        display.draw_cell_possible_values.assert_called_once_with(2, 3, {1, 5}, (), True)
+
+    def test_a_changed_tag_redraws_the_marks_and_possible_values(self):
+        display = self.__drawn_after_change(self.__cell(possible={1}), self.__cell(possible={1}, tagged=True))
+        display.draw_cell.assert_not_called()
+        display.draw_cell_marks.assert_called_once_with(0, 0, (), (), True)
+        display.draw_cell_possible_values.assert_called_once_with(0, 0, {1}, (), True)
 
     def test_a_changed_value_redraws_only_the_middle_line_blank_with_the_value_on_it(self):
         display = self.__drawn_after_change(self.__cell(value=4), self.__cell(value=6))
         display.draw_cell.assert_not_called()
         self.assertEqual(
-            display.method_calls, [call.draw_cell_marks(0, 0, (), ()), call.draw_cell_value(0, 0, 6, ())]
+            display.method_calls, [call.draw_cell_marks(0, 0, (), (), False), call.draw_cell_value(0, 0, 6, ())]
         )
         display.draw_cell_possible_values.assert_not_called()
 
     def test_an_emptied_cell_shows_its_marks_and_no_value(self):
         display = self.__drawn_after_change(self.__cell(value=4), self.__cell(value=None, marks=(4,)))
-        display.draw_cell_marks.assert_called_once_with(0, 0, (4,), ())
+        display.draw_cell_marks.assert_called_once_with(0, 0, (4,), (), False)
         display.draw_cell_value.assert_not_called()
 
     def test_changed_marks_redraw_only_the_middle_line(self):
         display = self.__drawn_after_change(self.__cell(marks=(4,)), self.__cell(marks=(4, 7)))
         display.draw_cell.assert_not_called()
-        display.draw_cell_marks.assert_called_once_with(0, 0, (4, 7), ())
+        display.draw_cell_marks.assert_called_once_with(0, 0, (4, 7), (), False)
         display.draw_cell_possible_values.assert_not_called()
 
     def test_changed_possible_values_redraw_only_the_possible_values(self):
         display = self.__drawn_after_change(self.__cell(possible={1, 2}), self.__cell(possible={2}))
         display.draw_cell.assert_not_called()
         display.draw_cell_marks.assert_not_called()
-        display.draw_cell_possible_values.assert_called_once_with(0, 0, {2}, ())
+        display.draw_cell_possible_values.assert_called_once_with(0, 0, {2}, (), False)
 
     def test_an_unchanged_cell_is_not_redrawn(self):
         display = self.__drawn_after_change(self.__cell(value=4), self.__cell(value=4))
@@ -318,13 +329,14 @@ class TestTerminalUI(TestCase):
                 self.ui.play(game)
         return printed, record
 
-    def __cell(self, row=0, col=0, value=None, attrs=(), possible=frozenset(), marks=()):
+    def __cell(self, row=0, col=0, value=None, attrs=(), possible=frozenset(), marks=(), tagged=False):
         """A stand-in for a cell as it is at one moment"""
         cell = MagicMock(row=row, col=col)
         cell.value.return_value = value
         cell.attr.return_value = attrs
         cell.possible_values.return_value = set(possible)
         cell.marks.return_value = tuple(marks)
+        cell.is_tagged.return_value = tagged
         return cell
 
     def __drawn_after_change(self, before, after):

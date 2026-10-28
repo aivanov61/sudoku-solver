@@ -276,6 +276,28 @@ class TestCell(TestCase):
         self.__house(House.BOX, all_but={4})
         self.assertIsNone(self.cell.unplaceable_value())
 
+    # Tags
+
+    def test_cell_is_not_tagged_at_first(self):
+        self.assertFalse(self.cell.is_tagged())
+
+    def test_cell_tag_can_be_set_and_cleared(self):
+        self.cell.set_tagged(True)
+        self.assertTrue(self.cell.is_tagged())
+        self.cell.set_tagged(False)
+        self.assertFalse(self.cell.is_tagged())
+
+    def test_cell_keeps_its_tag_through_a_value_and_back(self):
+        self.cell.set_tagged(True)
+        self.cell.set(8)
+        self.cell.set(None)
+        self.assertTrue(self.cell.is_tagged())
+
+    def test_cell_reports_a_change_only_when_its_tag_changes(self):
+        self.cell.set_tagged(True)
+        self.cell.set_tagged(True)
+        self.parent.cell_changed.assert_called_once_with(self.cell)
+
     # Must-be marks
 
     def test_cell_has_no_marks_while_marks_are_off(self):

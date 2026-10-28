@@ -103,11 +103,21 @@ class TestBoard(TestCase):
         self.board.cell(2, 2).set(3)
         self.assertEqual(self.board.givens(), [(0, 5, 7), (1, 1, 4)])
 
+    def test_tags_are_the_positions_of_the_tagged_cells(self):
+        self.board.cell(4, 0).set_tagged(True)
+        self.board.cell(1, 7).set_tagged(True)
+        self.assertEqual(self.board.tags(), [(1, 7), (4, 0)])
+
     def test_clear_empties_every_cell(self):
         self.board.cell(1, 1).set(4)
         self.board.cell(4, 0).set(5)
         self.board.clear()
         self.assertFalse(self.board.has_values())
+
+    def test_clear_removes_every_tag(self):
+        self.board.cell(1, 1).set_tagged(True)
+        self.board.clear()
+        self.assertEqual(self.board.tags(), [])
 
     def test_cells_are_every_cell_left_to_right_top_to_bottom(self):
         positions = [self.__position(cell) for cell in self.board.cells()]

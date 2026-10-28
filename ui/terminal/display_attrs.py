@@ -32,12 +32,14 @@ class DisplayAttrs:
         - CONFLICTING - FG=BoldRed, BG=BrightYellow
         - CONFLICTED - FG=[primary], BG=Yellow
     - Guess depth - the shade of gray: GRAY_STEP lighter for each guess, up to the last shade, MAX_GRAY_LEVEL
+    - Tagged - the small digits (marks and possible values) in TAGGED_COLOR, on the cell's background
     """
 
     DEFAULT_COLOR = "darkorange3"
     MISSING_VALUE = "white_on_red"  # a value with no place left, shown in a cell while a warning says so
     GRAY_STEP = 10
     MAX_GRAY_LEVEL = 100  # There are no gray levels greater than 100
+    TAGGED_COLOR = "steelblue"  # the small digits of a cell the player tagged
 
     @dataclass
     class FgBgAttr:
@@ -68,12 +70,17 @@ class DisplayAttrs:
     def render(_attrs: tuple[str]) -> str:
         """Render the term.[attr] string for both foreground and background attributes"""
         fg, bg = DisplayAttrs.__get_fg_bg(_attrs)
-        return f"{fg}_on_{bg}" if fg and bg else fg if fg else f"on_{bg}" if bg else "normal"
+        return DisplayAttrs.__style(fg, bg)
 
     def render_bg(_attrs) -> str:
         """Render the term.[attr] string for only the background attributes"""
-        fg, bg = DisplayAttrs.__get_fg_bg(_attrs)
-        return f"on_{bg}" if bg else "normal"
+        _fg, bg = DisplayAttrs.__get_fg_bg(_attrs)
+        return DisplayAttrs.__style(None, bg)
+
+    def render_small_digits(_attrs, tagged) -> str:
+        """Render the term.[attr] string for the small digits: the background attributes, in TAGGED_COLOR if tagged"""
+        _fg, bg = DisplayAttrs.__get_fg_bg(_attrs)
+        return DisplayAttrs.__style(DisplayAttrs.TAGGED_COLOR if tagged else None, bg)
 
     def is_beyond_last_shade(depth) -> bool:
         """Return True if the guess depth needs a lighter shade of gray than the last one"""
@@ -89,6 +96,9 @@ class DisplayAttrs:
         bg_level = (f"gray{level}",) if level else ()
         bg = "_".join(optional.bg or primary.bg or bg_level)
         return fg, bg
+
+    def __style(fg, bg) -> str:
+        return f"{fg}_on_{bg}" if fg and bg else fg if fg else f"on_{bg}" if bg else "normal"
 
     def __depth(_attrs) -> int:
         """Return the guess depth, 0 when there is none"""

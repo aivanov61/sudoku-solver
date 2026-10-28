@@ -99,6 +99,12 @@ class TestDisplayPossibleValues(TestCase):
         drawn = echo.call_args_list[-1].args[0]
         self.assertIn("".join(str(v).translate(Display.small_nums) for v in (1, 5, 9)), drawn)
 
+    @patch("ui.terminal.display.echo")
+    def test_possible_values_of_a_tagged_cell_are_drawn_in_the_tag_color(self, echo):
+        display = board_display()
+        display.draw_cell_possible_values(0, 0, [5], tagged=True)
+        self.assertTrue(echo.call_args_list[-1].args[0].startswith(display.term.steelblue))
+
 
 class TestDisplayMarks(TestCase):
     def test_marks_are_drawn_across_the_middle_line_of_the_cell(self):
@@ -123,6 +129,12 @@ class TestDisplayMarks(TestCase):
 
     def test_no_marks_blank_the_middle_line(self):
         self.assertIn(" " * Display.CELL_HORIZONTAL_SIZE, self.__drawn(()))
+
+    def test_marks_of_a_tagged_cell_are_drawn_in_the_tag_color(self):
+        display = board_display()
+        with patch("ui.terminal.display.echo") as echo:
+            display.draw_cell_marks(0, 0, (4,), tagged=True)
+        self.assertTrue(echo.call_args_list[-1].args[0].startswith(display.term.steelblue))
 
     # Private functions
 

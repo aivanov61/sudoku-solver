@@ -32,7 +32,7 @@ from game.user_interface import MessageKind
 
 
 class TestGameFile(TestCase):
-    SAVED = SavedPuzzle("Standard 9x9", False, Settings(), (2, 2), [(0, 0, 1)], [(0, 1, 2, None)])
+    SAVED = SavedPuzzle("Standard 9x9", False, Settings(), (2, 2), [], [(0, 0, 1)], [(0, 1, 2, None)])
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -63,7 +63,7 @@ class TestGameFile(TestCase):
 
     def test_saving_over_an_existing_file_asks_first(self):
         self.__save()
-        self.puzzle.saved_state.return_value = SavedPuzzle("Standard 9x9", True, Settings(), (0, 0), [], [])
+        self.puzzle.saved_state.return_value = SavedPuzzle("Standard 9x9", True, Settings(), (0, 0), [], [], [])
         self.ui.confirms = False
         self.ui.questions.clear()
         self.__save()
@@ -126,7 +126,7 @@ class TestGameFile(TestCase):
         self.assertEqual(self.ui.informed, [])
 
     def test_restore_refuses_a_file_from_another_layout(self):
-        SaveFile.write(self.path, SavedPuzzle("Other layout", True, Settings(), (0, 0), [(0, 0, 1)], []))
+        SaveFile.write(self.path, SavedPuzzle("Other layout", True, Settings(), (0, 0), [], [(0, 0, 1)], []))
         self.__restore()
         self.assertIn('"Other layout"', self.ui.last_informed())
         self.puzzle.restore.assert_not_called()

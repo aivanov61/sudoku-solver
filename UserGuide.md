@@ -32,6 +32,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | Arrow keys, or `h` `j` `k` `l` | Move left, down, up, right |
 | `1`–`9` | Enter a given number. Givens are shown in purple on lavender. |
 | `Delete` | Clear the selected cell |
+| `m` | Tag (mark) the selected cell, or untag it (see below) |
 | `u` `r` `a` `n`, shifted `1`–`9` | Not available in setup (no guesses either); they remind you to press `ESC` to start playing |
 | `ESC` | Finish setup and start playing. Not allowed while given numbers clash, or while an empty cell has no possible values left (the cursor moves to that cell). |
 | `?` | Show the setup commands, with a longer description of each |
@@ -51,6 +52,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | `r` | Rewind: undo everything entered after your most recent guess, keeping the guess (or undo everything, if there's no guess). Asks you to confirm, since it can't be undone. |
 | `n` | Next: show an obvious next move and why; press `n` again to fill it in (see below) |
 | `a` | Auto: fill in every obvious move, one after another (see below) |
+| `m` | Tag (mark) the selected cell, or untag it (see below); works in setup too |
 | `c` | Configure: change settings such as the "must be" marks (see below); works in setup too |
 | `ESC` | Go back to setup mode (only once everything has been undone) |
 | `?` | Show the playing commands, with a longer description of each |
@@ -114,6 +116,10 @@ The marks update after every key, as values are entered, deleted, undone or fill
 
 Box marks are the safest to read: two marks in a box always mean "one of these two". With rows and columns included, two marks that happen to line up in a row may come from two different houses (say one from its row, the other from its box), so they don't necessarily mean the value must be in one of them.
 
+## Tags
+
+Press `m` to tag the selected cell, to pick it out while you think, and `m` again to untag it. A tagged empty cell shows its small digits, its possible values and any "must be" marks, in steel blue. Once the cell has a value the steel blue is gone, since the value takes the place of the small digits, but the tag stays: when the value is deleted or undone, the steel blue comes back. Tags work in both modes, undo and rewind leave them alone, and they are saved with the puzzle.
+
 ## Finishing the puzzle
 
 When the last empty cell is filled in, the status line says, until your next key, that the puzzle is **solved** (in steel blue) or **complete, with errors** (in yellow) if any values clash. You can still type over values, or undo, to fix errors. The status line reports again whenever that changes: once the errors are fixed, or when the puzzle is complete again after undo or rewind emptied a cell. `n` and `a` have nothing left to do, so they just remind you that the puzzle is solved, or that it's complete with errors and you should undo or change values to fix them.
@@ -122,7 +128,7 @@ When the last empty cell is filled in, the status line says, until your next key
 
 Press `s` at any time, in either mode, to save the puzzle to a file. The status line asks for the file name and offers the last one you used (`sudoku` the first time). Save files always end in `.json`, which is shown after the name but never typed: the cursor starts just before it, and the left and right arrows move within the name but not into the `.json`. Type to insert at the cursor, `Backspace` to remove the character before it and `Delete` the one at it; press `ENTER` to accept the name, or `ESC` to cancel. A name without a folder is kept in the `saved_games` folder, which is created the first time you save; to put a file anywhere else, include its folder in the name, for example `.\sudoku` for the current folder. If the file already exists, it asks before replacing it. If the board is still empty, there's nothing to save, and it just tells you so.
 
-Press `o` to restore a saved puzzle the same way. It brings back everything: the givens, every value you entered, guesses and their shading, the mode, where the cursor was, and which "must be" marks were shown (files saved before marks existed come back with marks off). Undo and rewind keep working through the restored moves. The restored puzzle replaces the current one completely, so if the board holds any values, it asks you to confirm first.
+Press `o` to restore a saved puzzle the same way. It brings back everything: the givens, every value you entered, guesses and their shading, the mode, where the cursor was, which cells you tagged, and which "must be" marks were shown (files saved before marks existed come back with marks off). Undo and rewind keep working through the restored moves. The restored puzzle replaces the current one completely, so if the board holds any values, it asks you to confirm first.
 
 A puzzle can only be restored into the layout it was saved from. A file saved by a newer version of the program can't be restored; the program says so, and you can update the program to restore it. A file that only adds something newer, such as a new setting, is restored without it, and the bottom line names what was ignored (or just counts it, when the names don't fit). Saving the puzzle again leaves the ignored entries out.
 
@@ -134,6 +140,7 @@ A puzzle can only be restored into the layout it was saved from. A file saved by
 | Orange | A value you entered |
 | Green on gray | A guess; gray backgrounds also mark values entered after a guess |
 | Steel blue | A value filled in by `n` or `a`; "solved" on the status line |
+| Steel blue small digits | A cell you tagged with `m` |
 | Bold red on bright yellow | The value you just entered is already in the same row, column or box |
 | Usual color on yellow | Holds a value that a newer entry clashes with |
 | Yellow text on the status line | A warning. If it waits, press any key to continue. |

@@ -36,8 +36,9 @@ class Cell:
 
     It is able to perform the following:
     1. Store and retrieve a value with set()/value()
+    1. Keep the player's tag with set_tagged()/is_tagged(), whatever its value
     1. Honor legal values provided by the block
-    1. Report every change to its value, attributes or possible values to its parent, so they can be shown
+    1. Report every change to its value, attributes, possible values, marks or tag to its parent, so they can be shown
     1. Trigger recalculation of other puzzle cell values when this cell value changes
     """
 
@@ -46,6 +47,7 @@ class Cell:
         self._solver = CellSolver(parent)  # Use the Solver class
         self._attrs = tuple()
         self._marks = ()  # the "must be" marks (Snyder notation) the cell shows
+        self._tagged = False  # tagged by the player, to pick the cell out
         self._parent = parent
         self.row = row
         self.col = col
@@ -76,6 +78,15 @@ class Cell:
     def marks(self) -> tuple:
         """Return the "must be" marks (Snyder notation): possible values with few places left in the cell's houses"""
         return self._marks
+
+    def is_tagged(self) -> bool:
+        return self._tagged
+
+    def set_tagged(self, tagged) -> None:
+        """Tag the cell for the player, or untag it, reporting any change; the tag stays whatever the cell's value"""
+        if tagged != self._tagged:
+            self._tagged = tagged
+            self.__report_change()
 
     # Interface required for blocks
 

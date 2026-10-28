@@ -140,20 +140,20 @@ class Display:
         """Return the text styled with the attributes' colors, e.g. (CellAttrs.SOLVED,) for steel blue"""
         return getattr(self.term, Attrs.render(attrs)) + text + self.term.normal
 
-    def draw_cell_marks(self, row=0, col=0, marks=(), attrs=()):
+    def draw_cell_marks(self, row=0, col=0, marks=(), attrs=(), tagged=False):
         """Draw the "must be" marks across the middle of the cell, blanking it when there are none"""
         x = self.x(col) + 1
         y = self.y(row) + self.CELL_VALUE_ROW
         echo(self.term.move_xy(x, y))
-        echo(self.__rendered_bg_attrs(attrs) + self.__marks_text(marks) + self.term.normal)
+        echo(self.__small_digits_style(attrs, tagged) + self.__marks_text(marks) + self.term.normal)
 
-    def draw_cell_possible_values(self, row=0, col=0, values=[], attrs=dict()):
+    def draw_cell_possible_values(self, row=0, col=0, values=[], attrs=dict(), tagged=False):
         """Draw the possible values at the bottom of the cell"""
         values = sorted(values) if len(values) <= self.CELL_HORIZONTAL_SIZE else "....."
         x = self.x(col) + 1
         y = self.y(row) + self.CELL_VALUES_ROW
         echo(self.term.move_xy(x, y))
-        rendered_attrs = self.__rendered_bg_attrs(attrs)
+        rendered_attrs = self.__small_digits_style(attrs, tagged)
         echo(rendered_attrs + " " * (self.CELL_HORIZONTAL_SIZE - len(values)) + self.term.normal)
         echo(rendered_attrs + "".join(str(v).translate(self.small_nums) for v in values) + self.term.normal)
 
@@ -248,6 +248,9 @@ class Display:
 
     def __rendered_bg_attrs(self, attrs) -> str:
         return getattr(self.term, Attrs.render_bg(attrs))
+
+    def __small_digits_style(self, attrs, tagged) -> str:
+        return getattr(self.term, Attrs.render_small_digits(attrs, tagged))
 
     @contextmanager
     def __status_line_message(self, text):

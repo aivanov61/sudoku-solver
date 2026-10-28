@@ -81,10 +81,16 @@ class Board(ABC):
         is_given = lambda cell: CellAttrs.INITIAL in cell.attr()
         return [(cell.row, cell.col, cell.value()) for cell in self.cells_where(is_given)]
 
+    def tags(self) -> list:
+        """Return (row, col) for each tagged cell"""
+        return [(cell.row, cell.col) for cell in self.cells_where(Cell.is_tagged)]
+
     def clear(self) -> None:
-        """Empty every cell"""
+        """Empty and untag every cell"""
         for cell in self.cells_where(lambda cell: cell.value() is not None):
             cell.set(None)
+        for cell in self.cells_where(Cell.is_tagged):
+            cell.set_tagged(False)
 
     # Interface required for blocks
 

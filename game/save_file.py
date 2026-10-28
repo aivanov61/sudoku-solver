@@ -25,12 +25,13 @@ from game.settings import Settings
 
 @dataclass
 class SavedPuzzle:
-    """Everything needed to restore a puzzle: the settings, the givens, then the moves made while playing, in order"""
+    """Everything needed to restore a puzzle: the settings, the tags, the givens, then the moves made while playing"""
 
     layout: str  # the layout's NAME
     initializing: bool
     settings: Settings  # what the player configured, such as the "must be" marks
     selected_cell: tuple  # (row, col)
+    tags: list  # (row, col) for each tagged cell
     givens: list  # (row, col, value) for each given
     moves: list  # (row, col, value, prim_attr) for each entry in the history, oldest first
     ignored: tuple = ()  # the entries in the file, from a newer version, that this one doesn't know; never saved
@@ -110,6 +111,7 @@ class SaveFile:
                 initializing=state["initializing"],
                 settings=Settings.from_saved(state.get("settings", {})),
                 selected_cell=tuple(state["selected_cell"]),
+                tags=[tuple(tag) for tag in state.get("tags", [])],
                 givens=[tuple(given) for given in state["givens"]],
                 moves=[tuple(move) for move in state["moves"]],
                 ignored=SaveFile.__unknown(data, SaveFile.__known_file()),

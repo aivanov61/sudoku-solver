@@ -161,6 +161,11 @@ class Puzzle:
         if not self.__solving_refused():
             self.__inform(self.__solver.auto())
 
+    def tag_(self) -> None:
+        """Tag the selected cell, or untag it; in either mode, and neither undo nor rewind changes tags"""
+        cell = self.__selected_cell()
+        cell.set_tagged(not cell.is_tagged())
+
     def configure_(self) -> None:
         """Let the player change the settings, such as the "must be" marks, then show the board afresh with them"""
         self.__settings = self.__settings.from_options(self.__ui.configure(self.__settings.options()))
@@ -203,20 +208,26 @@ class Puzzle:
         return self.__board.NAME
 
     def saved_state(self) -> SavedPuzzle:
-        """Everything needed to restore the puzzle: layout, mode, settings, cursor, givens and recorded moves"""
+        """Everything needed to restore the puzzle: layout, mode, settings, cursor, tags, givens and recorded moves"""
         board = self.__board
         return SavedPuzzle(
-            board.NAME, self._initializing, self.__settings, self.selected_cell, board.givens(), self.__moves.recorded()
+            board.NAME, self._initializing, self.__settings, self.selected_cell, board.tags(), board.givens(),
+            self.__moves.recorded(),
         )
 
     def restore(self, saved) -> None:
-        """Empty the board, enter the givens in setup mode, replay the moves in the saved mode, then point out any dead end"""
+        """
+        Empty the board, enter the givens in setup mode, replay the moves in the saved mode, tag the cells, then
+        point out any dead end
+        """
         self.__clear_board()
         for row, col, value in saved.givens:
             self.__moves.enter(self.__board.cell(row, col), value)
         self.__use_mode(saved.initializing)
         for row, col, value, prim_attr in saved.moves:
             self.__moves.enter(self.__board.cell(row, col), value, prim_attr)
+        for row, col in saved.tags:
+            self.__board.cell(row, col).set_tagged(True)
         self.selected_cell = saved.selected_cell
         self.__settings = saved.settings
         self.render()

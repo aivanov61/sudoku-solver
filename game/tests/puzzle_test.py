@@ -460,6 +460,29 @@ class TestPuzzle(TestCase):
         self.puzzle.handle(Action.PLAY)
         self.assertEqual(self.__cell(0, 0).marks(), (4,))
 
+    # Tags
+
+    def test_tag_tags_the_selected_cell_in_setup_and_untags_it_again(self):
+        self.puzzle.selected_cell = (1, 2)
+        self.puzzle.handle(Action.TAG)
+        self.assertTrue(self.__cell(1, 2).is_tagged())
+        self.puzzle.handle(Action.TAG)
+        self.assertFalse(self.__cell(1, 2).is_tagged())
+
+    def test_tag_works_while_playing(self):
+        self.puzzle.play_()
+        self.puzzle.handle(Action.TAG)
+        self.assertTrue(self.__cell(0, 0).is_tagged())
+
+    def test_undo_and_rewind_leave_the_tags(self):
+        self.puzzle.play_()
+        self.__enter(1, 1, 3, guess=True)
+        self.puzzle.handle(Action.TAG)
+        self.__enter(1, 1, 4)
+        self.puzzle.undo_()
+        self.puzzle.rewind_()
+        self.assertTrue(self.__cell(1, 1).is_tagged())
+
     # Next
 
     def test_first_next_moves_to_the_cell_and_shows_why_without_filling_it(self):
@@ -716,6 +739,13 @@ class TestPuzzle(TestCase):
         self.puzzle.handle(Action.CONFIGURE)
         restored = self.__restored_puzzle()
         self.assertEqual(restored.saved_state().settings.of(MarksSetting), MarksSetting(3, MarksSetting.BOX_ONLY))
+
+    def test_restore_brings_back_the_tags(self):
+        self.__play_a_few_moves()
+        self.puzzle.handle(Action.TAG)
+        restored = self.__restored_puzzle()
+        self.assertEqual(restored.saved_state().tags, [(2, 2)])
+        self.assertTrue(self.__cell_of(restored, 2, 2).is_tagged())
 
     def test_restored_moves_can_be_undone(self):
         self.__play_a_few_moves()
