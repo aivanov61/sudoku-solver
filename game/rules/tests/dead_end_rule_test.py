@@ -38,7 +38,7 @@ class TestDeadEndRule(TestCase):
         move, puzzle = find_with(DeadEndRule(), cell=cell)
         self.assertIs(move.outcome, Outcome.STOPPED)
         self.assertIs(move.cell, cell)
-        self.assertIn("try undoing until this square shows at least one possible value", move.hint)
+        self.assertEqual(move.hint, "Dead end; try either undoing or rewinding-back-to-a-previous-guess. [dead end] ")
         puzzle.select.assert_not_called()
 
 

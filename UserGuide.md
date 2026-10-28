@@ -64,7 +64,7 @@ You can't change the puzzle's given numbers during play. To fix a typo in the se
 
 ## Dead ends
 
-A dead end is an empty cell with no possible values left. Whenever you enter a value, in either mode, or restore a saved puzzle, and the board has a dead end, the cursor moves to the first one and the bottom line warns you until your next key, without stopping you. During play it suggests undoing (`u`) until that cell shows at least one possible value; during setup it asks you to change the setup. The warning comes after every value you enter until the dead end is gone.
+A dead end is an empty cell with no possible values left. Whenever you enter a value, in either mode, or restore a saved puzzle, and the board has a dead end, the cursor moves to the first one and the bottom line warns you until your next key, without stopping you. During play it suggests undoing (`u`) or rewinding to a previous guess (`r`); during setup it asks you to change the setup. The warning comes after every value you enter until the dead end is gone.
 
 ## Guesses
 
@@ -82,11 +82,17 @@ If you enter a value that's already in the same row, column or box, the cell tur
 
 Press `n` to be shown the next obvious move. It looks, left to right and top to bottom, for an empty cell whose value can be worked out from the board, moves the cursor there and explains on the bottom line, in steel blue, why that value must go there. Press `n` again to fill it in (also in steel blue), or press any other key to carry on yourself. Press `u` to take a filled-in move back.
 
+It finds two kinds of move, and ends each explanation with the name of the rule in brackets:
+- **A single value** `[single value]`: only one value fits the cell, because every other value is already in its row, column or box.
+- **A hidden single** `[hidden single]`: a value can go nowhere else in the cell's box, row or column, even though other values would still fit the cell.
+
+If a cell qualifies both ways, it explains the single value.
+
 You don't have to press `n` the second time: with the cursor already on the cell, you can type the value yourself. You can even enter it as a guess, with a shifted digit, although it isn't really a guess. That turns it into a checkpoint. `r` rewinds to the most recent guess, and everything entered after it is shaded, so making guesses at the points you consider key decisions lets you solve the puzzle in stages and step back to any of them.
 
 It won't move if:
 - **There are conflicts on the board:** it asks you to resolve them first.
-- **An empty cell has no possible values left:** it moves the cursor there and suggests undoing (`u`) until that cell shows at least one possible value, because an earlier entry or guess must be wrong.
+- **An empty cell has no possible values left:** it moves the cursor there and suggests undoing (`u`) or rewinding to a previous guess (`r`), because an earlier entry or guess must be wrong.
 - **There's no obvious move:** it tells you that you'll have to make a guess.
 
 ## Auto: all the obvious moves

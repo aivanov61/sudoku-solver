@@ -246,14 +246,14 @@ class Puzzle:
 
     def __found_dead_end(self) -> bool:
         """Point out the first dead end, if any, moving to it without waiting; return whether there was one"""
-        dead_end = self.__board.first_dead_end()
+        dead_end = DeadEndRule().find(self)
         if dead_end is None:
             return False
-        self.select(dead_end)
+        self.select(dead_end.cell)
         self.__notice = Message(
             "This square has no possible values left - change the setup before playing. "
             if self._initializing
-            else DeadEndRule.WARNING,
+            else dead_end.hint,
             MessageKind.WARNING,
         )
         return True

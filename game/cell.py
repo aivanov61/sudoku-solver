@@ -75,6 +75,17 @@ class Cell:
     def single_possible_value(self) -> int:
         return self._solver.single_possible_value()
 
+    def hidden_single(self) -> tuple:
+        """
+        Return (value, house) for the lowest value that can go nowhere else in one of the cell's houses,
+        looking in its box first, then its row and column; or None if there is none
+        """
+        for house in self._parent.houses_of(self.row, self.col):
+            for value in sorted(self.possible_values()):
+                if house.places(value) == [self]:
+                    return value, house
+        return None
+
     def is_dead_end(self) -> bool:
         """Return True if the cell is empty but no value fits it"""
         return not self._value and not self.possible_values()

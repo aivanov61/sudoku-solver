@@ -40,9 +40,18 @@ class Rule(ABC):
     A solving rule: it looks at the puzzle and returns at most one move, without making it.
 
     Rules use only the puzzle's interface for the solver (first_cell_where()); the solver and the
-    puzzle make the move.
+    puzzle make the move. Each rule has a NAME, which ends the hint of every move it finds, so the
+    player learns which rule found it.
     """
+
+    NAME = None  # shown in brackets after each hint, e.g. "[single value]"
 
     @abstractmethod
     def find(self, puzzle) -> Move:
         """Return this rule's move in the puzzle, or None if it has none"""
+
+    # Interface required for subclasses
+
+    def _move(self, outcome, hint, cell=None, value=None) -> Move:
+        """Return a move whose hint ends with this rule's name"""
+        return Move(outcome, f"{hint} [{self.NAME}] ", cell, value)

@@ -339,24 +339,30 @@ class TestPuzzle(TestCase):
         self.puzzle.play_()
         self.__enter(5, 8, 9)
         self.assertEqual(self.ui.informed, [])
-        self.assertIn("try undoing until this square shows at least one possible value", self.__status())
+        self.assertIn("try either undoing or rewinding", self.__status())
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
 
     def test_dead_end_status_lasts_until_the_next_command(self):
         self.__fill_row(0, 0, range(1, 9))
         self.puzzle.play_()
         self.__enter(5, 8, 9)
-        self.assertIn("try undoing until this square shows at least one possible value", self.__status())
+        self.assertIn("try either undoing or rewinding", self.__status())
         self.puzzle.handle(Action.LEFT)
-        self.assertNotIn("try undoing until this square shows at least one possible value", self.__status())
+        self.assertNotIn("try either undoing or rewinding", self.__status())
 
     def test_entering_any_value_while_a_dead_end_remains_shows_it_again(self):
         self.__fill_row(0, 0, range(1, 9))
         self.puzzle.play_()
         self.__enter(5, 8, 9)
         self.__enter(7, 3, 1)
-        self.assertIn("try undoing until this square shows at least one possible value", self.__status())
+        self.assertIn("try either undoing or rewinding", self.__status())
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
+
+    def test_dead_end_warning_names_the_rule_that_found_it(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        self.__enter(5, 8, 9)
+        self.assertIn("[dead end]", self.__status())
 
     def test_entering_a_value_that_leaves_a_dead_end_in_setup_says_to_change_the_setup(self):
         self.__fill_row(0, 0, range(1, 9))
@@ -367,7 +373,7 @@ class TestPuzzle(TestCase):
     def test_entering_a_value_without_a_dead_end_shows_no_dead_end(self):
         self.puzzle.play_()
         self.__enter(4, 4, 5)
-        self.assertNotIn("try undoing until this square shows at least one possible value", self.__status())
+        self.assertNotIn("try either undoing or rewinding", self.__status())
         self.assertEqual(self.puzzle.selected_cell, (4, 4))
 
     def test_restoring_a_dead_end_shows_it_and_moves_to_it(self):
@@ -377,7 +383,7 @@ class TestPuzzle(TestCase):
         self.puzzle.selected_cell = (4, 4)
         ui = RecordingUI()
         restored = self.__restored_puzzle(ui)
-        self.assertIn("try undoing until this square shows at least one possible value", self.__status_of(restored, ui))
+        self.assertIn("try either undoing or rewinding", self.__status_of(restored, ui))
         self.assertEqual(restored.selected_cell, (0, 8))
 
     def test_restoring_a_dead_end_in_setup_says_to_change_the_setup(self):
@@ -399,6 +405,16 @@ class TestPuzzle(TestCase):
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
         self.assertIn("Only 9 fits here", self.__status())
         self.assertEqual(self.ui.statuses[-1].kind, MessageKind.HINT)
+
+    def test_next_points_out_a_value_that_can_go_nowhere_else_in_its_box_then_fills_it_in(self):
+        for row, col in ((1, 4), (2, 7), (4, 1), (7, 2)):
+            self.__enter(row, col, 4)
+        self.puzzle.play_()
+        self.puzzle.next_()
+        self.assertEqual(self.puzzle.selected_cell, (0, 0))
+        self.assertIn("4 fits nowhere else in its box. [hidden single]", self.__status())
+        self.puzzle.next_()
+        self.assertEqual(self.__cell(0, 0).value(), 4)
 
     def test_third_next_shows_the_following_move(self):
         self.__fill_row(4, 0, range(1, 9))
@@ -496,7 +512,7 @@ class TestPuzzle(TestCase):
         self.puzzle.play_()
         self.__enter(5, 8, 9)
         self.puzzle.next_()
-        self.assertIn("try undoing until this square shows at least one possible value", self.ui.last_informed())
+        self.assertIn("try either undoing or rewinding", self.ui.last_informed())
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
 
     def test_next_with_no_obvious_move_says_to_guess(self):
@@ -531,7 +547,7 @@ class TestPuzzle(TestCase):
         self.puzzle.play_()
         self.__enter(5, 8, 9)
         self.puzzle.auto_()
-        self.assertIn("try undoing until this square shows at least one possible value", self.ui.last_informed())
+        self.assertIn("try either undoing or rewinding", self.ui.last_informed())
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
 
     def test_auto_refuses_while_there_are_conflicts(self):

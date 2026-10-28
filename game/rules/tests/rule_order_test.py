@@ -26,6 +26,7 @@ sys.path.insert(0, ".")
 from game import rules
 from game.rules.conflicts_rule import ConflictsRule
 from game.rules.dead_end_rule import DeadEndRule
+from game.rules.hidden_single_rule import HiddenSingleRule
 from game.rules.order import RULES
 from game.rules.rule import Rule
 from game.rules.single_value_rule import SingleValueRule
@@ -33,7 +34,7 @@ from game.rules.single_value_rule import SingleValueRule
 
 class TestRuleOrder(TestCase):
     def test_rules_are_applied_conflicts_first_then_dead_ends_then_moves(self):
-        self.assertEqual(RULES, (ConflictsRule, DeadEndRule, SingleValueRule))
+        self.assertEqual(RULES, (ConflictsRule, DeadEndRule, SingleValueRule, HiddenSingleRule))
 
     def test_every_rule_in_the_rules_folder_is_in_the_order(self):
         defined = set()

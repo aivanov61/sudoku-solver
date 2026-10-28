@@ -26,10 +26,12 @@ from game.rules.rule import Move, Outcome, Rule
 class SingleValueRule(Rule):
     """A cell with only one possible value must hold that value"""
 
+    NAME = "single value"
+
     def find(self, puzzle) -> Move:
         cell = puzzle.first_cell_where(Cell.single_possible_value)
         if cell is None:
             return None
         value = cell.single_possible_value()
         hint = f"Only {value} fits here: every other value is already in its row, column or box."
-        return Move(Outcome.MOVED, hint, cell, value)
+        return self._move(Outcome.MOVED, hint, cell, value)

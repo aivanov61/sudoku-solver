@@ -36,7 +36,7 @@ class TestConflictsRule(TestCase):
     def test_a_conflict_stops_solving_with_a_warning(self):
         move, _puzzle = find_with(ConflictsRule(), cell=MagicMock())
         self.assertIs(move.outcome, Outcome.STOPPED)
-        self.assertIn("Resolve the conflicts first", move.hint)
+        self.assertEqual(move.hint, "Resolve the conflicts first. [conflicts] ")
         self.assertIsNone(move.cell)
 
 

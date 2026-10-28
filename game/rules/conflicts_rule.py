@@ -26,7 +26,9 @@ from game.rules.rule import Move, Outcome, Rule
 class ConflictsRule(Rule):
     """Solving cannot go on while values conflict"""
 
+    NAME = "conflicts"
+
     def find(self, puzzle) -> Move:
         if puzzle.first_cell_where(Cell.is_marked_in_conflict) is None:
             return None
-        return Move(Outcome.STOPPED, "Resolve the conflicts first. ")
+        return self._move(Outcome.STOPPED, "Resolve the conflicts first.")

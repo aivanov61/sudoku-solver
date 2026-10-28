@@ -18,7 +18,7 @@ The code is also meant as an example of clean, object-oriented Python built with
 | Possible values | Removed from the row, column and box when a value is entered, and given back when it is deleted, undone or changed, unless another related cell still holds it. An emptied cell works out its whole set again. |
 | Conflict marking | The cell just entered is marked `CONFLICTING` (bold red on bright yellow), and every related cell already holding the value is marked `CONFLICTED` (its usual color on yellow). Marks clear when the value is deleted, changed or undone, once no related cell still holds it. |
 | Rewind (`r`) | Working |
-| Next (`n`) | Working for the first rule: a cell with a single possible value (see 5.6) |
+| Next (`n`) | Working for single values and hidden singles (see 5.6) |
 | Auto (`a`) | Working: makes every move `n` would, one after another (see 5.6) |
 | Save and restore (`s`, `o`) | Working (see 5.8) |
 | Redo | Not implemented. |
@@ -85,7 +85,7 @@ Blocks decide which cells are related; cells act on them:
 - **A block** gives a cell its *houses* (the groups of cells that must each hold every value once) through the generator `houses_of(row, col)`: a `House` for its own box first, then one for the row and one for the column, with the cells it gets from the board. Each house has a `kind` (`box`, `row` or `column`, for hints) and `places(value)`, the cells that can still hold the value. From the houses the block gives a cell its *related cells* (every other cell in the same box, row or column, once each) through the generator `related_cells(row, col)`. Besides that, it gives cells the legal `values()`.
 - **A cell** acts on its related cells directly: it gives them back an old value (`add_possible`), removes a new one (`remove_possible`), and marks or clears conflicts (`mark_conflicted`, `clear_resolved_conflict`). It checks whether a related cell holds a value with `any()`, which stops at the first match. New cross-cell behavior is added to `Cell` alone, so blocks, the board and the puzzle stay unchanged.
 - **The board** knows only its block layout. Its methods for blocks, `cells_in_row(row)` and `cells_in_col(col)`, yield from every block's method of the same name. Each block decides which of its own cells are in the row or column. The board passes those cells along but never reads or changes them, because in other Sudoku layouts the blocks may not form a regular grid, and only a block knows which of its cells lie in a given row or column.
-- **The puzzle** reaches cells only through its board: `first_cell_where`, `is_full`, `has_conflicts`, `has_values`, `first_dead_end`, `givens`, `clear` and `cells`.
+- **The puzzle** reaches cells only through its board: `first_cell_where`, `is_full`, `has_conflicts`, `has_values`, `givens`, `clear` and `cells`.
 - **Changes travel up:** a cell never draws itself. Whenever its value, attributes or possible values change, it calls its parent's `cell_changed(cell)`; the block passes that on to the board, and the board to the listener the puzzle gave it with `report_changes_to()`: the user interface's `cell_changed()`. A full draw is the puzzle's `render()`, which hands the board's `cells()` to the user interface's `show_board()`.
 - **The one exception** is a cell by position. The cursor moves by row and column, and a Sudoku's outer edge is always rectangular, so the board offers `cell(row, col)` (through the layout's `_block_at`) for the selected cell and for replaying a saved game. Revisit this if a puzzle with a non-rectangular outer edge is ever designed.
 
@@ -177,8 +177,8 @@ Puzzle.value_(val) / guess_(val)   (guess_ is refused in setup mode, like the ot
                       ├─ new value → the cell clears its own possible values
                       └─ no value  → the cell adds back every value no related cell holds
                  └─ value or attributes changed → report the change (parent.cell_changed(cell))
-  └─ __found_dead_end()   the first empty cell with no possible values, if any: select it and set the notice
-                          (DeadEndRule.WARNING in play mode, the setup warning in init mode)
+  └─ __found_dead_end()   DeadEndRule's move, if any: select its cell and set the notice
+                          (the rule's warning in play mode, the setup warning in init mode)
 ```
 
 - A cell reports a change only when something actually changed: its value or attributes (in `set()`), or its possible values (each related cell, as it gains or loses one).
@@ -205,9 +205,12 @@ Puzzle.value_(val) / guess_(val)   (guess_ is refused in setup mode, like the ot
 
 The solver consults the rules listed in `game/rules/order.py`, in that order, and takes the move of the first one that has one:
 
-1. **`ConflictsRule`:** if any cell carries a conflict mark, the move is the warning "Resolve the conflicts first."
-2. **`DeadEndRule`:** if an empty cell has no possible values, the cursor moves there and the warning is "Dead end - try undoing until this square shows at least one possible value." It suggests undoing rather than rewinding, because a rewind could go back further than needed.
-3. **`SingleValueRule`:** a cell whose only possible value is left; the hint is "Only 9 fits here: every other value is already in its row, column or box."
+1. **`ConflictsRule`** (`[conflicts]`): if any cell carries a conflict mark, the move is the warning "Resolve the conflicts first."
+2. **`DeadEndRule`** (`[dead end]`): if an empty cell has no possible values, the cursor moves there and the warning is "Dead end; try either undoing or rewinding-back-to-a-previous-guess."
+3. **`SingleValueRule`** (`[single value]`): a cell whose only possible value is left; the hint is "Only 9 fits here: every other value is already in its row, column or box."
+4. **`HiddenSingleRule`** (`[hidden single]`): a value that can go in only one cell of a box, row or column (a *hidden single*); the hint is "4 fits nowhere else in its box." (or row, or column). `Cell.hidden_single()` looks through the cell's houses, box first, for the lowest value whose only place (`House.places()`) is the cell. It comes after `SingleValueRule`, because a cell with one possible value is the simpler explanation when both apply.
+
+Every hint ends with the name of the rule that found it, in brackets: "4 fits nowhere else in its box. [hidden single]". Each rule has a `NAME`, and builds its move with `Rule._move()`, which adds the name; so the warning the puzzle shows itself after an entry (from `DeadEndRule`) carries it too.
 
 The first two *stop* solving: every `n` repeats their warning, and there is nothing to fill in. If no rule has a move, `next_()` warns "No obvious next move. You'll have to make a guess."
 
@@ -219,7 +222,7 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 - **Notices:** a dead-end warning does not wait for a key. The puzzle keeps it as a notice (a `WARNING` message), which `display_status()` passes to the user interface's `status()` ahead of the completion report and the `n` hint, until `command_received()` clears it at the next command. (A `Display.warn()` that does not wait would be overwritten at once, because `Main` redraws the status line after every command.)
 - **A complete puzzle:** in play mode, once `first_cell_where` finds no empty cell, `CompletionReport` (`completion_report.py`) gives `display_status()` the message that the puzzle is solved (steel blue), or complete with errors (yellow) if any cell is marked in conflict. The report replaces the status line until the next command, and comes back only when the completion changes (including back to unfinished, after undo or rewind empties a cell). With errors, the advice is to undo or change values. `n` and `a` then only warn that the puzzle is already complete; values can still be typed over. When `a` fills in the last cell it ends without a warning.
 - **Making the move:** a `SOLVED` value goes through the same path as a typed value, so it is recorded in `History` with `SOLVED` as its primary attribute. `u` and `r` treat it like any other non-guess entry, and undoing a change restores the steel blue. It also picks up the current guess shading.
-- **Adding a rule** means a new file in `game/rules/` and one line in `game/rules/order.py`; nothing else changes. Rules that need whole rows, columns or boxes (rather than single cells) will need a new solver interface, to be designed with the first such rule.
+- **Adding a rule** means a new file in `game/rules/` and one line in `game/rules/order.py`; nothing else changes. A rule about whole boxes, rows or columns asks each cell about its houses, as `HiddenSingleRule` does through `Cell.hidden_single()`, so the puzzle's interface for the solver stays `first_cell_where`.
 - **Rules and several layouts (planned, not built yet):** today every layout uses the shared list in `game/rules/order.py`. The intended direction:
   - **Shared rules stay shared** by working through units the layout supplies (the groups of cells that must each hold every value once: rows, columns and boxes, or a jigsaw's regions, an X-Sudoku's diagonals, and so on), the way `related_cells` already comes from the blocks.
   - **Layout-specific rules** (such as Killer Sudoku cage sums) live with their layout, for example in a `game/puzzles/<layout>/` package, rather than in the shared `rules/` folder.
@@ -265,7 +268,7 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 The full list is in `CLAUDE.md`. The main points:
 
 - **TDD:** write a failing test, make it pass, then refactor. Before starting a new feature, look for refactoring that would make the feature easier to add.
-- **Private methods** use the `__` prefix. Tests that need one call the mangled name through a single helper in the test class, rather than making the method public. The one exception is a hook a subclass must override, such as a layout's `_blocks()`: it uses a single `_`, because Python would mangle a `__` name per class.
+- **Private methods** use the `__` prefix. Tests that need one call the mangled name through a single helper in the test class, rather than making the method public. The one exception is a method that crosses into a subclass: a hook a subclass must override, such as a layout's `_blocks()`, or a helper a subclass calls, such as `Rule._move()`. It uses a single `_`, because Python would mangle a `__` name per class.
 - **Method order:** a called method is placed as soon after its caller as possible, within its own section (interface or private).
 - **Constants first:** class constants go at the top of the class, except constants built from a nested class and long data tables (such as `Display`'s drawing characters), which go at the end.
 - **Layer boundaries** are as described in section 4.2.

@@ -23,6 +23,7 @@ sys.path.insert(0, ".")
 
 from game.cell import Cell
 from game.cell_attrs import CellAttrs
+from game.house import House
 
 
 class TestCell(TestCase):
@@ -222,6 +223,35 @@ class TestCell(TestCase):
         self.cell.set(8)
         self.assertFalse(self.cell.is_dead_end())
 
+    def test_cell_hidden_single_is_a_value_that_can_go_nowhere_else_in_its_box(self):
+        box = self.__house(House.BOX, all_but={4})
+        self.assertEqual(self.cell.hidden_single(), (4, box))
+
+    def test_cell_hidden_single_can_be_in_its_row_or_column(self):
+        self.__house(House.BOX, all_but=set())
+        self.__house(House.ROW, all_but=set())
+        column = self.__house(House.COLUMN, all_but={5})
+        self.assertEqual(self.cell.hidden_single(), (5, column))
+
+    def test_cell_hidden_single_looks_in_its_box_before_its_row_and_column(self):
+        box = self.__house(House.BOX, all_but={7})
+        self.__house(House.ROW, all_but={2})
+        self.assertEqual(self.cell.hidden_single(), (7, box))
+
+    def test_cell_hidden_single_is_the_lowest_such_value_in_a_house(self):
+        box = self.__house(House.BOX, all_but={6, 4})
+        self.assertEqual(self.cell.hidden_single(), (4, box))
+
+    def test_cell_has_no_hidden_single_while_every_value_has_another_place(self):
+        self.__house(House.BOX, all_but=set())
+        self.__house(House.ROW, all_but=set())
+        self.assertIsNone(self.cell.hidden_single())
+
+    def test_cell_with_a_value_has_no_hidden_single(self):
+        self.cell.set(8)
+        self.__house(House.BOX, all_but={4})
+        self.assertIsNone(self.cell.hidden_single())
+
     # Private functions
 
     def __setup_parent(self):
@@ -229,11 +259,13 @@ class TestCell(TestCase):
         Mock 'parent' needs to provide:
         1. values() - range of legal values
         2. related_cells() - the cells in the same block, row or column (none until a test adds some)
-        3. cell_changed(cell) - hears of every change to the cell
+        3. houses_of() - the cell's box, row and column (none until a test adds some)
+        4. cell_changed(cell) - hears of every change to the cell
         """
         self.parent = MagicMock()
         self.parent.values.return_value = range(1, self.MAX_VALUE)
         self.parent.related_cells.return_value = []
+        self.parent.houses_of.return_value = []
 
     def __related_cell(self, value=None):
         """Add a mock related cell holding the value"""
@@ -241,6 +273,14 @@ class TestCell(TestCase):
         cell.value.return_value = value
         self.parent.related_cells.return_value.append(cell)
         return cell
+
+    def __house(self, kind, all_but):
+        """Add a house of this cell and one other, where every value but those in all_but can also go"""
+        other = MagicMock()
+        other.possible_values.return_value = set(self.parent.values()) - all_but
+        house = House(kind, [self.cell, other])
+        self.parent.houses_of.return_value.append(house)
+        return house
 
 
 if __name__ == "__main__":

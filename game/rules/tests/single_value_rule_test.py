@@ -40,7 +40,9 @@ class TestSingleValueRule(TestCase):
         self.assertIs(move.outcome, Outcome.MOVED)
         self.assertIs(move.cell, cell)
         self.assertEqual(move.value, 7)
-        self.assertEqual(move.hint, "Only 7 fits here: every other value is already in its row, column or box.")
+        self.assertEqual(
+            move.hint, "Only 7 fits here: every other value is already in its row, column or box. [single value] "
+        )
         puzzle.enter_solved_value.assert_not_called()
 
 

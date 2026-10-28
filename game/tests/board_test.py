@@ -88,13 +88,6 @@ class TestBoard(TestCase):
         self.board.cell(4, 0).set(5)
         self.assertTrue(self.board.has_conflicts())
 
-    def test_first_dead_end_is_the_first_empty_cell_with_no_possible_values(self):
-        self.assertIsNone(self.board.first_dead_end())
-        for col, value in enumerate(range(1, 9)):
-            self.board.cell(0, col).set(value)
-        self.board.cell(5, 8).set(9)
-        self.assertEqual(self.__position(self.board.first_dead_end()), (0, 8))
-
     def test_givens_are_the_values_entered_as_initial(self):
         self.board.cell(1, 1).set(4, (CellAttrs.INITIAL,))
         self.board.cell(0, 5).set(7, (CellAttrs.INITIAL,))

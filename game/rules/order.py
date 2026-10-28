@@ -21,6 +21,7 @@ sys.path.insert(0, ".")
 
 from game.rules.conflicts_rule import ConflictsRule
 from game.rules.dead_end_rule import DeadEndRule
+from game.rules.hidden_single_rule import HiddenSingleRule
 from game.rules.single_value_rule import SingleValueRule
 
 # The order the solver applies the rules in: rules that stop solving come before rules that make moves
@@ -28,4 +29,5 @@ RULES = (
     ConflictsRule,
     DeadEndRule,
     SingleValueRule,
+    HiddenSingleRule,
 )

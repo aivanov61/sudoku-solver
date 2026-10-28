@@ -70,10 +70,6 @@ class Board(ABC):
     def has_conflicts(self) -> bool:
         return self.first_cell_where(Cell.is_marked_in_conflict) is not None
 
-    def first_dead_end(self) -> Cell:
-        """Return the first empty cell with no possible values left, or None"""
-        return self.first_cell_where(Cell.is_dead_end)
-
     def givens(self) -> list:
         """Return (row, col, value) for each value entered while setting up the puzzle"""
         is_given = lambda cell: CellAttrs.INITIAL in cell.attr()
