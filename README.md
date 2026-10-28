@@ -132,7 +132,8 @@ some guidance:
 - game/puzzles/board_3x3.py - the standard layout of nine 3x3 blocks; `Board3x3` class
 (new layouts go in the game/puzzles folder)
 - game/puzzle_catalog.py - finds the available layouts; `PuzzleCatalog` class
-- ui/terminal/layout_menu.py - lets the player choose a layout; `LayoutMenu` class
+- ui/terminal/menu.py - a full-screen menu, used to choose a layout; `Menu` class
+- ui/terminal/menu_entry.py - a menu line that ENTER picks; `MenuEntry` class
 - game/puzzle_solver.py - finds and makes the next obvious move (n) or all of them (a) by applying the solving rules; `PuzzleSolver` class
 - game/rules/ - one solving rule per file (`Rule` subclasses); game/rules/order.py sets the order they are applied in
 - game/rectangular_block.py - creates/manages a rectangular block of 3x3 cells; `RectangularBlock` class.

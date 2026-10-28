@@ -23,7 +23,8 @@ from game.puzzle import Puzzle
 from game.puzzle_catalog import PuzzleCatalog
 from ui.terminal.copyright import Copyright
 from ui.terminal.display import Display
-from ui.terminal.layout_menu import LayoutMenu
+from ui.terminal.menu import Menu
+from ui.terminal.menu_entry import MenuEntry
 from ui.terminal.terminal_ui import TerminalUI
 
 
@@ -32,6 +33,8 @@ class Main:
     This runs a Sudoku puzzle whose layout comes from the puzzle catalog: it picks the layout and the
     user interface, then lets the user interface play the puzzle
     """
+
+    LAYOUT_KEYS_HELP = "Up/down to choose, ENTER to play, ESC or q to quit"
 
     def run(self):
         self.__display = Display()
@@ -48,9 +51,17 @@ class Main:
         if note:
             print(self.__display.term.yellow(note))
         try:
-            self.__display.term.inkey(timeout=5.0)
+            self.__wait_for_a_key(timeout=5.0)
         except KeyboardInterrupt:
             exit(1)
+
+    def __wait_for_a_key(self, timeout) -> None:
+        """Wait for a key or the timeout, then drop any other keys pressed meanwhile, so the menu never reads them"""
+        term = self.__display.term
+        with term.cbreak():
+            term.inkey(timeout=timeout)
+            while term.inkey(timeout=0):
+                pass
 
     def __startup_note(self, layouts) -> str:
         """Return a note to show under the splash screen: no layouts, or the only layout is not fully usable"""
@@ -61,8 +72,13 @@ class Main:
     def __chosen_layout(self, layouts):
         """Return the layout to play (from the menu when there are several), or None to exit"""
         if len(layouts) > 1:
-            return LayoutMenu(layouts, self.__display).choose()
+            return self.__layout_menu(layouts).choose()
         return layouts[0] if layouts and not layouts[0].is_broken() else None
+
+    def __layout_menu(self, layouts) -> Menu:
+        """A menu of the layouts, with any notes after their names; broken ones can't be picked"""
+        entries = [MenuEntry(layout.label(), layout, can_pick=not layout.is_broken()) for layout in layouts]
+        return Menu("Choose a puzzle layout:", entries, self.LAYOUT_KEYS_HELP, self.__display)
 
     def __play(self, board):
         ui = TerminalUI(self.__display, board.v_cells, board.h_cells)
