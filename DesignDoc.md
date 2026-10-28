@@ -21,7 +21,7 @@ The code is also meant as an example of clean, object-oriented Python built with
 | Next (`n`) | Working for single values and hidden singles (see 5.6) |
 | Auto (`a`) | Working: makes every move `n` would, one after another (see 5.6) |
 | Save and restore (`s`, `o`) | Working (see 5.8) |
-| "Must be" marks (`m`) | Worked out and cycled with `m`, but not drawn yet (see 5.9) |
+| "Must be" marks (`m`) | Working: shown in empty cells, cycled with `m` (see 5.9) |
 | Redo | Not implemented. |
 
 ## 3. Running and testing
@@ -256,10 +256,11 @@ A "must be" mark shows, in an empty cell, a value that has only a few places lef
 - **Cells keep their marks.** `Cell.refresh_marks(setting)` works them out from the cell's houses (`House.places()`), keeps them and reports a change, like any other change, only when they differ; `marks()` gives them to the user interface. A filled cell has no possible values, so it has no marks.
 - **The puzzle refreshes them after every command:** `handle()` calls `Board.refresh_marks()` with the setting while playing, and with marks off in setup mode, so a mark that changes because of a change anywhere in its houses (an entry, undo, rewind, auto, a restore) is always current, and the marks come back when play resumes.
 - **`m`** (`Action.MARKS`, offered only while playing) calls `marks_()`, which moves to the next setting and shows its description as a notice until the next command.
+- **The terminal** draws the marks on an empty cell's middle line with `Display.draw_cell_marks()`, in the small digits of the possible values: spaced while they fit (up to 3), closed up for 4 or 5, and `.....` beyond that. `TerminalUI` treats the middle line as one: whenever the value or the marks change, it draws the marks (a blank line for a filled cell, which has none) and then the value on top, so neither overwrites the other however their changes are reported. It remembers the marks with the rest of what it last drew.
 
 ## 6. Display
 
-- **Cell layout:** each cell is 6 columns by 3 lines. The top line is the border (shared with the cell above), the middle line shows the value, and the bottom line shows the possible values. Box edges use full blocks (`█`); inner lines use `│`, `─` and `┼`.
+- **Cell layout:** each cell is 6 columns by 3 lines. The top line is the border (shared with the cell above), the middle line shows the value (or an empty cell's "must be" marks, see 5.9), and the bottom line shows the possible values. Box edges use full blocks (`█`); inner lines use `│`, `─` and `┼`.
 - **Possible values** are drawn in increasing order as subscript digits. When there are more than 5, `.....` is shown instead.
 - **Attributes:** a cell's attributes are a tuple whose meanings are defined, for the game, by `CellAttrs`; `DisplayAttrs`, the terminal's style table, turns them into `blessed` style names such as `purple_on_lavender` or `bold_red_on_bright_yellow`. There are two kinds:
   - *Primary* attributes (at most one per cell): `INITIAL` gives purple on lavender, `GUESS` gives green on the current gray, and `SOLVED` (values filled in by `n`) gives steel blue on the current gray.

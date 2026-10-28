@@ -43,6 +43,8 @@ class Display:
 
     - draw_cell(row, col, border) - draw the cell outline, including thick border when needed
     - draw_cell_value(row, col, value) - draw the value of the cell in the middle of the cell
+    - draw_cell_marks(row, col, marks) - draw an empty cell's "must be" marks across the middle of the cell
+    - draw_cell_missing_value(row, col, value) - draw a value with no place left in the middle of the cell, in red
     - draw_cell_possible_values(row, col, values) - draw all the possible cell values at the bottom of the cell
     - draw_command_panel(title, entries) - draw the mode's title and its commands to the right of the puzzle
 
@@ -135,6 +137,13 @@ class Display:
         """Return the text styled with the attributes' colors, e.g. (CellAttrs.SOLVED,) for steel blue"""
         return getattr(self.term, Attrs.render(attrs)) + text + self.term.normal
 
+    def draw_cell_marks(self, row=0, col=0, marks=(), attrs=()):
+        """Draw the "must be" marks across the middle of the cell, blanking it when there are none"""
+        x = self.x(col) + 1
+        y = self.y(row) + self.CELL_VALUE_ROW
+        echo(self.term.move_xy(x, y))
+        echo(self.__rendered_bg_attrs(attrs) + self.__marks_text(marks) + self.term.normal)
+
     def draw_cell_possible_values(self, row=0, col=0, values=[], attrs=dict()):
         """Draw the possible values at the bottom of the cell"""
         values = sorted(values) if len(values) <= self.CELL_HORIZONTAL_SIZE else "....."
@@ -225,6 +234,14 @@ class Display:
         right = self.__border_char(border.is_right(), self.vline, attrs)
         rendered_str = self.__rendered_bg_attrs(attrs) + " " * self.CELL_HORIZONTAL_SIZE + self.term.normal
         echo(left + rendered_str + right)
+
+    def __marks_text(self, marks) -> str:
+        """Return the marks in small digits, centred: spaced while that fits, else closed up, else dots"""
+        width = self.CELL_HORIZONTAL_SIZE
+        digits = [str(mark).translate(self.small_nums) for mark in marks]
+        spaced = " ".join(digits)
+        text = spaced if len(spaced) <= width else "".join(digits)
+        return (text if len(text) <= width else "." * width).center(width)
 
     def __rendered_bg_attrs(self, attrs) -> str:
         return getattr(self.term, Attrs.render_bg(attrs))

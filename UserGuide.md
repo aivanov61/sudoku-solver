@@ -16,7 +16,7 @@ The terminal window needs to be at least **80 columns wide and 29 lines tall**. 
 ## The screen
 
 - **The grid:** 81 cells in nine 3x3 boxes. Thick borders mark the boxes.
-- **Each cell** shows its value in the middle line and, along its bottom line, the values still possible for it, in small digits. They update as you enter, change, delete or undo values. When more than 5 values are possible, you'll see `.....` instead.
+- **Each cell** shows its value in the middle line (or, if it's empty, any "must be" marks you've turned on, in small digits) and, along its bottom line, the values still possible for it, in small digits. They update as you enter, change, delete or undo values. When more than 5 values are possible, you'll see `.....` instead.
 - **The cursor** sits on the selected cell. That's where your next entry goes.
 - **The command panel** to the right of the grid shows the current mode (SETUP or PLAY) and lists its keys, one per line.
 - **The status line** under the grid is blank most of the time. It shows explanations from `n`, when the puzzle is finished, warnings (in yellow) and questions.
@@ -51,6 +51,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | `r` | Rewind: undo everything entered after your most recent guess, keeping the guess (or undo everything, if there's no guess). Asks you to confirm, since it can't be undone. |
 | `n` | Next: show an obvious next move and why; press `n` again to fill it in (see below) |
 | `a` | Auto: fill in every obvious move, one after another (see below) |
+| `m` | Marks: change which "must be" marks are shown (see below) |
 | `ESC` | Go back to setup mode (only once everything has been undone) |
 | `?` | Show the playing commands, with a longer description of each |
 | `s` | Save the puzzle to a file (see below) |
@@ -98,6 +99,19 @@ It won't move if:
 ## Auto: all the obvious moves
 
 Press `a` to fill in, without explanations, every move that `n` would find, one after another, until there are none left. The values are shown in steel blue, the cursor ends on the last one filled in, and the bottom line tells you why it stopped, for the same reasons as `n`. Each value is a separate entry, so `u` takes them back one at a time. To take them all back at once, enter a guess before pressing `a` and use `r`.
+
+## "Must be" marks
+
+A "must be" mark is a small digit in the middle of an empty cell: that value has only a few places left in the cell's box, and this cell is one of them. Solvers call this Snyder notation. A mark in two cells of a box means the value must be in one of those two. A value with a single mark in its box is a hidden single: it can go only there.
+
+Marks are off at first. Each press of `m` (while playing) moves to the next setting and names it on the bottom line:
+- **Configs 1 to 4** mark values with 2, 3, 4 or 5 places or fewer in their box, e.g. "Must-be marks (config 1 of 8): 2 or fewer 'must be' values in their box."
+- **Configs 5 to 8** do the same for the box, row or column: a value is marked if it has few enough places in any of the three.
+- **The next press** turns them off again.
+
+The marks update after every key, as values are entered, deleted, undone or filled in. Up to three marks are spaced out; four or five are shown closed up; more than that show `.....`. During setup the marks are hidden, and they come back when you start playing.
+
+Box marks are the safest to read: two marks in a box always mean "one of these two". With rows and columns included, two marks that happen to line up in a row may come from two different houses (say one from its row, the other from its box), so they don't necessarily mean the value must be in one of them.
 
 ## Finishing the puzzle
 

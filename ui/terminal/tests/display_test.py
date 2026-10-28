@@ -100,6 +100,39 @@ class TestDisplayPossibleValues(TestCase):
         self.assertIn("".join(str(v).translate(Display.small_nums) for v in (1, 5, 9)), drawn)
 
 
+class TestDisplayMarks(TestCase):
+    def test_marks_are_drawn_across_the_middle_line_of_the_cell(self):
+        display = board_display(MagicMock())
+        with patch("ui.terminal.display.echo"):
+            display.draw_cell_marks(2, 5, (4,))
+        display.term.move_xy.assert_called_with(display.x(5) + 1, display.y(2) + Display.CELL_VALUE_ROW)
+
+    def test_one_mark_is_centred(self):
+        self.assertIn("  ₄  ", self.__drawn((4,)))
+
+    def test_up_to_three_marks_are_spaced(self):
+        self.assertIn(" ₄ ₇ ", self.__drawn((4, 7)))
+        self.assertIn("₁ ₄ ₇", self.__drawn((1, 4, 7)))
+
+    def test_four_or_five_marks_are_closed_up(self):
+        self.assertIn("₁₂₄₇", self.__drawn((1, 2, 4, 7)))
+        self.assertIn("₁₂₄₇₉", self.__drawn((1, 2, 4, 7, 9)))
+
+    def test_more_marks_than_fit_are_shown_as_dots(self):
+        self.assertIn(".....", self.__drawn((1, 2, 3, 4, 7, 9)))
+
+    def test_no_marks_blank_the_middle_line(self):
+        self.assertIn(" " * Display.CELL_HORIZONTAL_SIZE, self.__drawn(()))
+
+    # Private functions
+
+    def __drawn(self, marks) -> str:
+        """Draw the marks on the real terminal; return what was written for them"""
+        with patch("ui.terminal.display.echo") as echo:
+            board_display().draw_cell_marks(0, 0, marks)
+        return echo.call_args_list[-1].args[0]
+
+
 class TestDisplayMissingValue(TestCase):
     def test_a_missing_value_is_drawn_white_on_red_in_the_middle_of_its_cell(self):
         display = Display(MagicMock())
