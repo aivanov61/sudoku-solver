@@ -24,13 +24,20 @@ from game.rules.rule import Move, Outcome, Rule
 
 
 class DeadEndRule(Rule):
-    """Solving cannot go on when an empty cell has no possible value left"""
+    """
+    Solving cannot go on when an empty cell has no possible value left, or a value missing from a box, row or
+    column has no place left there
+    """
 
     NAME = "dead end"
     WARNING = "Dead end; try either undoing or rewinding-back-to-a-previous-guess."
 
     def find(self, puzzle) -> Move:
         cell = puzzle.first_cell_where(Cell.is_dead_end)
+        if cell is not None:
+            return self._move(Outcome.STOPPED, self.WARNING, cell)
+        cell = puzzle.first_cell_where(Cell.unplaceable_value)
         if cell is None:
             return None
-        return self._move(Outcome.STOPPED, self.WARNING, cell)
+        value, house = cell.unplaceable_value()
+        return self._move(Outcome.STOPPED, self.WARNING, cell, value, house)

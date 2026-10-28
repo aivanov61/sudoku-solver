@@ -45,6 +45,7 @@ class TerminalUI:
         self.__mode = None
         self.__offered = ()  # the actions the mode offers
         self.__drawn = {}  # (row, col): (attributes, value, possible values) of each cell as last drawn
+        self.__showing_missing = None  # the cell showing a message's missing value, until the message goes
 
     # Interface required for Main
 
@@ -62,11 +63,17 @@ class TerminalUI:
     # Interface required for the game
 
     def status(self, message) -> None:
+        """Show the message, and its missing value in its cell, until the next status"""
+        self.__take_back_missing()
         self.__display.move_to_status_line()
         echo((self.__styled(message) if message else "") + self.__display.term.clear_eol)
+        self.__show_missing(message)
 
     def inform(self, message) -> None:
+        """Show the message, and its missing value in its cell, until a key is hit"""
+        self.__show_missing(message)
         self.__display.show_on_status_line(self.__styled(message), wait=True)
+        self.__take_back_missing()
 
     def confirm(self, question) -> bool:
         return self.__display.confirm(question)
@@ -108,6 +115,19 @@ class TerminalUI:
         self.__draw_panel()
 
     # Private functions
+
+    def __take_back_missing(self) -> None:
+        """Draw the cell showing a missing value as it is again, if there is one"""
+        if self.__showing_missing:
+            self.__draw_value(self.__showing_missing)
+            self.__showing_missing = None
+
+    def __show_missing(self, message) -> None:
+        """Draw the message's missing value in its cell, if it has one"""
+        if message and message.missing:
+            cell, value = message.missing
+            self.__display.draw_cell_missing_value(cell.row, cell.col, value)
+            self.__showing_missing = cell
 
     def __carry_out(self, game: Puzzle, command, digit) -> None:
         """Show the help screen, or hand the action to the game, surviving an action that breaks"""

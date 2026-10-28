@@ -364,6 +364,26 @@ class TestPuzzle(TestCase):
         self.__enter(5, 8, 9)
         self.assertIn("[dead end]", self.__status())
 
+    def test_a_value_left_with_no_place_in_a_row_is_a_dead_end_shown_in_red_at_the_rows_first_empty_cell(self):
+        self.__leave_4_no_place_in_row_0()
+        self.puzzle.play_()
+        self.__enter(6, 8, 4)
+        self.assertIn("try either undoing or rewinding", self.__status())
+        self.assertEqual(self.puzzle.selected_cell, (0, 7))
+        self.assertEqual(self.ui.statuses[-1].missing, (self.__cell(0, 7), 4))
+
+    def test_a_value_left_with_no_place_in_setup_says_where_and_to_change_the_setup(self):
+        self.__leave_4_no_place_in_row_0()
+        self.__enter(6, 8, 4)
+        self.assertIn("4 has no place left in this row - change the setup before playing", self.__status())
+        self.assertEqual(self.ui.statuses[-1].missing, (self.__cell(0, 7), 4))
+
+    def test_an_empty_cell_with_no_possible_values_points_out_no_missing_value(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        self.__enter(5, 8, 9)
+        self.assertIsNone(self.ui.statuses[-1].missing)
+
     def test_entering_a_value_that_leaves_a_dead_end_in_setup_says_to_change_the_setup(self):
         self.__fill_row(0, 0, range(1, 9))
         self.__enter(5, 8, 9)
@@ -729,6 +749,11 @@ class TestPuzzle(TestCase):
     def __fill_row(self, row, start_col, values):
         for col, value in enumerate(values, start_col):
             self.__cell(row, col).set(value)
+
+    def __leave_4_no_place_in_row_0(self):
+        """Fill row 0 but for 4 and 9, and put 4 in column 7, so a 4 in column 8 leaves row 0 no place for one"""
+        self.__fill_row(0, 0, (1, 2, 3, 5, 6, 7, 8))
+        self.__cell(3, 7).set(4)
 
     def __enter_row(self, row, start_col, values):
         """Like __fill_row, but entered by the player, so the values are saved"""

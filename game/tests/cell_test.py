@@ -252,6 +252,29 @@ class TestCell(TestCase):
         self.__house(House.BOX, all_but={4})
         self.assertIsNone(self.cell.hidden_single())
 
+    def test_cell_unplaceable_value_is_one_its_house_lacks_with_no_place_left(self):
+        self.cell.remove_possible(4)
+        self.__house(House.BOX, all_but=set())
+        row = self.__house(House.ROW, all_but={4})
+        self.assertEqual(self.cell.unplaceable_value(), (4, row))
+
+    def test_cell_unplaceable_value_looks_in_its_box_before_its_row_and_column(self):
+        self.cell.remove_possible(4)
+        self.cell.remove_possible(6)
+        box = self.__house(House.BOX, all_but={6})
+        self.__house(House.ROW, all_but={4})
+        self.assertEqual(self.cell.unplaceable_value(), (6, box))
+
+    def test_cell_has_no_unplaceable_value_while_every_value_has_a_place(self):
+        self.cell.remove_possible(4)
+        self.__house(House.BOX, all_but=set())
+        self.assertIsNone(self.cell.unplaceable_value())
+
+    def test_cell_with_a_value_has_no_unplaceable_value(self):
+        self.cell.set(8)
+        self.__house(House.BOX, all_but={4})
+        self.assertIsNone(self.cell.unplaceable_value())
+
     # Private functions
 
     def __setup_parent(self):
@@ -277,6 +300,7 @@ class TestCell(TestCase):
     def __house(self, kind, all_but):
         """Add a house of this cell and one other, where every value but those in all_but can also go"""
         other = MagicMock()
+        other.value.return_value = None
         other.possible_values.return_value = set(self.parent.values()) - all_but
         house = House(kind, [self.cell, other])
         self.parent.houses_of.return_value.append(house)

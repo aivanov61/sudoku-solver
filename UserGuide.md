@@ -64,7 +64,7 @@ You can't change the puzzle's given numbers during play. To fix a typo in the se
 
 ## Dead ends
 
-A dead end is an empty cell with no possible values left. Whenever you enter a value, in either mode, or restore a saved puzzle, and the board has a dead end, the cursor moves to the first one and the bottom line warns you until your next key, without stopping you. During play it suggests undoing (`u`) or rewinding to a previous guess (`r`); during setup it asks you to change the setup. The warning comes after every value you enter until the dead end is gone.
+A dead end is either an empty cell with no possible values left, or a value that is missing from a box, row or column but has no place left there. Whenever you enter a value, in either mode, or restore a saved puzzle, and the board has a dead end, the cursor moves to the first one and the bottom line warns you until your next key, without stopping you. For a missing value, the cursor moves to an empty cell of that box, row or column, and the value is shown there in white on red until your next key; during setup the warning also says which value has no place left, and where. During play it suggests undoing (`u`) or rewinding to a previous guess (`r`); during setup it asks you to change the setup. The warning comes after every value you enter until the dead end is gone.
 
 ## Guesses
 
@@ -92,7 +92,7 @@ You don't have to press `n` the second time: with the cursor already on the cell
 
 It won't move if:
 - **There are conflicts on the board:** it asks you to resolve them first.
-- **An empty cell has no possible values left:** it moves the cursor there and suggests undoing (`u`) or rewinding to a previous guess (`r`), because an earlier entry or guess must be wrong.
+- **There's a dead end** (see "Dead ends" above): it moves the cursor there and suggests undoing (`u`) or rewinding to a previous guess (`r`), because an earlier entry or guess must be wrong.
 - **There's no obvious move:** it tells you that you'll have to make a guess.
 
 ## Auto: all the obvious moves

@@ -34,3 +34,7 @@ class House:
     def places(self, value) -> list:
         """Return the cells, in order, that can still hold the value"""
         return [cell for cell in self.cells if value in cell.possible_values()]
+
+    def has_no_place_for(self, value) -> bool:
+        """Return True if no cell holds the value and none can any more"""
+        return not self.places(value) and all(cell.value() != value for cell in self.cells)

@@ -100,6 +100,18 @@ class TestDisplayPossibleValues(TestCase):
         self.assertIn("".join(str(v).translate(Display.small_nums) for v in (1, 5, 9)), drawn)
 
 
+class TestDisplayMissingValue(TestCase):
+    def test_a_missing_value_is_drawn_white_on_red_in_the_middle_of_its_cell(self):
+        display = Display(MagicMock())
+        display.geometry(9, 9)
+        display.term.white_on_red = lambda text: f"<white on red>{text}"
+        with patch("ui.terminal.display.echo") as echo:
+            display.draw_cell_missing_value(2, 5, 4)
+        middle = (display.x(5) + Display.CELL_WIDTH // 2, display.y(2) + Display.CELL_VALUE_ROW)
+        display.term.move_xy.assert_called_with(*middle)
+        self.assertEqual(echo.call_args.args[0], "<white on red>4")
+
+
 class TestDisplayCommandPanel(TestCase):
     def test_title_and_commands_are_drawn_right_of_the_puzzle(self):
         with patch("ui.terminal.display.echo") as echo:

@@ -88,6 +88,11 @@ class TestPuzzleSolver(TestCase):
         self.puzzle.select.assert_called_once_with(cell)
         self.assertIsNone(solver.pending_hint())
 
+    def test_next_warning_points_out_a_value_with_no_place_left(self):
+        cell = MagicMock()
+        warning = self.__solver_with([Move(Outcome.STOPPED, "dead end", cell, 4)]).next()
+        self.assertEqual(warning.missing, (cell, 4))
+
     def test_next_with_no_move_says_to_guess(self):
         self.assertIn("make a guess", self.__solver_with([]).next().text)
 

@@ -120,6 +120,11 @@ class Display:
         self.move_to_cell(row, col)
         echo(self.styled(str(value), attrs))
 
+    def draw_cell_missing_value(self, row=0, col=0, value=" "):
+        """Draw a value with no place left in the middle of the cell, in the missing value's colors"""
+        self.move_to_cell(row, col)
+        echo(getattr(self.term, Attrs.MISSING_VALUE)(str(value)))
+
     def move_to_cell(self, row=0, col=0):
         """Move to the middle of the cell"""
         x = self.x(col) + self.CELL_WIDTH // 2

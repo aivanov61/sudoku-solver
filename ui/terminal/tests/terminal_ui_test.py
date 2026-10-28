@@ -129,6 +129,26 @@ class TestTerminalUI(TestCase):
         self.ui.inform(Message("careful", MessageKind.WARNING))
         self.display.show_on_status_line.assert_called_once_with("<yellow>careful</yellow>", wait=True)
 
+    def test_status_shows_a_missing_value_in_its_cell(self):
+        self.__status(Message("stuck", MessageKind.WARNING, (self.__cell(2, 5), 4)))
+        self.display.draw_cell_missing_value.assert_called_once_with(2, 5, 4)
+
+    def test_the_next_status_draws_the_cell_as_it_is_again(self):
+        self.__status(Message("stuck", MessageKind.WARNING, (self.__cell(2, 5, attrs=("a",)), 4)))
+        self.__status(None)
+        self.display.draw_cell_value.assert_called_once_with(2, 5, " ", ("a",))
+
+    def test_a_status_without_a_missing_value_draws_no_cell(self):
+        self.__status(Message("careful", MessageKind.WARNING))
+        self.__status(None)
+        self.display.draw_cell_missing_value.assert_not_called()
+        self.display.draw_cell_value.assert_not_called()
+
+    def test_inform_shows_a_missing_value_until_the_player_has_seen_the_message(self):
+        self.ui.inform(Message("stuck", MessageKind.WARNING, (self.__cell(2, 5, value=None), 4)))
+        drawn = [name for name, _args, _kwargs in self.display.mock_calls]
+        self.assertEqual(drawn, ["draw_cell_missing_value", "show_on_status_line", "draw_cell_value"])
+
     def test_confirm_asks_on_the_status_line(self):
         self.display.confirm.return_value = True
         self.assertTrue(self.ui.confirm("Really?"))

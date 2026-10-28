@@ -55,7 +55,7 @@ Supporting modules:
 | `game/user_interface.py` | `UserInterface`, `Message`, `MessageKind` | The port through which the game talks to the player (section 4.4) |
 | `ui/terminal/terminal_ui.py` | `TerminalUI` | The terminal's implementation of the port: runs the play loop, draws the board, the command panel and the help screen, and shows messages and questions on the status line |
 | `game/border.py` | `Border` | Which sides of a cell lie on its block's edge (layout data) |
-| `game/house.py` | `House` | A box, row or column: a group of cells that must hold every value once, and where a value can still go in it |
+| `game/house.py` | `House` | A box, row or column: a group of cells that must hold every value once, where a value can still go in it, and whether a missing value has no place left |
 | `ui/terminal/display.py` | `Display` | All terminal drawing, through `blessed` |
 | `game/cell_attrs.py` | `CellAttrs` | What a cell's attributes mean: how its value got there, conflict marks, guess depth |
 | `ui/terminal/display_attrs.py` | `DisplayAttrs` | The terminal's style table: turns a cell's attributes into `blessed` style names |
@@ -125,7 +125,7 @@ A message is a `Message(text, kind)`; `MessageKind` is `INFO`, `WARNING`, `SUCCE
 | A cell's state: value, kind (given, typed, guess, solved), conflict marks, guess depth, possible values | Colors and shading for each kind and depth, and what to do when it runs out of shades |
 | Which sides of a cell are block edges | How edges are drawn |
 | Which cells changed, as they change | Redrawing what differs from what it last showed |
-| Messages as plain text with a kind (warning, success, hint) and whether they must be acknowledged | Styling messages, and how they are acknowledged |
+| Messages as plain text with a kind (warning, success, hint) and whether they must be acknowledged, plus any value with no place left and the cell to show it in | Styling messages, how they are acknowledged, and how a missing value is shown in its cell (the terminal: white on red, until the message goes) |
 | The list of layouts | The layout menu, startup notes and screen-size checks |
 | The save file format | File-name prompts or file dialogs |
 
@@ -206,7 +206,7 @@ Puzzle.value_(val) / guess_(val)   (guess_ is refused in setup mode, like the ot
 The solver consults the rules listed in `game/rules/order.py`, in that order, and takes the move of the first one that has one:
 
 1. **`ConflictsRule`** (`[conflicts]`): if any cell carries a conflict mark, the move is the warning "Resolve the conflicts first."
-2. **`DeadEndRule`** (`[dead end]`): if an empty cell has no possible values, the cursor moves there and the warning is "Dead end; try either undoing or rewinding-back-to-a-previous-guess."
+2. **`DeadEndRule`** (`[dead end]`): if an empty cell has no possible values, or else a value missing from a box, row or column has no place left there (`Cell.unplaceable_value()`, through `House.has_no_place_for()`), the cursor moves to that cell (for a missing value, the first empty cell of such a house) and the warning is "Dead end; try either undoing or rewinding-back-to-a-previous-guess." For a missing value, the move also carries the value and the house: `Move.missing()` gives `(cell, value)`, which goes into the warning's `Message.missing`, so the user interface shows the value in the cell for as long as the warning (`status()` until the next command, `inform()` until a key). In setup mode the puzzle words its own warning from the move, e.g. "4 has no place left in this row - change the setup before playing."
 3. **`SingleValueRule`** (`[single value]`): a cell whose only possible value is left; the hint is "Only 9 fits here: every other value is already in its row, column or box."
 4. **`HiddenSingleRule`** (`[hidden single]`): a value that can go in only one cell of a box, row or column (a *hidden single*); the hint is "4 fits nowhere else in its box." (or row, or column). `Cell.hidden_single()` looks through the cell's houses, box first, for the lowest value whose only place (`House.places()`) is the cell. It comes after `SingleValueRule`, because a cell with one possible value is the simpler explanation when both apply.
 

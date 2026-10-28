@@ -250,13 +250,17 @@ class Puzzle:
         if dead_end is None:
             return False
         self.select(dead_end.cell)
-        self.__notice = Message(
-            "This square has no possible values left - change the setup before playing. "
-            if self._initializing
-            else dead_end.hint,
-            MessageKind.WARNING,
-        )
+        text = self.__setup_dead_end_warning(dead_end) if self._initializing else dead_end.hint
+        self.__notice = Message(text, MessageKind.WARNING, dead_end.missing())
         return True
+
+    def __setup_dead_end_warning(self, dead_end) -> str:
+        """Say why the setup leads to the dead end, and to change it"""
+        if dead_end.house:
+            reason = f"{dead_end.value} has no place left in this {dead_end.house.kind}"
+        else:
+            reason = "This square has no possible values left"
+        return f"{reason} - change the setup before playing. "
 
     def __refused_while_initializing(self) -> bool:
         """Warn that a play command was used in setup mode, returning whether it was"""

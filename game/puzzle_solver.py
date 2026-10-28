@@ -97,4 +97,4 @@ class PuzzleSolver:
             return Message("No obvious next move. You'll have to make a guess. ", MessageKind.WARNING)
         if move.cell is not None:
             self.__puzzle.select(move.cell)
-        return Message(move.hint, MessageKind.WARNING)
+        return Message(move.hint, MessageKind.WARNING, move.missing())

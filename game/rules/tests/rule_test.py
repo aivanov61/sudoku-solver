@@ -22,7 +22,7 @@ from unittest.mock import MagicMock
 sys.path.insert(0, ".")
 
 from game.rules.order import RULES
-from game.rules.rule import Outcome, Rule
+from game.rules.rule import Move, Outcome, Rule
 
 
 class TestRule(TestCase):
@@ -41,6 +41,16 @@ class TestRule(TestCase):
     def test_every_rule_has_a_name(self):
         for rule in RULES:
             self.assertTrue(rule.NAME, rule)
+
+    def test_a_warning_with_a_value_points_it_out_as_missing_in_its_cell(self):
+        cell = MagicMock()
+        self.assertEqual(Move(Outcome.STOPPED, "stuck", cell, 4).missing(), (cell, 4))
+
+    def test_a_warning_without_a_value_points_nothing_out(self):
+        self.assertIsNone(Move(Outcome.STOPPED, "stuck", MagicMock()).missing())
+
+    def test_a_move_that_fills_a_cell_points_nothing_out(self):
+        self.assertIsNone(Move(Outcome.MOVED, "why", MagicMock(), 4).missing())
 
 
 if __name__ == "__main__":

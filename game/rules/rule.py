@@ -32,7 +32,12 @@ class Move:
     outcome: Outcome
     hint: str  # why this is the next move, or the warning that stops solving
     cell: object = None  # the cell to fill in or to point the player at, if any
-    value: int = None  # the value to fill in (MOVED only)
+    value: int = None  # the value to fill in (MOVED), or the value that has no place left (STOPPED)
+    house: object = None  # the house the value has no place left in (STOPPED)
+
+    def missing(self) -> tuple:
+        """Return (cell, value) for a warning about a value with no place left, to show it in the cell; or None"""
+        return (self.cell, self.value) if self.outcome is Outcome.STOPPED and self.value else None
 
 
 class Rule(ABC):
@@ -52,6 +57,6 @@ class Rule(ABC):
 
     # Interface required for subclasses
 
-    def _move(self, outcome, hint, cell=None, value=None) -> Move:
+    def _move(self, outcome, hint, cell=None, value=None, house=None) -> Move:
         """Return a move whose hint ends with this rule's name"""
-        return Move(outcome, f"{hint} [{self.NAME}] ", cell, value)
+        return Move(outcome, f"{hint} [{self.NAME}] ", cell, value, house)

@@ -20,6 +20,7 @@ from typing import TYPE_CHECKING
 from game.border import Border
 from game.cell_attrs import CellAttrs
 from game.cell_solver import CellSolver
+from game.house import House
 
 if TYPE_CHECKING:
     from game.rectangular_block import RectangularBlock
@@ -80,11 +81,17 @@ class Cell:
         Return (value, house) for the lowest value that can go nowhere else in one of the cell's houses,
         looking in its box first, then its row and column; or None if there is none
         """
-        for house in self._parent.houses_of(self.row, self.col):
-            for value in sorted(self.possible_values()):
-                if house.places(value) == [self]:
-                    return value, house
-        return None
+        is_only_place = lambda house, value: house.places(value) == [self]
+        return self.__first_in_houses(sorted(self.possible_values()), is_only_place)
+
+    def unplaceable_value(self) -> tuple:
+        """
+        Return (value, house) for the lowest value missing from one of the empty cell's houses with no place left
+        there, looking in its box first, then its row and column; or None if there is none or the cell has a value
+        """
+        if self._value:
+            return None
+        return self.__first_in_houses(self._parent.values(), House.has_no_place_for)
 
     def is_dead_end(self) -> bool:
         """Return True if the cell is empty but no value fits it"""
@@ -164,3 +171,14 @@ class Cell:
 
     def __report_change(self) -> None:
         self._parent.cell_changed(self)
+
+    def __first_in_houses(self, values, applies) -> tuple:
+        """
+        Return (value, house) for the first of the values for which applies(house, value) is true, going through
+        the cell's houses in turn, box first; or None
+        """
+        for house in self._parent.houses_of(self.row, self.col):
+            for value in values:
+                if applies(house, value):
+                    return value, house
+        return None

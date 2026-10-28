@@ -33,6 +33,7 @@ class MessageKind(Enum):
 class Message:
     text: str
     kind: MessageKind
+    missing: tuple = None  # (cell, value): a value with no place left, shown in the cell while the message is
 
 
 class UserInterface(Protocol):
@@ -44,10 +45,10 @@ class UserInterface(Protocol):
     """
 
     def status(self, message) -> None:
-        """Show the message until the next command; None leaves the status line blank"""
+        """Show the message (and its missing value, if any) until the next command; None leaves the status line blank"""
 
     def inform(self, message) -> None:
-        """Show the message and wait until the player has seen it"""
+        """Show the message (and its missing value, if any) and wait until the player has seen it"""
 
     def confirm(self, question) -> bool:
         """Ask a yes/no question, returning True only for yes"""

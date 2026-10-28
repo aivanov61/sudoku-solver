@@ -35,6 +35,7 @@ class DisplayAttrs:
     """
 
     DEFAULT_COLOR = "darkorange3"
+    MISSING_VALUE = "white_on_red"  # a value with no place left, shown in a cell while a warning says so
     GRAY_STEP = 10
     MAX_GRAY_LEVEL = 100  # There are no gray levels greater than 100
 

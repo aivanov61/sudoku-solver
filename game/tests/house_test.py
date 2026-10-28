@@ -41,11 +41,24 @@ class TestHouse(TestCase):
         cells = [self.__cell({5}), self.__cell(set())]
         self.assertEqual(House(House.COLUMN, cells).places(4), [])
 
+    def test_a_house_has_no_place_for_a_value_it_lacks_that_no_cell_can_hold(self):
+        cells = [self.__cell({5}), self.__cell(set(), value=3)]
+        self.assertTrue(House(House.ROW, cells).has_no_place_for(4))
+
+    def test_a_house_holding_the_value_needs_no_place_for_it(self):
+        cells = [self.__cell({5}), self.__cell(set(), value=4)]
+        self.assertFalse(House(House.ROW, cells).has_no_place_for(4))
+
+    def test_a_house_with_a_place_left_for_the_value_has_one(self):
+        cells = [self.__cell({4, 5}), self.__cell(set(), value=3)]
+        self.assertFalse(House(House.ROW, cells).has_no_place_for(4))
+
     # Private functions
 
-    def __cell(self, possible_values):
+    def __cell(self, possible_values, value=None):
         cell = MagicMock()
         cell.possible_values.return_value = possible_values
+        cell.value.return_value = value
         return cell
 
 
