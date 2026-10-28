@@ -29,12 +29,8 @@ class TestMarksSetting(TestCase):
     def test_marks_are_box_marks_with_2_places_at_first(self):
         self.assertEqual((MarksSetting().threshold, MarksSetting().kinds), (2, MarksSetting.BOX_ONLY))
 
-    def test_marks_show_only_in_tagged_cells_at_first(self):
-        self.assertTrue(MarksSetting().shows_marks(tagged=True))
-        self.assertFalse(MarksSetting().shows_marks(tagged=False))
-
-    def test_marks_for_the_whole_puzzle_show_in_every_cell(self):
-        self.assertTrue(MarksSetting(whole_puzzle=True).shows_marks(tagged=False))
+    def test_snyder_marks_are_off_for_the_whole_puzzle_at_first(self):
+        self.assertFalse(MarksSetting().whole_puzzle)
 
     def test_options_are_the_kind_of_house_the_threshold_and_the_whole_puzzle_as_set(self):
         kind, threshold, whole = MarksSetting(3, MarksSetting.EVERY_HOUSE, True).options()
@@ -51,8 +47,8 @@ class TestMarksSetting(TestCase):
         self.assertEqual(threshold.notes, ())
         self.assertEqual(whole.note_action, Action.TAG)
         self.assertEqual(whole.notes, (
-            "Only cells you tag with {key} show their marks (tag in PLAY or SETUP)",
-            "Every empty cell shows its marks; {key} still picks out the cells you tag",
+            "Only cells you tag with {key} show marks: what each one must be",
+            "All other cells show Snyder marks; {key} still shows what a cell must be",
         ))
 
     def test_a_setting_is_made_from_its_options_as_chosen(self):

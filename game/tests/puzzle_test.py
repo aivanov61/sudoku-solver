@@ -453,14 +453,19 @@ class TestPuzzle(TestCase):
         self.puzzle.handle(Action.PLAY)
         self.assertEqual(self.__cell(0, 0).marks(), (4,))
 
-    def test_a_tagged_cell_shows_its_marks_at_once_and_hides_them_once_untagged(self):
-        self.__leave_4_two_places_in_box_0()
-        self.puzzle.play_()
-        self.puzzle.selected_cell = (0, 0)
+    def test_a_tagged_cell_shows_what_it_must_be_at_once_and_nothing_once_untagged(self):
+        self.__leave_4_only_column_6_in_row_0()
+        self.puzzle.selected_cell = (0, 6)
         self.puzzle.handle(Action.TAG)
-        self.assertEqual((self.__cell(0, 0).marks(), self.__cell(0, 2).marks()), ((4,), ()))
+        self.assertEqual((self.__cell(0, 6).marks(), self.__cell(0, 8).marks()), ((4,), ()))
         self.puzzle.handle(Action.TAG)
-        self.assertEqual(self.__cell(0, 0).marks(), ())
+        self.assertEqual(self.__cell(0, 6).marks(), ())
+
+    def test_a_tagged_cell_shows_its_possible_values_but_those_forced_elsewhere(self):
+        self.__leave_4_only_column_6_in_row_0()
+        self.puzzle.selected_cell = (0, 8)
+        self.puzzle.handle(Action.TAG)
+        self.assertEqual(self.__cell(0, 8).marks(), (8, 9))
 
     def test_a_tagged_cell_hides_its_marks_in_setup(self):
         self.__leave_4_two_places_in_box_0()
@@ -846,6 +851,13 @@ class TestPuzzle(TestCase):
     def __fill_row(self, row, start_col, values):
         for col, value in enumerate(values, start_col):
             self.__cell(row, col).set(value)
+
+    def __leave_4_only_column_6_in_row_0(self):
+        """Fill row 0 but for 4, 8 and 9, and put 4 in columns 7 and 8, leaving 4 only column 6 in row 0; then play"""
+        self.__enter_row(0, 0, (1, 2, 3, 5, 6, 7))
+        self.__enter(4, 7, 4)
+        self.__enter(6, 8, 4)
+        self.puzzle.play_()
 
     def __leave_4_two_places_in_box_0(self):
         """Put 4 in rows 1 and 2 and in column 1, leaving 4 two places in box 0: row 0, columns 0 and 2"""

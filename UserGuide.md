@@ -106,10 +106,10 @@ Press `a` to fill in, without explanations, every move that `n` would find, one 
 
 A "must be" mark is a small digit in the middle of an empty cell: that value has only a few places left in the cell's box, and this cell is one of them. Solvers call this Snyder notation. A mark in two cells of a box means the value must be in one of those two. A value with a single mark in its box is a hidden single: it can go only there.
 
-At first, only the cells you tag with `m` show their marks (see Tags below): tag a cell and its marks show at once, untag it and they go. Press `c` to open the configure menu, which lists the settings under the heading **Must-be marks (Snyder notation)**:
+Snyder marks are off at first; a cell you tag with `m` shows what it must be instead (see Tags below). Press `c` to open the configure menu, which lists the settings under the heading **Must-be marks (Snyder notation)**:
 - **Kind of house:** `box` (the default) marks values with few places left in their box; `box, row or column` marks a value with few enough places in any of the three.
 - **Threshold:** how few places a value must have left to be marked, from `2 or fewer places` (the default) to `5 or fewer places`.
-- **Whole puzzle:** `off` (the default) shows marks only in tagged cells; `on` shows them in every empty cell.
+- **Whole puzzle:** `off` (the default) shows no Snyder marks; `on` shows them in every empty cell that isn't tagged. Kind of house and threshold apply only here.
 
 Each line shows its choice and where it is among them, e.g. `Threshold .......... 2 or fewer places (1 of 4)`. Use the up and down arrows to choose a line, and `TAB` or the right arrow to move to the next choice (`Shift-TAB` or the left arrow for the previous one); the choices go round at either end. A gray line under a setting explains the choice made, such as which cells show marks. Press `ENTER` to go back to the puzzle with the new settings, or `ESC` (or `q`) to go back with the settings as they were.
 
@@ -119,7 +119,11 @@ Box marks are the safest to read: two marks in a box always mean "one of these t
 
 ## Tags
 
-Press `m` to tag the selected cell, to pick it out while you think, and `m` again to untag it. A tagged empty cell shows its small digits in steel blue: its possible values and, while playing, its "must be" marks, which a tagged cell shows even when the rest of the puzzle doesn't (see above). Once the cell has a value the steel blue is gone, since the value takes the place of the small digits, but the tag stays: when the value is deleted or undone, the steel blue comes back. Tags work in both modes, undo and rewind leave them alone, and they are saved with the puzzle.
+Press `m` to tag the selected cell, to pick it out while you think, and `m` again to untag it. A tagged empty cell shows its small digits in steel blue: its possible values on the bottom line and, while playing, what it must be on the middle line, whatever the "must be" settings:
+- If the cell is forced, just that value: its only possible value, or a value that has no other place in its row, column or box.
+- Otherwise, its possible values, less any value that a cell in its row, column or box is forced to hold.
+
+So in a row that needs 4, 8 and 9, where the 4 can only go in one of the three cells, that cell shows **4** and the other two show **8 9**. This looks only at what is forced right now, one step, so it never gives away more than the next move would; it will get sharper as the program learns more solving rules. Once the cell has a value the steel blue is gone, since the value takes the place of the small digits, but the tag stays: when the value is deleted or undone, the steel blue comes back. Tags work in both modes, undo and rewind leave them alone, and they are saved with the puzzle.
 
 ## Finishing the puzzle
 

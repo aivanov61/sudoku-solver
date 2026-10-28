@@ -46,7 +46,7 @@ class Cell:
         self._value = None
         self._solver = CellSolver(parent)  # Use the Solver class
         self._attrs = tuple()
-        self._marks = ()  # the "must be" marks (Snyder notation) the cell shows
+        self._marks = ()  # what the cell must be once tagged, or else its "must be" marks (Snyder notation)
         self._tagged = False  # tagged by the player, to pick the cell out
         self._parent = parent
         self.row = row
@@ -76,7 +76,10 @@ class Cell:
         return self._solver.possible_values()
 
     def marks(self) -> tuple:
-        """Return the "must be" marks (Snyder notation): possible values with few places left in the cell's houses"""
+        """
+        Return the marks the cell shows: once tagged, what it must be; otherwise its "must be" marks (Snyder
+        notation), the possible values with few places left in the cell's houses
+        """
         return self._marks
 
     def is_tagged(self) -> bool:
@@ -120,14 +123,21 @@ class Cell:
     # Interface required for the board
 
     def refresh_marks(self, setting: MarksSetting) -> None:
-        """Show the marks the setting asks for in this cell (none without a setting), reporting any change"""
-        is_shown = setting is not None and setting.shows_marks(self._tagged)
-        marks = self.__must_be(setting.threshold, setting.kinds) if is_shown else ()
+        """
+        Show what the cell must be once tagged, or else the Snyder marks the setting asks for in the whole puzzle;
+        nothing without a setting.  Report any change.
+        """
+        marks = self.__marks_for(setting)
         if marks != self._marks:
             self._marks = marks
             self.__report_change()
 
     # Interface required for related cells
+
+    def forced_value(self) -> int:
+        """Return the value the cell is forced to hold now: its single possible value, or else its hidden single; or None"""
+        hidden = self.hidden_single()
+        return self.single_possible_value() or (hidden[0] if hidden else None)
 
     def add_possible(self, value) -> None:
         """Add back a possible value, unless the cell has a value or a related cell holds it"""
@@ -199,7 +209,27 @@ class Cell:
     def __report_change(self) -> None:
         self._parent.cell_changed(self)
 
-    def __must_be(self, threshold, kinds) -> tuple:
+    def __marks_for(self, setting) -> tuple:
+        if setting is None:
+            return ()
+        if self._tagged:
+            return self.__must_be()
+        if setting.whole_puzzle:
+            return self.__snyder_marks(setting.threshold, setting.kinds)
+        return ()
+
+    def __must_be(self) -> tuple:
+        """
+        Return what the cell must be, as far as the values forced now tell: its own forced value, or else its
+        possible values but those forced into related cells
+        """
+        forced = self.forced_value()
+        if forced:
+            return (forced,)
+        taken = {cell.forced_value() for cell in self.__related_cells()}
+        return tuple(value for value in sorted(self.possible_values()) if value not in taken)
+
+    def __snyder_marks(self, threshold, kinds) -> tuple:
         """Return, in order, the possible values with threshold places or fewer in a house of the kinds"""
         houses = [house for house in self._parent.houses_of(self.row, self.col) if house.kind in kinds]
         few_places = lambda value: any(len(house.places(value)) <= threshold for house in houses)

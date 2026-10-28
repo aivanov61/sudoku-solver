@@ -305,13 +305,49 @@ class TestCell(TestCase):
         self.cell.refresh_marks(None)
         self.assertEqual(self.cell.marks(), ())
 
-    def test_cell_shows_its_marks_only_once_tagged_unless_for_the_whole_puzzle(self):
-        self.__counted_house(House.BOX, {4: 1})
-        self.cell.refresh_marks(MarksSetting())
+    def test_an_untagged_cell_shows_snyder_marks_only_for_the_whole_puzzle(self):
+        self.__counted_house(House.BOX, {4: 2})
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY))
         self.assertEqual(self.cell.marks(), ())
-        self.cell.set_tagged(True)
-        self.cell.refresh_marks(MarksSetting())
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
         self.assertEqual(self.cell.marks(), (4,))
+
+    def test_a_tagged_cell_shows_its_single_possible_value(self):
+        self.__leave_possible({6})
+        self.assertEqual(self.__tagged_marks(), (6,))
+
+    def test_a_tagged_cell_shows_its_hidden_single(self):
+        self.__counted_house(House.BOX, {4: 1})
+        self.assertEqual(self.__tagged_marks(), (4,))
+
+    def test_a_tagged_cell_shows_its_possible_values_but_those_forced_into_related_cells(self):
+        self.__leave_possible({3, 5, 7})
+        self.__related_forced(3, None)
+        self.assertEqual(self.__tagged_marks(), (5, 7))
+
+    def test_a_tagged_cell_shows_what_it_must_be_even_for_the_whole_puzzle(self):
+        self.__leave_possible({3, 5})
+        self.__counted_house(House.BOX, {3: 2, 5: 2})
+        self.__related_forced(3)
+        self.assertEqual(self.__tagged_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True)), (5,))
+
+    def test_a_tagged_cell_with_a_value_shows_nothing(self):
+        self.cell.set(8)
+        self.assertEqual(self.__tagged_marks(), ())
+
+    def test_forced_value_is_the_single_possible_value_or_else_the_hidden_single(self):
+        self.__counted_house(House.BOX, {4: 1})
+        self.assertEqual(self.cell.forced_value(), 4)
+        self.__leave_possible({6})
+        self.assertEqual(self.cell.forced_value(), 6)
+
+    def test_forced_value_is_none_when_nothing_forces_one(self):
+        self.__counted_house(House.BOX, {4: 2})
+        self.assertIsNone(self.cell.forced_value())
+
+    def test_forced_value_is_none_for_a_cell_with_a_value(self):
+        self.cell.set(8)
+        self.assertIsNone(self.cell.forced_value())
 
     def test_cell_marks_values_with_few_enough_places_in_its_box(self):
         self.__counted_house(House.BOX, {4: 2, 6: 1, 7: 3})
@@ -366,6 +402,25 @@ class TestCell(TestCase):
         cell.value.return_value = value
         self.parent.related_cells.return_value.append(cell)
         return cell
+
+    def __leave_possible(self, values):
+        for value in set(self.parent.values()) - values:
+            self.cell.remove_possible(value)
+
+    def __related_forced(self, *values):
+        """Make the cell's related cells, one for each value forced into it (None for none)"""
+        related = []
+        for value in values:
+            cell = MagicMock()
+            cell.forced_value.return_value = value
+            related.append(cell)
+        self.parent.related_cells.return_value = related
+
+    def __tagged_marks(self, setting=MarksSetting()) -> tuple:
+        """Tag the cell and return the marks it shows with the setting"""
+        self.cell.set_tagged(True)
+        self.cell.refresh_marks(setting)
+        return self.cell.marks()
 
     def __counted_house(self, kind, counts):
         """Add a house of this cell where each value in counts has that many places, and any other value 9"""

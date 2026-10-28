@@ -31,7 +31,7 @@ class MarksSetting:
     """
     Which "must be" marks (Snyder notation) cells show: each value that has at most threshold places left in one
     of the cell's houses of the given kinds (its box, or its box, row and column), shown in every empty cell of
-    the whole puzzle, or only in the cells the player tagged.
+    the whole puzzle, or in none.  Tagged cells show what they must be instead, whatever the setting (see Cell).
 
     The player configures it through its options(): the kind of house, the threshold and the whole puzzle.
     """
@@ -42,13 +42,13 @@ class MarksSetting:
     BOX_ONLY = (House.BOX,)
     EVERY_HOUSE = (House.BOX, House.ROW, House.COLUMN)
     WHOLE_PUZZLE_NOTES = (  # for off, then on; {key} is the key that tags a cell
-        "Only cells you tag with {key} show their marks (tag in PLAY or SETUP)",
-        "Every empty cell shows its marks; {key} still picks out the cells you tag",
+        "Only cells you tag with {key} show marks: what each one must be",
+        "All other cells show Snyder marks; {key} still shows what a cell must be",
     )
 
     threshold: int = 2
     kinds: tuple = BOX_ONLY
-    whole_puzzle: bool = False  # True to show marks in every empty cell, False only in the tagged ones
+    whole_puzzle: bool = False  # True to show Snyder marks in every empty cell that isn't tagged
 
     def __post_init__(self):
         """Refuse a setting the options don't offer, such as one from a damaged save file"""
@@ -58,10 +58,6 @@ class MarksSetting:
             raise ValueError(f"Unknown kinds of house for marks: {self.kinds}")
         if not isinstance(self.whole_puzzle, bool):
             raise ValueError(f"Unknown whole puzzle switch for marks: {self.whole_puzzle}")
-
-    def shows_marks(self, tagged) -> bool:
-        """Return True if a cell, tagged or not, shows its marks"""
-        return self.whole_puzzle or tagged
 
     def options(self) -> list:
         """Return the options the player can configure, as set now: the kind of house, the threshold, the whole puzzle"""
