@@ -34,7 +34,7 @@ class Action(Enum):
     REWIND = "rewind"
     AUTO = "auto"
     NEXT = "next"
-    MARKS = "marks"
+    CONFIGURE = "configure"
     SAVE = "save"
     OPEN = "open"
     QUIT = "quit"
@@ -52,10 +52,10 @@ class Mode(Enum):
 OFFERED_ACTIONS = {
     Mode.SETUP: (
         Action.PLAY, Action.VALUE, Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT, Action.DEL,
-        Action.SAVE, Action.OPEN, Action.QUIT,
+        Action.CONFIGURE, Action.SAVE, Action.OPEN, Action.QUIT,
     ),
     Mode.PLAY: (
         Action.INIT, Action.VALUE, Action.GUESS, Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT,
-        Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT, Action.MARKS, Action.SAVE, Action.OPEN, Action.QUIT,
+        Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT, Action.CONFIGURE, Action.SAVE, Action.OPEN, Action.QUIT,
     ),
 }

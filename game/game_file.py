@@ -70,11 +70,20 @@ class GameFile:
             return
         self.__remember(name)
         self.__puzzle.restore(saved)
+        if saved.ignored:
+            self.__warn_ignored(saved.ignored)
 
     # Private functions
 
     def __warn(self, text) -> None:
         self.__ui.inform(Message(text, MessageKind.WARNING))
+
+    def __warn_ignored(self, ignored) -> None:
+        """Name the entries ignored, or only count them where the names don't fit"""
+        entries = "entry" if len(ignored) == 1 else "entries"
+        text = f"Ignored {entries} from a newer sudoku: {', '.join(ignored)}. "
+        short = f"Ignored {len(ignored)} {entries} from a newer sudoku. "
+        self.__ui.inform(Message(text, MessageKind.WARNING, short=short))
 
     def __remember(self, name) -> None:
         """Offer the name next time, without its extension"""

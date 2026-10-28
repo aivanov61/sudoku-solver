@@ -28,6 +28,9 @@ from ui.terminal.commands import Commands
 from ui.terminal.display import Display, echo
 from ui.terminal.display_attrs import DisplayAttrs
 from ui.terminal.input import Input
+from ui.terminal.menu import Menu
+from ui.terminal.menu_choice import MenuChoice
+from ui.terminal.menu_heading import MenuHeading
 
 
 class TerminalUI:
@@ -35,6 +38,8 @@ class TerminalUI:
     The user interface on a terminal: it runs the game from the keyboard, draws the board and the command
     panel, and shows the game's messages and asks its questions on the status line.
     """
+
+    CONFIGURE_KEYS_HELP = "Up/down to choose, TAB/Shift-TAB or right/left to change, ESC for the puzzle"
 
     def __init__(self, display: Display, v_cells: int, h_cells: int):
         display.geometry(v_cells, h_cells)
@@ -66,13 +71,14 @@ class TerminalUI:
         """Show the message, and its missing value in its cell, until the next status"""
         self.__take_back_missing()
         self.__display.move_to_status_line()
-        echo((self.__styled(message) if message else "") + self.__display.term.clear_eol)
+        echo((self.__styled(message, self.__display.term.width) if message else "") + self.__display.term.clear_eol)
         self.__show_missing(message)
 
     def inform(self, message) -> None:
         """Show the message, and its missing value in its cell, until a key is hit"""
         self.__show_missing(message)
-        self.__display.show_on_status_line(self.__styled(message), wait=True)
+        room = self.__display.term.width - len(Display.HIT_ANY_KEY)
+        self.__display.show_on_status_line(self.__styled(message, room), wait=True)
         self.__take_back_missing()
 
     def confirm(self, question) -> bool:
@@ -82,6 +88,12 @@ class TerminalUI:
         """Ask for the file name with the extension shown after it; return it with the extension, or None if cancelled or empty"""
         name = self.__display.ask(prompt, default, extension)
         return name + extension if name else None
+
+    def configure(self, options) -> list:
+        """Show the options in a menu, each group under a heading, until ESC; return them as chosen"""
+        choices = [MenuChoice(option.name, option.labels(), option.chosen_index()) for option in options]
+        Menu("Configure", self.__menu_items(options, choices), self.CONFIGURE_KEYS_HELP, self.__display).choose()
+        return [option.with_choice(choice.chosen) for option, choice in zip(options, choices)]
 
     def guess_depth_changed(self, depth) -> None:
         """Warn when guesses go from within the shades of gray to deeper than the last one"""
@@ -129,6 +141,16 @@ class TerminalUI:
             self.__display.draw_cell_missing_value(cell.row, cell.col, value)
             self.__showing_missing = cell
 
+    def __menu_items(self, options, choices) -> list:
+        """Return the choices, with a heading before the first of each group"""
+        items, group = [], None
+        for option, choice in zip(options, choices):
+            if option.group != group:
+                group = option.group
+                items.append(MenuHeading(group))
+            items.append(choice)
+        return items
+
     def __carry_out(self, game: Puzzle, command, digit) -> None:
         """Show the help screen, or hand the action to the game, surviving an action that breaks"""
         if command == Commands.HELP:
@@ -165,11 +187,16 @@ class TerminalUI:
         print("\n" + self.__display.term.clear_eol + "FORCING quit")
         game.force_quit_()
 
-    def __styled(self, message) -> str:
+    def __styled(self, message, room) -> str:
         """Successes and hints in the solved style (steel blue), everything else in yellow"""
+        text = self.__fitting_text(message, room)
         if message.kind in (MessageKind.SUCCESS, MessageKind.HINT):
-            return self.__display.styled(message.text, (CellAttrs.SOLVED,))
-        return self.__display.term.yellow(message.text)
+            return self.__display.styled(text, (CellAttrs.SOLVED,))
+        return self.__display.term.yellow(text)
+
+    def __fitting_text(self, message, room) -> str:
+        """The message's text, or its short text when the whole text is longer than the room on the line"""
+        return message.short if message.short and len(message.text) > room else message.text
 
     def __draw_panel(self) -> None:
         """Draw the mode's title and its commands beside the puzzle, once a mode has been announced"""

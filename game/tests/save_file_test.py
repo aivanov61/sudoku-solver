@@ -27,13 +27,14 @@ sys.path.insert(0, ".")
 
 from game.marks_setting import MarksSetting
 from game.save_file import SavedPuzzle, SaveFile, SaveFileError
+from game.settings import Settings
 
 
 class TestSaveFile(TestCase):
     SAVED = SavedPuzzle(
         layout="Standard 9x9",
         initializing=False,
-        marks=MarksSetting(3, MarksSetting.EVERY_HOUSE),
+        settings=Settings({MarksSetting.NAME: MarksSetting(3, MarksSetting.EVERY_HOUSE)}),
         selected_cell=(4, 7),
         givens=[(0, 0, 5), (8, 8, 1)],
         moves=[(0, 1, 3, None), (2, 2, 7, "guess"), (3, 3, 9, "solved")],
@@ -67,12 +68,33 @@ class TestSaveFile(TestCase):
         with patch.object(SaveFile, "VERSION", SaveFile.VERSION + 2), patch.object(SaveFile, "UPGRADES", upgrades):
             self.assertEqual(SaveFile.read(self.path).layout, "Standard 9x9 v2 v3")
 
-    def test_a_version_1_file_is_read_with_marks_off(self):
+    def test_settings_are_saved_by_name(self):
+        SaveFile.write(self.path, self.SAVED)
+        marks = {"threshold": 3, "kinds": ["box", "row", "column"]}
+        self.assertEqual(self.__json()["state"]["settings"], {"marks": marks})
+
+    def test_a_file_saved_without_settings_is_read_with_the_default_settings(self):
         SaveFile.write(self.path, self.SAVED)
         data = self.__json()
-        del data["state"]["marks"]
-        self.__write_json({**data, "version": 1})
-        self.assertEqual(SaveFile.read(self.path), dataclasses.replace(self.SAVED, marks=MarksSetting()))
+        del data["state"]["settings"]
+        self.__write_json(data)
+        self.assertEqual(SaveFile.read(self.path).settings, Settings())
+
+    def test_entries_from_a_newer_version_are_read_as_ignored_each_with_its_path(self):
+        SaveFile.write(self.path, self.SAVED)
+        data = self.__json()
+        data["state"]["settings"]["marks"]["style"] = "dots"
+        data["state"]["settings"]["themes"] = {"name": "dark"}
+        data["state"]["notes"] = []
+        data["hello"] = "world"
+        self.__write_json(data)
+        saved = SaveFile.read(self.path)
+        self.assertEqual(saved.ignored, ("state.settings.marks.style", "state.settings.themes", "state.notes", "hello"))
+        self.assertEqual(dataclasses.replace(saved, ignored=()), self.SAVED)
+
+    def test_ignored_entries_are_not_saved_again(self):
+        SaveFile.write(self.path, dataclasses.replace(self.SAVED, ignored=("notes",)))
+        self.assertNotIn("ignored", self.__json()["state"])
 
     def test_newer_version_cannot_be_read_and_suggests_updating(self):
         SaveFile.write(self.path, self.SAVED)
@@ -106,7 +128,7 @@ class TestSaveFile(TestCase):
     def test_saved_puzzle_with_an_unknown_marks_setting_is_damaged(self):
         SaveFile.write(self.path, self.SAVED)
         data = self.__json()
-        data["state"]["marks"]["threshold"] = 7
+        data["state"]["settings"]["marks"]["threshold"] = 7
         self.__write_json(data)
         with self.assertRaisesRegex(SaveFileError, "damaged"):
             SaveFile.read(self.path)

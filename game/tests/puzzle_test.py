@@ -26,6 +26,7 @@ from game.cell_attrs import CellAttrs
 from game.marks_setting import MarksSetting
 from game.puzzle import Puzzle
 from game.puzzles.board_3x3 import Board3x3
+from game.settings import Settings
 from game.tests.recording_ui import RecordingUI
 from game.user_interface import MessageKind
 
@@ -418,38 +419,46 @@ class TestPuzzle(TestCase):
 
     # Must-be marks
 
-    def test_marks_cycle_saying_which_values_they_mark(self):
-        self.puzzle.play_()
-        self.puzzle.handle(Action.MARKS)
-        self.assertEqual(self.__status(), "Must-be marks (config 1 of 8): 2 or fewer 'must be' values in their box. ")
-        self.assertEqual(self.ui.statuses[-1].kind, MessageKind.INFO)
+    def test_configure_offers_the_settings_options_as_they_are(self):
+        self.puzzle.handle(Action.CONFIGURE)
+        self.assertEqual(self.ui.configured, [Settings().options()])
 
     def test_marks_show_once_turned_on(self):
         self.__leave_4_two_places_in_box_0()
         self.puzzle.play_()
         self.assertEqual(self.__cell(0, 0).marks(), ())
-        self.puzzle.handle(Action.MARKS)
+        self.__turn_on_box_marks()
         self.assertEqual((self.__cell(0, 0).marks(), self.__cell(0, 2).marks()), ((4,), (4,)))
+
+    def test_configure_shows_the_board_afresh_with_nothing_on_the_status_line(self):
+        self.puzzle.play_()
+        shown = len(self.ui.shown_boards)
+        self.__turn_on_box_marks()
+        self.assertEqual(len(self.ui.shown_boards), shown + 1)
+        self.assertEqual(self.__status(), "")
 
     def test_marks_follow_every_entry(self):
         self.__leave_4_two_places_in_box_0()
         self.puzzle.play_()
-        self.puzzle.handle(Action.MARKS)
+        self.__turn_on_box_marks()
         self.__enter(7, 2, 4)
         self.assertEqual((self.__cell(0, 0).marks(), self.__cell(0, 2).marks()), ((4,), ()))
 
     def test_marks_are_hidden_in_setup_and_come_back_in_play(self):
         self.__leave_4_two_places_in_box_0()
         self.puzzle.play_()
-        self.puzzle.handle(Action.MARKS)
+        self.__turn_on_box_marks()
         self.puzzle.handle(Action.INIT)
         self.assertEqual(self.__cell(0, 0).marks(), ())
         self.puzzle.handle(Action.PLAY)
         self.assertEqual(self.__cell(0, 0).marks(), (4,))
 
-    def test_marks_are_refused_in_setup(self):
-        self.puzzle.handle(Action.MARKS)
-        self.assertIn("This works only while playing", self.ui.last_informed())
+    def test_marks_configured_in_setup_show_once_playing(self):
+        self.__leave_4_two_places_in_box_0()
+        self.__turn_on_box_marks()
+        self.assertEqual((self.ui.informed, self.__cell(0, 0).marks()), ([], ()))
+        self.puzzle.handle(Action.PLAY)
+        self.assertEqual(self.__cell(0, 0).marks(), (4,))
 
     # Next
 
@@ -703,10 +712,10 @@ class TestPuzzle(TestCase):
 
     def test_restore_brings_back_the_marks_setting(self):
         self.puzzle.play_()
-        self.puzzle.handle(Action.MARKS)
-        self.puzzle.handle(Action.MARKS)
+        self.ui.choices = [0, 2]
+        self.puzzle.handle(Action.CONFIGURE)
         restored = self.__restored_puzzle()
-        self.assertEqual(restored.saved_state().marks, MarksSetting(3, MarksSetting.BOX_ONLY))
+        self.assertEqual(restored.saved_state().settings.of(MarksSetting), MarksSetting(3, MarksSetting.BOX_ONLY))
 
     def test_restored_moves_can_be_undone(self):
         self.__play_a_few_moves()
@@ -797,6 +806,11 @@ class TestPuzzle(TestCase):
         """Put 4 in rows 1 and 2 and in column 1, leaving 4 two places in box 0: row 0, columns 0 and 2"""
         for row, col in ((1, 4), (2, 7), (4, 1)):
             self.__enter(row, col, 4)
+
+    def __turn_on_box_marks(self):
+        """Configure marks for values with 2 or fewer places in their box"""
+        self.ui.choices = [0, 1]
+        self.puzzle.handle(Action.CONFIGURE)
 
     def __leave_4_no_place_in_row_0(self):
         """Fill row 0 but for 4 and 9, and put 4 in column 7, so a 4 in column 8 leaves row 0 no place for one"""

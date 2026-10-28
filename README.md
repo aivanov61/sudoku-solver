@@ -132,8 +132,11 @@ some guidance:
 - game/puzzles/board_3x3.py - the standard layout of nine 3x3 blocks; `Board3x3` class
 (new layouts go in the game/puzzles folder)
 - game/puzzle_catalog.py - finds the available layouts; `PuzzleCatalog` class
-- ui/terminal/menu.py - a full-screen menu, used to choose a layout; `Menu` class
+- ui/terminal/menu.py - a full-screen menu, used to choose a layout and to configure; `Menu` class
+- ui/terminal/menu_item.py - the base class of menu lines; `MenuItem` class
 - ui/terminal/menu_entry.py - a menu line that ENTER picks; `MenuEntry` class
+- ui/terminal/menu_heading.py - a menu line naming a group; `MenuHeading` class
+- ui/terminal/menu_choice.py - a menu line offering choices; `MenuChoice` class
 - game/puzzle_solver.py - finds and makes the next obvious move (n) or all of them (a) by applying the solving rules; `PuzzleSolver` class
 - game/rules/ - one solving rule per file (`Rule` subclasses); game/rules/order.py sets the order they are applied in
 - game/rectangular_block.py - creates/manages a rectangular block of 3x3 cells; `RectangularBlock` class.
@@ -145,6 +148,8 @@ some guidance:
 - ui/terminal/terminal_ui.py - the terminal's user interface: runs the play loop, draws the board and panel, shows messages and asks questions; `TerminalUI` class
 - game/border.py - which sides of a cell lie on its block's edge; `Border` class
 - game/marks_setting.py - which "must be" marks (Snyder notation) cells show; `MarksSetting` class
+- game/config_option.py - a setting the player can configure; `ConfigOption` class
+- game/settings.py - every setting the player can configure, saved by name; `Settings` class
 - game/house.py - a box, row or column, where a value can still go in it, and whether a missing value has no place left; `House` class
 - ui/terminal/display.py - manages the terminal display; `Display` class
 - game/cell_attrs.py - what a cell's attributes mean (given, guess, solved, conflicts, guess depth); `CellAttrs` class

@@ -24,7 +24,9 @@ from blessed.keyboard import Keystroke
 sys.path.insert(0, ".")
 
 from ui.terminal.menu import Menu
+from ui.terminal.menu_choice import MenuChoice
 from ui.terminal.menu_entry import MenuEntry
+from ui.terminal.menu_heading import MenuHeading
 
 
 class TestMenu(TestCase):
@@ -32,6 +34,8 @@ class TestMenu(TestCase):
     ESCAPE = Keystroke("\x1b", code=361, name="KEY_ESCAPE")
     UP = Keystroke("", code=259, name="KEY_UP")
     DOWN = Keystroke("", code=258, name="KEY_DOWN")
+    TAB = Keystroke("\t", code=512, name="KEY_TAB")
+    QUIT_QUESTION = "Really quit? (y/n)"
 
     def setUp(self):
         self.entries = [MenuEntry(f"Layout {n}", n) for n in range(1, 7)]
@@ -86,6 +90,37 @@ class TestMenu(TestCase):
 
     def test_ctrl_c_while_asking_to_quit_quits(self):
         self.assertIsNone(self.__choose("q", KeyboardInterrupt()))
+
+    def test_without_a_quit_question_escape_and_q_leave_at_once(self):
+        for key in (self.ESCAPE, "q"):
+            self.assertIsNone(self.__choose(key, quit_question=None))
+            self.assertNotIn(self.QUIT_QUESTION, self.__last_screen())
+
+    # Headings and choices
+
+    def test_a_heading_is_shown_but_skipped(self):
+        self.entries = [MenuHeading("Group"), MenuEntry("Layout 1", 1)]
+        self.assertEqual(self.__choose(self.UP, self.ENTER), 1)
+        self.assertEqual(self.__item_lines(), ["  Group", "  [Layout 1]"])
+
+    def test_the_selected_line_takes_the_keys_the_menu_does_not_use(self):
+        choice = MenuChoice("Size", ["small", "large"])
+        self.entries = [MenuHeading("Group"), choice]
+        self.__choose(self.TAB, self.ESCAPE, quit_question=None)
+        self.assertEqual(choice.chosen, 1)
+        self.assertEqual(self.__item_lines()[1], "    [" + choice.text() + "]")
+
+    def test_enter_on_a_choice_picks_nothing(self):
+        self.entries = [MenuChoice("Size", ["small", "large"])]
+        self.assertIsNone(self.__choose(self.ENTER, self.ESCAPE, quit_question=None))
+        self.assertEqual(self.entries[0].chosen, 0)
+
+    def test_shift_tab_read_as_two_keys_is_taken_as_one(self):
+        choice = MenuChoice("Size", ["small", "medium", "large"])
+        self.entries = [choice]
+        shift_tab = [Keystroke("\x1b[", code=0, name="CSI"), Keystroke("Z")]
+        self.__choose(*shift_tab, self.ESCAPE, quit_question=None)
+        self.assertEqual(choice.chosen, 2)
 
     # The screen
 
@@ -165,7 +200,7 @@ class TestMenu(TestCase):
 
     # Private functions
 
-    def __choose(self, *keys, height=24):
+    def __choose(self, *keys, height=24, quit_question=QUIT_QUESTION):
         display = MagicMock()
         display.term.height = height
         display.term.yellow.side_effect = lambda text: text
@@ -173,7 +208,7 @@ class TestMenu(TestCase):
         display.term.gray50.side_effect = lambda text: f"<{text}>"
         display.term.inkey.side_effect = [Keystroke(key) if type(key) is str else key for key in keys]
         with patch("ui.terminal.menu.echo") as self.echo:
-            return Menu("Pick one:", self.entries, "ENTER picks", display).choose()
+            return Menu("Pick one:", self.entries, "ENTER picks", display, quit_question).choose()
 
     def __last_screen(self) -> list:
         return str(self.echo.call_args_list[-1].args[0]).split("\n")

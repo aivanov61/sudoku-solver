@@ -24,25 +24,29 @@ from ui.terminal.display import Display, echo
 
 class Menu:
     """
-    A menu on a cleared screen: a title, the items, as many as fit, then a message line and a line of key help.
+    A menu on a cleared screen: a title, the items (MenuItem), as many as fit, then a message line and a line
+    of key help.
 
     The selected item is shown in reverse video; up and down move to the next item that can be selected,
     scrolling a line at a time, and scroll a line instead when there is none, even past the selected item.
     While it is out of view, up and down only scroll, a hint says so, and ENTER brings it back into view;
-    otherwise ENTER picks it.  While items are hidden above or below, a "---more---" line takes the top or
-    bottom item line.  ESC or q asks "Really quit? (y/n)", and CTRL-C quits at once.
+    otherwise ENTER picks it if it is an item ENTER picks.  The selected item gets the keys the menu doesn't
+    use (e.g. TAB for a choice).  While items are hidden above or below, a "---more---" line takes the top or
+    bottom item line.  ESC or q leaves, first asking the quit question if there is one, and CTRL-C leaves at
+    once.
     """
 
     RESERVED_LINES = 5  # title, blank line, blank line, message, key help
     MORE = "---more---"
     HINT = "ENTER brings the highlighted line back into view"
-    QUIT_KEYS = ("KEY_ESCAPE", "q", "Q")
+    LEAVE_KEYS = ("KEY_ESCAPE", "q", "Q")
 
-    def __init__(self, title, items: list, keys_help, display: Display):
+    def __init__(self, title, items: list, keys_help, display: Display, quit_question=None):
         self.__title = title
         self.__items = items
         self.__keys_help = keys_help
         self.__display = display
+        self.__quit_question = quit_question  # asked before leaving, when there is one; only "y" or "Y" confirms
         self.__selected = self.__next_selectable(-1, 1)  # index of the selected item, None when none can be
         self.__top = 0  # index of the first item shown
         self.__message = ""
@@ -50,19 +54,23 @@ class Menu:
             self.__bring_into_view(self.__selected)
 
     def choose(self):
-        """Return the value of the entry picked, or None if the player quits or there is nothing to pick"""
+        """Return the value of the item picked, or None if the player leaves or there is nothing to pick"""
         try:
             while True:
                 self.__draw()
                 key = self.__read_key()
                 if key == "KEY_ENTER" and self.__is_selection_hidden():
                     self.__bring_into_view(self.__selected)
-                elif key == "KEY_ENTER":
-                    return None if self.__selected is None else self.__items[self.__selected].value
-                elif key in self.QUIT_KEYS and self.__quit_confirmed():
+                elif key == "KEY_ENTER" and self.__selected is None:
+                    return None
+                elif key == "KEY_ENTER" and self.__items[self.__selected].is_picked_by_enter():
+                    return self.__items[self.__selected].value
+                elif key in self.LEAVE_KEYS and self.__leave_confirmed():
                     return None
                 elif key in ("KEY_UP", "KEY_DOWN"):
                     self.__move(1 if key == "KEY_DOWN" else -1)
+                elif self.__selected in self.__shown(self.__top):
+                    self.__items[self.__selected].handle(key)
         except KeyboardInterrupt:
             return None
 
@@ -109,21 +117,29 @@ class Menu:
         return [self.MORE] if is_more else []
 
     def __item_line(self, index) -> str:
-        """Return the item's label: reversed when selected, grayed out when it can't be selected"""
+        """Return the item's text, indented: reversed when selected, else grayed out if the item says so"""
         term, item = self.__display.term, self.__items[index]
+        text = item.text()
         if index == self.__selected:
-            return "  " + term.reverse(item.label)
-        return "  " + (item.label if item.is_selectable() else term.gray50(item.label))
+            text = term.reverse(text)
+        elif item.is_grayed_out():
+            text = term.gray50(text)
+        return item.INDENT + text
 
     def __read_key(self) -> str:
         """Return the key pressed: its name (e.g. KEY_ENTER) for special keys, else the character"""
-        with self.__display.term.cbreak():
-            key = self.__display.term.inkey()
+        term = self.__display.term
+        with term.cbreak():
+            key = term.inkey()
+            if key.name == "CSI" and term.inkey(timeout=0) == "Z":  # blessed reads Shift-TAB as "\x1b[" then "Z"
+                return "KEY_BTAB"
         return key.name if key.is_sequence else str(key)
 
-    def __quit_confirmed(self) -> bool:
-        """Ask on the menu's message line; only "y" or "Y" confirms"""
-        self.__message = "Really quit? (y/n)"
+    def __leave_confirmed(self) -> bool:
+        """Ask the quit question, if there is one, on the menu's message line; only "y" or "Y" confirms"""
+        if self.__quit_question is None:
+            return True
+        self.__message = self.__quit_question
         self.__draw()
         self.__message = ""
         return self.__read_key() in ("y", "Y")

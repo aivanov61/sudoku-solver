@@ -15,14 +15,29 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+import sys
 
-class MenuEntry:
+sys.path.insert(0, ".")
+
+from ui.terminal.menu_item import MenuItem
+
+
+class MenuEntry(MenuItem):
     """A menu line that ENTER picks, standing for a value; one that can't be picked is grayed out and skipped"""
 
     def __init__(self, label, value, can_pick=True):
-        self.label = label
         self.value = value
+        self.__label = label
         self.__can_pick = can_pick
+
+    def text(self) -> str:
+        return self.__label
 
     def is_selectable(self) -> bool:
         return self.__can_pick
+
+    def is_grayed_out(self) -> bool:
+        return not self.__can_pick
+
+    def is_picked_by_enter(self) -> bool:
+        return True

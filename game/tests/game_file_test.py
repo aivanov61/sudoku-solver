@@ -15,6 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+import dataclasses
 import os
 import sys
 import tempfile
@@ -24,14 +25,14 @@ from unittest.mock import MagicMock, patch
 sys.path.insert(0, ".")
 
 from game.game_file import GameFile
-from game.marks_setting import MarksSetting
 from game.tests.recording_ui import RecordingUI
 from game.save_file import SavedPuzzle, SaveFile
+from game.settings import Settings
 from game.user_interface import MessageKind
 
 
 class TestGameFile(TestCase):
-    SAVED = SavedPuzzle("Standard 9x9", False, MarksSetting(), (2, 2), [(0, 0, 1)], [(0, 1, 2, None)])
+    SAVED = SavedPuzzle("Standard 9x9", False, Settings(), (2, 2), [(0, 0, 1)], [(0, 1, 2, None)])
 
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -62,7 +63,7 @@ class TestGameFile(TestCase):
 
     def test_saving_over_an_existing_file_asks_first(self):
         self.__save()
-        self.puzzle.saved_state.return_value = SavedPuzzle("Standard 9x9", True, MarksSetting(), (0, 0), [], [])
+        self.puzzle.saved_state.return_value = SavedPuzzle("Standard 9x9", True, Settings(), (0, 0), [], [])
         self.ui.confirms = False
         self.ui.questions.clear()
         self.__save()
@@ -106,8 +107,26 @@ class TestGameFile(TestCase):
         self.assertEqual(self.ui.questions, [("Restore from file:", self.__stem(self.path), ".json")])
         self.puzzle.restore.assert_called_once_with(self.SAVED)
 
+    def test_restore_names_the_entries_it_ignored_or_just_counts_them(self):
+        self.__restore_ignoring("notes", "themes")
+        self.assertEqual(self.ui.last_informed(), "Ignored entries from a newer sudoku: notes, themes. ")
+        self.assertEqual(self.ui.informed[-1].short, "Ignored 2 entries from a newer sudoku. ")
+        self.assertEqual(self.ui.informed[-1].kind, MessageKind.WARNING)
+        self.puzzle.restore.assert_called_once()
+
+    def test_restore_names_a_single_ignored_entry_as_one(self):
+        self.__restore_ignoring("notes")
+        self.assertEqual(self.ui.last_informed(), "Ignored entry from a newer sudoku: notes. ")
+        self.assertEqual(self.ui.informed[-1].short, "Ignored 1 entry from a newer sudoku. ")
+
+    def test_restore_without_ignored_entries_does_not_warn(self):
+        self.__save()
+        self.ui.informed.clear()
+        self.__restore()
+        self.assertEqual(self.ui.informed, [])
+
     def test_restore_refuses_a_file_from_another_layout(self):
-        SaveFile.write(self.path, SavedPuzzle("Other layout", True, MarksSetting(), (0, 0), [(0, 0, 1)], []))
+        SaveFile.write(self.path, SavedPuzzle("Other layout", True, Settings(), (0, 0), [(0, 0, 1)], []))
         self.__restore()
         self.assertIn('"Other layout"', self.ui.last_informed())
         self.puzzle.restore.assert_not_called()
@@ -141,6 +160,11 @@ class TestGameFile(TestCase):
     def __restore(self):
         self.ui.file_name = self.path
         self.game_file.restore()
+
+    def __restore_ignoring(self, *ignored):
+        """Restore a file read as having entries this version doesn't know"""
+        with patch.object(SaveFile, "read", return_value=dataclasses.replace(self.SAVED, ignored=ignored)):
+            self.__restore()
 
     def __name_offered_by_restore(self) -> str:
         self.ui.file_name = None

@@ -34,6 +34,7 @@ class Message:
     text: str
     kind: MessageKind
     missing: tuple = None  # (cell, value): a value with no place left, shown in the cell while the message is
+    short: str = None  # a shorter text, shown instead when the whole text doesn't fit
 
 
 class UserInterface(Protocol):
@@ -56,6 +57,10 @@ class UserInterface(Protocol):
     def ask_file_name(self, prompt, default, extension) -> str:
         """Ask for a file name, offering the default; the player doesn't type the extension, which is added to the
         name returned; return None if the player cancels"""
+
+    def configure(self, options) -> list:
+        """Let the player change the options (see ConfigOption), returning them as chosen; the game then shows the
+        board afresh"""
 
     def guess_depth_changed(self, depth) -> None:
         """Hear that values are now entered depth guesses deep (0 when no guess is in play)"""

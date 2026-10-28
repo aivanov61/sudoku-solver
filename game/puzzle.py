@@ -30,6 +30,7 @@ from game.moves import Moves
 from game.puzzle_solver import PuzzleSolver
 from game.rules.dead_end_rule import DeadEndRule
 from game.save_file import SavedPuzzle
+from game.settings import Settings
 from game.user_interface import Message, MessageKind, UserInterface
 
 
@@ -63,8 +64,8 @@ class Puzzle:
         self.selected_cell = (0, 0)  # row, col (NOT x, y)
         self.is_playing = True
 
-        self.__notice = None  # a warning or a new setting, shown on the status line until the next command
-        self.__marks = MarksSetting()  # which "must be" marks to show while playing
+        self.__notice = None  # a warning, shown on the status line until the next command
+        self.__settings = Settings()  # what the player configured, such as the "must be" marks shown while playing
         self.__board = board
         self.__ui = ui
         board.report_changes_to(ui.cell_changed)
@@ -160,12 +161,11 @@ class Puzzle:
         if not self.__solving_refused():
             self.__inform(self.__solver.auto())
 
-    def marks_(self) -> None:
-        """Show the next kind of "must be" marks (Snyder notation), saying which"""
-        if self.__refused_while_initializing():
-            return
-        self.__marks = self.__marks.next()
-        self.__notice = Message(self.__marks.description(), MessageKind.INFO)
+    def configure_(self) -> None:
+        """Let the player change the settings, such as the "must be" marks, then show the board afresh with them"""
+        self.__settings = self.__settings.from_options(self.__ui.configure(self.__settings.options()))
+        self.__refresh_marks()
+        self.render()
 
     def save_(self) -> None:
         self.__game_file.save()
@@ -203,10 +203,10 @@ class Puzzle:
         return self.__board.NAME
 
     def saved_state(self) -> SavedPuzzle:
-        """Everything needed to restore the puzzle: layout, mode, marks setting, cursor, givens and recorded moves"""
+        """Everything needed to restore the puzzle: layout, mode, settings, cursor, givens and recorded moves"""
         board = self.__board
         return SavedPuzzle(
-            board.NAME, self._initializing, self.__marks, self.selected_cell, board.givens(), self.__moves.recorded()
+            board.NAME, self._initializing, self.__settings, self.selected_cell, board.givens(), self.__moves.recorded()
         )
 
     def restore(self, saved) -> None:
@@ -218,7 +218,7 @@ class Puzzle:
         for row, col, value, prim_attr in saved.moves:
             self.__moves.enter(self.__board.cell(row, col), value, prim_attr)
         self.selected_cell = saved.selected_cell
-        self.__marks = saved.marks
+        self.__settings = saved.settings
         self.render()
         self.__found_dead_end()
 
@@ -237,7 +237,7 @@ class Puzzle:
 
     def __refresh_marks(self) -> None:
         """Have the cells show the marks of the setting while playing, and none in setup"""
-        self.__board.refresh_marks(MarksSetting() if self._initializing else self.__marks)
+        self.__board.refresh_marks(MarksSetting() if self._initializing else self.__settings.of(MarksSetting))
 
     def __action_received(self, action) -> None:
         """Any action ends the notice and the completion report; any action but "n" cancels the move a previous "n" pointed out"""

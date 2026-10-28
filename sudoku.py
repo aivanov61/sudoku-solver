@@ -35,6 +35,7 @@ class Main:
     """
 
     LAYOUT_KEYS_HELP = "Up/down to choose, ENTER to play, ESC or q to quit"
+    QUIT_QUESTION = "Really quit? (y/n)"
 
     def run(self):
         self.__display = Display()
@@ -78,7 +79,7 @@ class Main:
     def __layout_menu(self, layouts) -> Menu:
         """A menu of the layouts, with any notes after their names; broken ones can't be picked"""
         entries = [MenuEntry(layout.label(), layout, can_pick=not layout.is_broken()) for layout in layouts]
-        return Menu("Choose a puzzle layout:", entries, self.LAYOUT_KEYS_HELP, self.__display)
+        return Menu("Choose a puzzle layout:", entries, self.LAYOUT_KEYS_HELP, self.__display, self.QUIT_QUESTION)
 
     def __play(self, board):
         ui = TerminalUI(self.__display, board.v_cells, board.h_cells)

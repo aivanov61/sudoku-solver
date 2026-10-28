@@ -137,11 +137,11 @@ class Commands:
             "long": 'Use "n" to auto-play the next "must be" cell value',
         },
         {
-            "command": Action.MARKS,
-            "keys": "mM",
-            "label": "m",
-            "name": "marks",
-            "long": 'Use "m" to change the "must be" marks: off, 2-5 places in a box, then in a box, row or column',
+            "command": Action.CONFIGURE,
+            "keys": "cC",
+            "label": "c",
+            "name": "config",
+            "long": 'Use "c" to configure the game, such as the "must be" marks; ESC goes back to the puzzle',
         },
         {
             "command": Action.SAVE,

@@ -51,7 +51,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | `r` | Rewind: undo everything entered after your most recent guess, keeping the guess (or undo everything, if there's no guess). Asks you to confirm, since it can't be undone. |
 | `n` | Next: show an obvious next move and why; press `n` again to fill it in (see below) |
 | `a` | Auto: fill in every obvious move, one after another (see below) |
-| `m` | Marks: change which "must be" marks are shown (see below) |
+| `c` | Configure: change settings such as the "must be" marks (see below); works in setup too |
 | `ESC` | Go back to setup mode (only once everything has been undone) |
 | `?` | Show the playing commands, with a longer description of each |
 | `s` | Save the puzzle to a file (see below) |
@@ -104,10 +104,11 @@ Press `a` to fill in, without explanations, every move that `n` would find, one 
 
 A "must be" mark is a small digit in the middle of an empty cell: that value has only a few places left in the cell's box, and this cell is one of them. Solvers call this Snyder notation. A mark in two cells of a box means the value must be in one of those two. A value with a single mark in its box is a hidden single: it can go only there.
 
-Marks are off at first. Each press of `m` (while playing) moves to the next setting and names it on the bottom line:
-- **Configs 1 to 4** mark values with 2, 3, 4 or 5 places or fewer in their box, e.g. "Must-be marks (config 1 of 8): 2 or fewer 'must be' values in their box."
-- **Configs 5 to 8** do the same for the box, row or column: a value is marked if it has few enough places in any of the three.
-- **The next press** turns them off again.
+Marks are off at first. Press `c` to open the configure menu, which lists the settings under the heading **Must-be marks (Snyder notation)**:
+- **Kind of house:** `box` marks values with few places left in their box; `box, row or column` marks a value with few enough places in any of the three.
+- **Threshold:** `off`, or how few places a value must have left to be marked, from `2 or fewer places` to `5 or fewer places`.
+
+Each line shows its choice and where it is among them, e.g. `Threshold .......... 2 or fewer places (2 of 5)`. Use the up and down arrows to choose a line, and `TAB` or the right arrow to move to the next choice (`Shift-TAB` or the left arrow for the previous one); the choices go round at either end. `ENTER` does nothing here. Press `ESC` (or `q`) to go back to the puzzle with the new settings; there's nothing to confirm, since you can always change them back.
 
 The marks update after every key, as values are entered, deleted, undone or filled in. Up to three marks are spaced out; four or five are shown closed up; more than that show `.....`. During setup the marks are hidden, and they come back when you start playing.
 
@@ -123,7 +124,7 @@ Press `s` at any time, in either mode, to save the puzzle to a file. The status 
 
 Press `o` to restore a saved puzzle the same way. It brings back everything: the givens, every value you entered, guesses and their shading, the mode, where the cursor was, and which "must be" marks were shown (files saved before marks existed come back with marks off). Undo and rewind keep working through the restored moves. The restored puzzle replaces the current one completely, so if the board holds any values, it asks you to confirm first.
 
-A puzzle can only be restored into the layout it was saved from. A file saved by a newer version of the program can't be restored; the program says so, and you can update the program to restore it.
+A puzzle can only be restored into the layout it was saved from. A file saved by a newer version of the program can't be restored; the program says so, and you can update the program to restore it. A file that only adds something newer, such as a new setting, is restored without it, and the bottom line names what was ignored (or just counts it, when the names don't fit). Saving the puzzle again leaves the ignored entries out.
 
 ## Colors at a glance
 

@@ -23,6 +23,8 @@ class RecordingUI:
     def __init__(self, confirms=True, file_name=None):
         self.confirms = confirms  # the answer to every confirm()
         self.file_name = file_name  # the answer to every ask_file_name()
+        self.choices = None  # the index chosen for each option offered to configure(); None leaves them as they are
+        self.configured = []  # the options offered by every configure()
         self.statuses = []  # every message shown with status(), None for a blank status line
         self.informed = []  # every message shown with inform()
         self.questions = []  # every question asked with confirm(), and (prompt, default, extension) for each ask_file_name()
@@ -46,6 +48,12 @@ class RecordingUI:
     def ask_file_name(self, prompt, default, extension) -> str:
         self.questions.append((prompt, default, extension))
         return self.file_name
+
+    def configure(self, options) -> list:
+        self.configured.append(options)
+        if self.choices is None:
+            return options
+        return [option.with_choice(index) for option, index in zip(options, self.choices)]
 
     def guess_depth_changed(self, depth) -> None:
         self.guess_depths.append(depth)

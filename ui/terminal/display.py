@@ -64,6 +64,9 @@ class Display:
     PANEL_NAME_WIDTH = 8
     MIN_WIDTH = 80
 
+    # Status line
+    HIT_ANY_KEY = "Hit any key to continue: "  # the prompt after a message the player must see
+
     def __init__(self, term: Terminal = None):
         self.term = term or Terminal()  # the blessed terminal to draw on
         self.geom = {"h_cells": None, "v_cells": None}
@@ -178,7 +181,7 @@ class Display:
                 self.hit_any_key_to_continue()
 
     def hit_any_key_to_continue(self):
-        echo("Hit any key to continue: ")
+        echo(self.HIT_ANY_KEY)
         try:
             with self.term.cbreak():
                 self.term.inkey()

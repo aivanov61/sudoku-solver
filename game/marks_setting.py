@@ -21,6 +21,7 @@ from dataclasses import dataclass
 
 sys.path.insert(0, ".")
 
+from game.config_option import ConfigOption
 from game.house import House
 
 
@@ -30,9 +31,11 @@ class MarksSetting:
     Which "must be" marks (Snyder notation) cells show: none, or each value that has at most threshold places
     left in one of the cell's houses of the given kinds (its box, or its box, row and column).
 
-    next() steps through every setting in turn: off, each threshold for boxes, each for every house, then off.
+    The player configures it through its options(): the kind of house and the threshold, which can be off.
     """
 
+    NAME = "marks"  # saved under this name (see Settings)
+    GROUP = "Must-be marks (Snyder notation)"  # named so that players can look up the technique
     THRESHOLDS = (2, 3, 4, 5)
     BOX_ONLY = (House.BOX,)
     EVERY_HOUSE = (House.BOX, House.ROW, House.COLUMN)
@@ -41,7 +44,7 @@ class MarksSetting:
     kinds: tuple = BOX_ONLY
 
     def __post_init__(self):
-        """Refuse a setting next() would never reach, such as one from a damaged save file"""
+        """Refuse a setting the options don't offer, such as one from a damaged save file"""
         if self.threshold not in (None, *MarksSetting.THRESHOLDS):
             raise ValueError(f"Unknown threshold for marks: {self.threshold}")
         if self.kinds not in (MarksSetting.BOX_ONLY, MarksSetting.EVERY_HOUSE):
@@ -50,24 +53,23 @@ class MarksSetting:
     def is_on(self) -> bool:
         return self.threshold is not None
 
-    def next(self) -> "MarksSetting":
-        settings = MarksSetting.__in_turn()
-        return settings[(settings.index(self) + 1) % len(settings)]
-
-    def description(self) -> str:
-        """Say which of the settings that show marks this is, and what it marks, for the status line"""
-        if not self.is_on():
-            return "Must-be marks off. "
-        settings = MarksSetting.__in_turn()
-        config = f"config {settings.index(self)} of {len(settings) - 1}"
-        houses = "box" if self.kinds == MarksSetting.BOX_ONLY else "box, row or column"
-        return f"Must-be marks ({config}): {self.threshold} or fewer 'must be' values in their {houses}. "
-
-    # Private functions
-
-    def __in_turn() -> list:
-        """Return every setting, in the order next() steps through them"""
-        kinds_in_turn = (MarksSetting.BOX_ONLY, MarksSetting.EVERY_HOUSE)
-        return [MarksSetting()] + [
-            MarksSetting(threshold, kinds) for kinds in kinds_in_turn for threshold in MarksSetting.THRESHOLDS
+    def options(self) -> list:
+        """Return the options the player can configure, as set now: the kind of house, then the threshold"""
+        kinds = (("box", MarksSetting.BOX_ONLY), ("box, row or column", MarksSetting.EVERY_HOUSE))
+        thresholds = (("off", None), *((f"{threshold} or fewer places", threshold) for threshold in self.THRESHOLDS))
+        return [
+            ConfigOption(self.GROUP, "Kind of house", kinds, self.kinds),
+            ConfigOption(self.GROUP, "Threshold", thresholds, self.threshold),
         ]
+
+    def from_options(options) -> "MarksSetting":
+        """Return the setting the options describe, given as options() lists them"""
+        kinds, threshold = (option.value for option in options)
+        return MarksSetting(threshold, kinds)
+
+    def saved(self) -> dict:
+        """Return the setting as plain data for the save file"""
+        return {"threshold": self.threshold, "kinds": list(self.kinds)}
+
+    def from_saved(saved) -> "MarksSetting":
+        return MarksSetting(saved["threshold"], tuple(saved["kinds"]))

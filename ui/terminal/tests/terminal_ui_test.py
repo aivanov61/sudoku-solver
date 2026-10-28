@@ -23,16 +23,21 @@ sys.path.insert(0, ".")
 
 from game.actions import Action, Mode, OFFERED_ACTIONS
 from game.cell_attrs import CellAttrs
+from game.config_option import ConfigOption
 from game.user_interface import Message, MessageKind
 from ui.terminal.commands import Commands
+from ui.terminal.display import Display
 from ui.terminal.terminal_ui import TerminalUI
 
 
 class TestTerminalUI(TestCase):
+    LONG = Message("much too long", MessageKind.WARNING, short="short")
+
     def setUp(self):
         self.display = MagicMock()
         self.display.term.yellow = lambda text: f"<yellow>{text}</yellow>"
         self.display.term.clear_eol = "<clear>"
+        self.display.term.width = Display.MIN_WIDTH
         self.ui = TerminalUI(self.display, 9, 9)
         self.display.reset_mock()
         return super().setUp()
@@ -128,6 +133,19 @@ class TestTerminalUI(TestCase):
     def test_inform_shows_the_message_and_waits_for_a_key(self):
         self.ui.inform(Message("careful", MessageKind.WARNING))
         self.display.show_on_status_line.assert_called_once_with("<yellow>careful</yellow>", wait=True)
+
+    def test_status_shows_the_short_text_when_the_whole_text_does_not_fit(self):
+        self.display.term.width = len("much too long") - 1
+        self.assertEqual(self.__status(self.LONG), "<yellow>short</yellow><clear>")
+
+    def test_status_shows_the_whole_text_when_it_fits(self):
+        self.display.term.width = len("much too long")
+        self.assertEqual(self.__status(self.LONG), "<yellow>much too long</yellow><clear>")
+
+    def test_inform_leaves_room_for_the_prompt_to_hit_a_key(self):
+        self.display.term.width = len("much too long" + Display.HIT_ANY_KEY) - 1
+        self.ui.inform(self.LONG)
+        self.display.show_on_status_line.assert_called_once_with("<yellow>short</yellow>", wait=True)
 
     def test_status_shows_a_missing_value_in_its_cell(self):
         self.__status(Message("stuck", MessageKind.WARNING, (self.__cell(2, 5), 4)))
@@ -246,7 +264,35 @@ class TestTerminalUI(TestCase):
     def test_guesses_within_the_shades_do_not_warn(self):
         self.assertEqual(self.__warnings_for_depths([1, 2, 10, 9, 0]), [])
 
+    # Configuring
+
+    def test_configure_shows_each_group_under_a_heading_and_returns_the_options_as_chosen(self):
+        options = [
+            ConfigOption("Marks", "Kind", (("a", 1), ("b", 2)), 1),
+            ConfigOption("Marks", "Level", (("x", 1), ("y", 2), ("z", 3)), 3),
+            ConfigOption("Other", "Speed", (("slow", 1), ("fast", 2)), 1),
+        ]
+        with patch("ui.terminal.terminal_ui.Menu", side_effect=self.__menu_pressing_tab_on_line(2)) as menu:
+            chosen = self.ui.configure(options)
+        self.assertEqual(
+            self.shown_items,
+            [("MenuHeading", "Marks"), ("MenuChoice", "Kind"), ("MenuChoice", "Level"), ("MenuHeading", "Other"),
+             ("MenuChoice", "Speed")],
+        )
+        self.assertEqual(menu.call_args.args[0], "Configure")
+        self.assertEqual([option.value for option in chosen], [1, 1, 1])
+
     # Private functions
+
+    def __menu_pressing_tab_on_line(self, line):
+        """A stand-in for Menu that keeps the items it is shown and presses TAB on one of them"""
+
+        def menu(title, items, keys_help, display):
+            self.shown_items = [(type(item).__name__, item.text().split(" ")[0]) for item in items]
+            items[line].handle("KEY_TAB")
+            return MagicMock()
+
+        return menu
 
     def __game(self, broken=None):
         """A stand-in game at (2, 3) that stops playing on QUIT, and whose handling of the broken action fails"""
