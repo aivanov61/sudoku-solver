@@ -25,7 +25,7 @@ from game.puzzle import Puzzle
 from game.user_interface import Message, MessageKind
 from ui.error_log import ErrorLog
 from ui.terminal.commands import Commands
-from ui.terminal.display import Display, echo
+from ui.terminal.display import Display
 from ui.terminal.display_attrs import DisplayAttrs
 from ui.terminal.input import Input
 from ui.terminal.menu import Menu
@@ -40,6 +40,7 @@ class TerminalUI:
     panel, and shows the game's messages and asks its questions on the status line.
     """
 
+    MODE_HINT = "{mode} - ? for commands"  # on a blank status line, when there is no command panel
     CONFIGURE_KEYS_HELP = "↑/↓ to choose, TAB/Shift-TAB or ←/→ to change, ENTER to apply, ESC to cancel"
 
     def __init__(self, display: Display, v_cells: int, h_cells: int):
@@ -69,10 +70,12 @@ class TerminalUI:
     # Interface required for the game
 
     def status(self, message) -> None:
-        """Show the message, and its missing value in its cell, until the next status"""
+        """
+        Show the message, and its missing value in its cell, until the next status, clearing any lines a longer
+        message wrapped onto; without the command panel, a blank status line shows the mode
+        """
         self.__take_back_missing()
-        self.__display.move_to_status_line()
-        echo((self.__styled(message, self.__display.term.width) if message else "") + self.__display.term.clear_eol)
+        self.__display.show_on_status_line(self.__status_text(message))
         self.__show_missing(message)
 
     def inform(self, message) -> None:
@@ -204,6 +207,13 @@ class TerminalUI:
         print("\n" + self.__display.term.clear_eol + "FORCING quit")
         game.force_quit_()
 
+    def __status_text(self, message) -> str:
+        if message:
+            return self.__styled(message, self.__display.term.width)
+        if self.__mode and not self.__display.panel:
+            return self.__display.term.gray50(self.MODE_HINT.format(mode=self.__mode.value))
+        return ""
+
     def __styled(self, message, room) -> str:
         """Successes and hints in the solved style (steel blue), everything else in yellow"""
         text = self.__fitting_text(message, room)
@@ -212,12 +222,16 @@ class TerminalUI:
         return self.__display.term.yellow(text)
 
     def __fitting_text(self, message, room) -> str:
-        """The message's text, or its short text when the whole text is longer than the room on the line"""
-        return message.short if message.short and len(message.text) > room else message.text
+        """
+        The message's text, or its short text when the whole text is longer than the room on the line; without
+        the command panel, always the whole text, which wraps
+        """
+        is_too_long = len(message.text) > room and self.__display.panel
+        return message.short if message.short and is_too_long else message.text
 
     def __draw_panel(self) -> None:
-        """Draw the mode's title and its commands beside the puzzle, once a mode has been announced"""
-        if self.__mode:
+        """Draw the mode's title and its commands beside the puzzle, once a mode has been announced, unless there is no panel"""
+        if self.__mode and self.__display.panel:
             self.__display.draw_command_panel(self.__mode.value, Commands.panel(self.__offered))
 
     def __draw_whole_cell(self, cell) -> None:

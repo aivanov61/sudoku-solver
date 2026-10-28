@@ -10,11 +10,13 @@ Once this git package is downloaded into a directory, the only two requirements 
 1. Python 3 is installed
 1. Blessed (at least ver 1.20.0) - `pip install -r requirements.txt`
 
-The terminal must use UTF-8 and be at least 80 columns by 29 lines.
+The terminal must use UTF-8 and be at least 80 columns by 29 lines, or 55 columns by 31 lines with `--no-panel` (see below).
 
 ## Playing
 
-To play the game, simply `cd` to the top-level directory and run `python sudoku.py`
+To play the game, simply `cd` to the top-level directory and run `python sudoku.py`.
+On a narrow screen, such as a phone (Termux on Android), run `python sudoku.py --no-panel`
+to leave out the command panel; `?` still lists the commands.
 
 First you will get a GNU GPL splash page which will disappear in 5 seconds (or
 with the first/any key press).  Then the screen size will be checked and ensured

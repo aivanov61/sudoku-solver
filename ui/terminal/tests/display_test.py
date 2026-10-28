@@ -17,6 +17,7 @@
 
 import random
 import sys
+import textwrap
 
 sys.path.insert(0, ".")
 
@@ -28,6 +29,15 @@ from blessed.keyboard import Keystroke
 from game.border import Border
 from game.cell_attrs import CellAttrs
 from ui.terminal.display import Display
+
+
+def status_term(width=80, height=40) -> MagicMock:
+    """A stand-in terminal for the status line: its size, a wrap() splitting at words, and readable sequences"""
+    term = MagicMock(width=width, height=height, clear_eos="<clear>", normal="</>")
+    term.wrap = lambda text, width: textwrap.wrap(text, width)
+    term.move_xy = lambda x, y: f"<{x},{y}>"
+    term.yellow = lambda text: f"<yellow>{text}</yellow>"
+    return term
 
 
 def board_display(term=None) -> Display:
@@ -175,6 +185,22 @@ class TestDisplayCommandPanel(TestCase):
     def test_minimum_width_is_80_columns(self):
         self.assertEqual(board_display().min_width(), 80)
 
+    def test_minimum_width_without_the_panel_is_the_puzzles_width(self):
+        display = Display(MagicMock(), panel=False)
+        display.geometry(9, 9)
+        self.assertEqual(display.min_width(), 9 * Display.CELL_WIDTH + 1)
+
+    def test_minimum_height_is_the_puzzle_and_the_status_line(self):
+        self.assertEqual(board_display(MagicMock()).min_height(), 9 * Display.CELL_HEIGHT + 2)
+
+    def test_minimum_height_without_the_panel_has_room_for_messages_to_wrap(self):
+        display = Display(MagicMock(), panel=False)
+        display.geometry(9, 9)
+        self.assertEqual(display.min_height(), 9 * Display.CELL_HEIGHT + 1 + Display.STATUS_LINES_WITHOUT_PANEL)
+
+    def test_a_display_has_the_panel_unless_told_otherwise(self):
+        self.assertEqual((Display(MagicMock()).panel, Display(MagicMock(), panel=False).panel), (True, False))
+
 
 class TestDisplayStyled(TestCase):
     def test_text_is_styled_with_the_rendered_attributes(self):
@@ -183,29 +209,38 @@ class TestDisplayStyled(TestCase):
 
 
 class TestDisplayStatusLine(TestCase):
-    def test_text_is_shown_on_the_status_line_as_given(self):
-        echo, hit_any_key = self.__show("<styled>")
-        echo.assert_called_once_with("<clear><styled>")
-        hit_any_key.assert_not_called()
+    STATUS_Y = 9 * Display.CELL_HEIGHT + 1
 
-    def test_text_waits_for_a_key_when_asked(self):
-        echo, hit_any_key = self.__show("<styled>", wait=True)
-        hit_any_key.assert_called_once()
+    def test_text_is_shown_on_the_status_line_as_given(self):
+        echo, term = self.__show("<styled>")
+        echo.assert_called_once_with("<clear><styled>")
+        term.inkey.assert_not_called()
+
+    def test_text_waits_for_a_key_when_asked_after_the_prompt(self):
+        echo, term = self.__show("Careful. ", wait=True)
+        echo.assert_called_once_with("<clear>Careful. " + Display.HIT_ANY_KEY.strip())
+        term.inkey.assert_called_once()
+
+    def test_long_text_is_split_at_words_onto_the_lines_below(self):
+        echo, _term = self.__show("one two three four five six", width=20)
+        echo.assert_called_once_with(f"<clear>one two three four<0,{self.STATUS_Y + 1}>five six")
+
+    def test_text_longer_than_the_lines_left_is_cut_short(self):
+        echo, _term = self.__show("one two three four five six seven eight", width=12, height=self.STATUS_Y + 2)
+        echo.assert_called_once_with(f"<clear>one two<0,{self.STATUS_Y + 1}>three four…</>")
 
     def test_warning_is_shown_in_yellow(self):
-        term = MagicMock(clear_eol="<clear>")
-        term.yellow = lambda text: f"<yellow>{text}</yellow>"
         with patch("ui.terminal.display.echo") as echo:
-            board_display(term).warn("careful")
+            board_display(status_term()).warn("careful")
         echo.assert_called_once_with("<clear><yellow>careful</yellow>")
 
     # Private functions
 
-    def __show(self, text, wait=False):
-        display = board_display(MagicMock(clear_eol="<clear>"))
-        with patch("ui.terminal.display.echo") as echo, patch.object(display, "hit_any_key_to_continue") as hit_any_key:
-            display.show_on_status_line(text, wait=wait)
-        return echo, hit_any_key
+    def __show(self, text, wait=False, width=80, height=40):
+        term = status_term(width, height)
+        with patch("ui.terminal.display.echo") as echo:
+            board_display(term).show_on_status_line(text, wait=wait)
+        return echo, term
 
 
 class TestDisplayConfirm(TestCase):
@@ -225,7 +260,7 @@ class TestDisplayConfirm(TestCase):
     # Private functions
 
     def __confirm_with(self, key):
-        term = MagicMock()
+        term = status_term()
         term.inkey.side_effect = [key]
         with patch("ui.terminal.display.echo"):
             return board_display(term).confirm("Really?")
@@ -293,11 +328,10 @@ class TestDisplayAsk(TestCase):
 
     def __ask_with(self, keys, default, suffix="", echoed=None):
         """Answer the prompt with the keys; collect what it echoed, if a list is given"""
-        term = MagicMock()
+        term = status_term()
         term.inkey.side_effect = keys
-        term.yellow = lambda text: f"<yellow>{text}</yellow>"
         term.move_left = lambda count: f"<left {count}>"
-        term.clear_eol = ""
+        term.clear_eos = ""
         with patch("ui.terminal.display.echo", side_effect=lambda text: echoed is not None and echoed.append(text)):
             return board_display(term).ask("File:", default, suffix)
 

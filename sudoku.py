@@ -15,6 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+import argparse
 import sys
 
 sys.path.insert(0, ".")
@@ -37,8 +38,10 @@ class Main:
     LAYOUT_KEYS_HELP = "Up/down to choose, ENTER to play, ESC or q to quit"
     QUIT_QUESTION = "Really quit? (y/n)"
 
-    def run(self):
-        self.__display = Display()
+    def run(self, args=None):
+        """Play, as the command line arguments ask (sys.argv's when args is None)"""
+        options = self.__options(args)
+        self.__display = Display(panel=not options.no_panel)
         layouts = PuzzleCatalog.available()
         self.__splash(self.__startup_note(layouts))
         layout = self.__chosen_layout(layouts)
@@ -46,6 +49,14 @@ class Main:
             self.__play(layout.board_class())
 
     # Private functions
+
+    def __options(self, args) -> argparse.Namespace:
+        parser = argparse.ArgumentParser(description="Play sudoku puzzles in the terminal.")
+        parser.add_argument(
+            "--no-panel", action="store_true",
+            help="leave out the command panel beside the puzzle, so it fits a narrower terminal (55 columns for 9x9)",
+        )
+        return parser.parse_args(args)
 
     def __splash(self, note):
         Copyright.splash()

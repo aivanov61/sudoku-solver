@@ -36,7 +36,9 @@ class TestTerminalUI(TestCase):
     def setUp(self):
         self.display = MagicMock()
         self.display.term.yellow = lambda text: f"<yellow>{text}</yellow>"
-        self.display.term.clear_eol = "<clear>"
+        self.display.term.clear_eos = "<clear>"
+        self.display.term.gray50 = lambda text: f"<gray>{text}</gray>"
+        self.display.panel = True
         self.display.term.width = Display.MIN_WIDTH
         self.ui = TerminalUI(self.display, 9, 9)
         self.display.reset_mock()
@@ -116,19 +118,35 @@ class TestTerminalUI(TestCase):
     # Showing the game
 
     def test_status_shows_a_warning_in_yellow_and_clears_the_rest_of_the_line(self):
-        self.assertEqual(self.__status(Message("careful", MessageKind.WARNING)), "<yellow>careful</yellow><clear>")
+        self.assertEqual(self.__status(Message("careful", MessageKind.WARNING)), "<yellow>careful</yellow>")
 
     def test_status_shows_information_in_yellow(self):
-        self.assertEqual(self.__status(Message("saved", MessageKind.INFO)), "<yellow>saved</yellow><clear>")
+        self.assertEqual(self.__status(Message("saved", MessageKind.INFO)), "<yellow>saved</yellow>")
 
     def test_status_shows_success_and_hints_in_the_solved_style(self):
         self.display.styled.side_effect = lambda text, attrs: f"<{attrs[0]}>{text}"
         for kind in (MessageKind.SUCCESS, MessageKind.HINT):
-            self.assertEqual(self.__status(Message("why", kind)), "<solved>why<clear>")
+            self.assertEqual(self.__status(Message("why", kind)), "<solved>why")
             self.display.styled.assert_called_with("why", (CellAttrs.SOLVED,))
 
     def test_status_without_a_message_blanks_the_line(self):
-        self.assertEqual(self.__status(None), "<clear>")
+        self.assertEqual(self.__status(None), "")
+
+    def test_without_the_panel_a_blank_status_shows_the_mode_in_gray(self):
+        self.display.panel = False
+        self.ui.mode_changed(Mode.PLAY, OFFERED_ACTIONS[Mode.PLAY])
+        self.assertEqual(self.__status(None), "<gray>PLAY - ? for commands</gray>")
+
+    def test_without_the_panel_a_new_mode_draws_no_panel(self):
+        self.display.panel = False
+        self.ui.mode_changed(Mode.PLAY, OFFERED_ACTIONS[Mode.PLAY])
+        self.ui.show_board([])
+        self.display.draw_command_panel.assert_not_called()
+
+    def test_without_the_panel_the_whole_text_is_shown_to_wrap(self):
+        self.display.panel = False
+        self.display.term.width = len("much too long") - 1
+        self.assertEqual(self.__status(self.LONG), "<yellow>much too long</yellow>")
 
     def test_inform_shows_the_message_and_waits_for_a_key(self):
         self.ui.inform(Message("careful", MessageKind.WARNING))
@@ -136,11 +154,11 @@ class TestTerminalUI(TestCase):
 
     def test_status_shows_the_short_text_when_the_whole_text_does_not_fit(self):
         self.display.term.width = len("much too long") - 1
-        self.assertEqual(self.__status(self.LONG), "<yellow>short</yellow><clear>")
+        self.assertEqual(self.__status(self.LONG), "<yellow>short</yellow>")
 
     def test_status_shows_the_whole_text_when_it_fits(self):
         self.display.term.width = len("much too long")
-        self.assertEqual(self.__status(self.LONG), "<yellow>much too long</yellow><clear>")
+        self.assertEqual(self.__status(self.LONG), "<yellow>much too long</yellow>")
 
     def test_inform_leaves_room_for_the_prompt_to_hit_a_key(self):
         self.display.term.width = len("much too long" + Display.HIT_ANY_KEY) - 1
@@ -369,10 +387,9 @@ class TestTerminalUI(TestCase):
         return [call.args[0].text for call in inform.call_args_list]
 
     def __status(self, message) -> str:
-        """Show the message on the status line and return what was written there"""
-        with patch("ui.terminal.terminal_ui.echo") as echo:
-            self.ui.status(message)
-        return echo.call_args.args[0]
+        """Show the message on the status line and return the text shown there"""
+        self.ui.status(message)
+        return self.display.show_on_status_line.call_args.args[0]
 
 
 if __name__ == "__main__":

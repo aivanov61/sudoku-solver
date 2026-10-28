@@ -33,6 +33,14 @@ class TestMain(TestCase):
         self.assertLess(calls.index(call.cbreak().__enter__()), calls.index(call.inkey(timeout=5.0)))
         self.assertLess(calls.index(call.inkey(timeout=5.0)), calls.index(call.cbreak().__exit__(None, None, None)))
 
+    def test_the_display_has_the_command_panel_by_default(self):
+        self.__run_with_keys(Keystroke("x"), Keystroke(""))
+        self.display_class.assert_called_once_with(panel=True)
+
+    def test_no_panel_leaves_the_command_panel_out(self):
+        self.__run_with_keys(Keystroke("x"), Keystroke(""), args=["--no-panel"])
+        self.display_class.assert_called_once_with(panel=False)
+
     def test_other_keys_pressed_during_the_splash_are_dropped(self):
         keys = [Keystroke("\r", code=343, name="KEY_ENTER"), Keystroke("\n", code=343, name="KEY_ENTER"), Keystroke("x")]
         term = self.__run_with_keys(*keys, Keystroke(""))
@@ -41,17 +49,20 @@ class TestMain(TestCase):
 
     # Private functions
 
-    def __run_with_keys(self, *keys) -> MagicMock:
-        """Run with no layouts, so the program ends after the splash; return the terminal it read the keys from"""
+    def __run_with_keys(self, *keys, args=()) -> MagicMock:
+        """
+        Run with the command line arguments and no layouts, so the program ends after the splash; return the
+        terminal it read the keys from
+        """
         display = MagicMock()
         display.term.inkey.side_effect = keys
         with (
-            patch("sudoku.Display", return_value=display),
+            patch("sudoku.Display", return_value=display) as self.display_class,
             patch("sudoku.Copyright"),
             patch("sudoku.PuzzleCatalog.available", return_value=[]),
             patch("builtins.print"),
         ):
-            Main().run()
+            Main().run(list(args))
         return display.term
 
 

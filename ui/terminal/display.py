@@ -66,9 +66,11 @@ class Display:
 
     # Status line
     HIT_ANY_KEY = "Hit any key to continue: "  # the prompt after a message the player must see
+    STATUS_LINES_WITHOUT_PANEL = 3  # the status line and two more for a long message to wrap onto, without the panel
 
-    def __init__(self, term: Terminal = None):
+    def __init__(self, term: Terminal = None, panel=True):
         self.term = term or Terminal()  # the blessed terminal to draw on
+        self.panel = panel  # whether the command panel is drawn beside the puzzle
         self.geom = {"h_cells": None, "v_cells": None}
 
     def geometry(self, v_cells, h_cells):
@@ -79,7 +81,7 @@ class Display:
     def validate_screen_size(self):
         is_size_ok = True
         min_width = self.min_width()
-        min_height = self.geom["v_cells"] * self.CELL_HEIGHT + 2
+        min_height = self.min_height()
         while self.term.is_a_tty and (self.term.width < min_width or self.term.height < min_height):
             is_size_ok = False
             self.clear_screen()
@@ -94,8 +96,14 @@ class Display:
         return is_size_ok
 
     def min_width(self) -> int:
-        """The puzzle plus the command panel, and never less than 80 columns"""
+        """The puzzle plus the command panel, and never less than 80 columns; without the panel, just the puzzle"""
+        if not self.panel:
+            return self.x(self.geom["h_cells"]) + 1
         return max(self.MIN_WIDTH, self.__panel_x() + self.PANEL_KEYS_WIDTH + self.PANEL_NAME_WIDTH)
+
+    def min_height(self) -> int:
+        """The puzzle plus the status line; without the panel, plus the lines a long message wraps onto"""
+        return self.y(self.geom["v_cells"]) + 1 + (1 if self.panel else self.STATUS_LINES_WITHOUT_PANEL)
 
     def clear_screen(self):
         echo(self.term.home())
@@ -175,18 +183,14 @@ class Display:
         self.show_on_status_line(self.term.yellow(msg), wait=wait)
 
     def show_on_status_line(self, text, wait=False):
-        """Show already styled text on the status line, waiting for a key if asked"""
-        with self.__status_line_message(text):
+        """Show already styled text on the status line; if asked, prompt to hit a key after it and wait for one"""
+        with self.__status_line_message(text + (self.HIT_ANY_KEY if wait else "")):
             if wait:
-                self.hit_any_key_to_continue()
+                self.__wait_for_a_key()
 
     def hit_any_key_to_continue(self):
         echo(self.HIT_ANY_KEY)
-        try:
-            with self.term.cbreak():
-                self.term.inkey()
-        except KeyboardInterrupt:
-            pass
+        self.__wait_for_a_key()
 
     def confirm(self, msg) -> bool:
         """Ask a yes/no question on the status line; only "y" or "Y" confirms"""
@@ -217,6 +221,13 @@ class Display:
             return None
 
     # Private functions
+
+    def __wait_for_a_key(self) -> None:
+        try:
+            with self.term.cbreak():
+                self.term.inkey()
+        except KeyboardInterrupt:
+            pass
 
     def __panel_x(self) -> int:
         """The screen column where the command panel starts: past the puzzle's right edge and a gap"""
@@ -254,10 +265,25 @@ class Display:
 
     @contextmanager
     def __status_line_message(self, text):
-        """Show the styled text on the status line, keeping the cursor there until the block ends"""
-        with self.term.location(*self.status_line_location()):
-            echo(self.term.clear_eol + text)
+        """
+        Show the styled text on the status line, split at words onto the lines below when it is too long, after
+        clearing to the end of the screen; keep the cursor after it until the block ends.  The text never reaches
+        the last column or goes past the last line, so the screen never scrolls.
+        """
+        x, y = self.status_line_location()
+        lines = self.__status_lines(text, self.term.height - y)
+        with self.term.location(x, y):
+            below = "".join(self.term.move_xy(x, y + number) + line for number, line in enumerate(lines[1:], 1))
+            echo(self.term.clear_eos + lines[0] + below)
             yield
+
+    def __status_lines(self, text, room) -> list:
+        """Split the text at words into lines leaving the last column free, at most room of them, cut short with …"""
+        lines = self.term.wrap(text, self.term.width - 2) or [""]
+        if len(lines) > max(1, room):
+            lines = lines[: max(1, room)]
+            lines[-1] += "…" + self.term.normal
+        return lines
 
     def __move_cursor_left(self, count):
         if count:

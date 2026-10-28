@@ -11,7 +11,9 @@ This program lets you type in a 9x9 Sudoku puzzle, such as one from a newspaper 
 
    If there's only one layout, there's no menu. Any note about it appears in yellow under the copyright notice instead, and a broken layout ends the program.
 
-The terminal window needs to be at least **80 columns wide and 29 lines tall**. If it's smaller, the program asks you to resize it. Press `Enter` when you're done, or `CTRL-C` to quit. At exactly 80 columns, a few long messages on the status line may spill onto the line below it; the grid isn't affected, and a wider window avoids it.
+The terminal window needs to be at least **80 columns wide and 29 lines tall**. If it's smaller, the program asks you to resize it. Press `Enter` when you're done, or `CTRL-C` to quit. A message too long for the status line is split onto the lines below it if the window has any, and cut short with `…` if it runs out of lines; the grid never moves.
+
+For a narrow screen, such as a phone, run `python sudoku.py --no-panel`. The command panel beside the grid is left out, so 55 columns are enough; the window needs 31 lines, two more than usual, so long messages such as `n`'s explanations have room below the status line. While the status line is blank, it shows the mode in gray (`PLAY - ? for commands`), and `?` lists the commands as usual. On Android, the Termux app (from F-Droid) runs the program: install `python` and `git` with `pkg install`, then follow the steps above.
 
 ## The screen
 
