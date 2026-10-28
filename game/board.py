@@ -86,10 +86,15 @@ class Board(ABC):
 
     # Interface required for blocks
 
-    def cells_in_row_or_col(self, row, col):
-        """Yield the cells in the given row or column, as identified by each block"""
+    def cells_in_row(self, row):
+        """Yield the cells in the given row, left to right, as identified by each block"""
         for block in self._blocks():
-            yield from block.cells_in_row_or_col(row, col)
+            yield from block.cells_in_row(row)
+
+    def cells_in_col(self, col):
+        """Yield the cells in the given column, top to bottom, as identified by each block"""
+        for block in self._blocks():
+            yield from block.cells_in_col(col)
 
     def cell_changed(self, cell) -> None:
         self.__listener(cell)

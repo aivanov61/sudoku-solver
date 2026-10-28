@@ -143,6 +143,7 @@ some guidance:
 - game/user_interface.py - the port through which the game talks to the player; `UserInterface`, `Message` and `MessageKind`
 - ui/terminal/terminal_ui.py - the terminal's user interface: runs the play loop, draws the board and panel, shows messages and asks questions; `TerminalUI` class
 - game/border.py - which sides of a cell lie on its block's edge; `Border` class
+- game/house.py - a box, row or column, and where a value can still go in it; `House` class
 - ui/terminal/display.py - manages the terminal display; `Display` class
 - game/cell_attrs.py - what a cell's attributes mean (given, guess, solved, conflicts, guess depth); `CellAttrs` class
 - ui/terminal/display_attrs.py - turns cell attributes into terminal colors; `DisplayAttrs` class

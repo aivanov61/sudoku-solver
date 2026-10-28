@@ -22,6 +22,7 @@ sys.path.insert(0, ".")
 from game.board import Board
 from game.border import Border
 from game.cell import Cell
+from game.house import House
 
 
 class RectangularBlock:
@@ -53,9 +54,13 @@ class RectangularBlock:
     def cell(self, row, col) -> Cell:
         return self._cells[row % self.rows][col % self.cols]
 
-    def cells_in_row_or_col(self, row, col):
-        """Yield the cells of this block that are in the given puzzle row or column"""
-        yield from self.cells_where(lambda cell: cell.row == row or cell.col == col)
+    def cells_in_row(self, row):
+        """Yield the cells of this block that are in the given puzzle row"""
+        yield from self.cells_where(lambda cell: cell.row == row)
+
+    def cells_in_col(self, col):
+        """Yield the cells of this block that are in the given puzzle column"""
+        yield from self.cells_where(lambda cell: cell.col == col)
 
     def cells_where(self, condition):
         """Yield the cells of this block for which condition(cell) is true"""
@@ -71,9 +76,18 @@ class RectangularBlock:
 
     def related_cells(self, row, col):
         """Yield, once each, every other cell in the same block, row or column as the cell at row, col"""
-        block_cells = list(self.__cells())
-        yield from (cell for cell in block_cells if (cell.row, cell.col) != (row, col))
-        yield from (cell for cell in self.parent.cells_in_row_or_col(row, col) if cell not in block_cells)
+        seen = {self.cell(row, col)}
+        for house in self.houses_of(row, col):
+            for cell in house.cells:
+                if cell not in seen:
+                    seen.add(cell)
+                    yield cell
+
+    def houses_of(self, row, col):
+        """Yield the houses of the cell at row, col: this block's box, then its row and column from the board"""
+        yield House(House.BOX, list(self.__cells()))
+        yield House(House.ROW, list(self.parent.cells_in_row(row)))
+        yield House(House.COLUMN, list(self.parent.cells_in_col(col)))
 
     # Private functions
 

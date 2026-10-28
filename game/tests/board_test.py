@@ -62,10 +62,13 @@ class TestBoard(TestCase):
         self.assertEqual(self.__position(self.board.first_cell_where(has_value)), (3, 5))
         self.assertIsNone(self.board.first_cell_where(lambda cell: cell.value() == 9))
 
-    def test_cells_in_row_or_col_yields_each_cell_in_that_row_and_col_once(self):
-        positions = [self.__position(cell) for cell in self.board.cells_in_row_or_col(4, 4)]
-        self.assertEqual(len(positions), len(set(positions)))
-        self.assertEqual(set(positions), {(4, i) for i in range(9)} | {(i, 4) for i in range(9)})
+    def test_cells_in_row_are_that_rows_cells_left_to_right(self):
+        positions = [self.__position(cell) for cell in self.board.cells_in_row(4)]
+        self.assertEqual(positions, [(4, col) for col in range(9)])
+
+    def test_cells_in_col_are_that_columns_cells_top_to_bottom(self):
+        positions = [self.__position(cell) for cell in self.board.cells_in_col(7)]
+        self.assertEqual(positions, [(row, 7) for row in range(9)])
 
     def test_board_is_full_once_every_cell_holds_a_value(self):
         self.assertFalse(self.board.is_full())
