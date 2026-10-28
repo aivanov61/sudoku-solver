@@ -203,9 +203,11 @@ class Puzzle:
         return self.__board.NAME
 
     def saved_state(self) -> SavedPuzzle:
-        """Everything needed to restore the puzzle: its layout, mode, cursor, givens and recorded moves"""
+        """Everything needed to restore the puzzle: layout, mode, marks setting, cursor, givens and recorded moves"""
         board = self.__board
-        return SavedPuzzle(board.NAME, self._initializing, self.selected_cell, board.givens(), self.__moves.recorded())
+        return SavedPuzzle(
+            board.NAME, self._initializing, self.__marks, self.selected_cell, board.givens(), self.__moves.recorded()
+        )
 
     def restore(self, saved) -> None:
         """Empty the board, enter the givens in setup mode, replay the moves in the saved mode, then point out any dead end"""
@@ -216,6 +218,7 @@ class Puzzle:
         for row, col, value, prim_attr in saved.moves:
             self.__moves.enter(self.__board.cell(row, col), value, prim_attr)
         self.selected_cell = saved.selected_cell
+        self.__marks = saved.marks
         self.render()
         self.__found_dead_end()
 

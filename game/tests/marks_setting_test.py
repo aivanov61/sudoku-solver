@@ -38,6 +38,11 @@ class TestMarksSetting(TestCase):
         self.assertEqual(seen, expected)
         self.assertFalse(setting.is_on())
 
+    def test_an_unknown_threshold_or_kind_of_house_is_refused(self):
+        for threshold, kinds in ((1, MarksSetting.BOX_ONLY), (6, MarksSetting.BOX_ONLY), (2, (House.ROW,))):
+            with self.assertRaises(ValueError):
+                MarksSetting(threshold, kinds)
+
     def test_a_setting_says_what_it_marks(self):
         box_2 = MarksSetting().next()
         every_3 = MarksSetting(3, MarksSetting.EVERY_HOUSE)

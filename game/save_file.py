@@ -20,13 +20,16 @@ import os
 
 from dataclasses import asdict, dataclass
 
+from game.marks_setting import MarksSetting
+
 
 @dataclass
 class SavedPuzzle:
-    """Everything needed to restore a puzzle: the givens, then the moves made while playing, in order"""
+    """Everything needed to restore a puzzle: the marks shown, the givens, then the moves made while playing, in order"""
 
     layout: str  # the layout's NAME
     initializing: bool
+    marks: MarksSetting  # which "must be" marks are shown while playing
     selected_cell: tuple  # (row, col)
     givens: list  # (row, col, value) for each given
     moves: list  # (row, col, value, prim_attr) for each entry in the history, oldest first
@@ -48,8 +51,10 @@ class SaveFile:
     """
 
     FORMAT = "sudoku-save"
-    VERSION = 1
-    UPGRADES = {}  # version: function returning that version's state converted to the next version
+    VERSION = 2
+    UPGRADES = {  # version: function returning that version's state converted to the next version
+        1: lambda state: {**state, "marks": asdict(MarksSetting())},  # version 2 saves the marks setting
+    }
     FOLDER = "saved_games"
     EXTENSION = ".json"
 
@@ -99,9 +104,10 @@ class SaveFile:
             return SavedPuzzle(
                 layout=state["layout"],
                 initializing=state["initializing"],
+                marks=MarksSetting(state["marks"]["threshold"], tuple(state["marks"]["kinds"])),
                 selected_cell=tuple(state["selected_cell"]),
                 givens=[tuple(given) for given in state["givens"]],
                 moves=[tuple(move) for move in state["moves"]],
             )
-        except (KeyError, TypeError):
+        except (KeyError, TypeError, ValueError):
             raise SaveFile.__damaged(path)

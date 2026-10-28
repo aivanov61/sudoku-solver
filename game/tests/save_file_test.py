@@ -15,6 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+import dataclasses
 import json
 import os
 import sys
@@ -24,6 +25,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, ".")
 
+from game.marks_setting import MarksSetting
 from game.save_file import SavedPuzzle, SaveFile, SaveFileError
 
 
@@ -31,6 +33,7 @@ class TestSaveFile(TestCase):
     SAVED = SavedPuzzle(
         layout="Standard 9x9",
         initializing=False,
+        marks=MarksSetting(3, MarksSetting.EVERY_HOUSE),
         selected_cell=(4, 7),
         givens=[(0, 0, 5), (8, 8, 1)],
         moves=[(0, 1, 3, None), (2, 2, 7, "guess"), (3, 3, 9, "solved")],
@@ -64,6 +67,13 @@ class TestSaveFile(TestCase):
         with patch.object(SaveFile, "VERSION", SaveFile.VERSION + 2), patch.object(SaveFile, "UPGRADES", upgrades):
             self.assertEqual(SaveFile.read(self.path).layout, "Standard 9x9 v2 v3")
 
+    def test_a_version_1_file_is_read_with_marks_off(self):
+        SaveFile.write(self.path, self.SAVED)
+        data = self.__json()
+        del data["state"]["marks"]
+        self.__write_json({**data, "version": 1})
+        self.assertEqual(SaveFile.read(self.path), dataclasses.replace(self.SAVED, marks=MarksSetting()))
+
     def test_newer_version_cannot_be_read_and_suggests_updating(self):
         SaveFile.write(self.path, self.SAVED)
         self.__write_json({**self.__json(), "version": SaveFile.VERSION + 1})
@@ -89,6 +99,14 @@ class TestSaveFile(TestCase):
         SaveFile.write(self.path, self.SAVED)
         data = self.__json()
         del data["state"]["givens"]
+        self.__write_json(data)
+        with self.assertRaisesRegex(SaveFileError, "damaged"):
+            SaveFile.read(self.path)
+
+    def test_saved_puzzle_with_an_unknown_marks_setting_is_damaged(self):
+        SaveFile.write(self.path, self.SAVED)
+        data = self.__json()
+        data["state"]["marks"]["threshold"] = 7
         self.__write_json(data)
         with self.assertRaisesRegex(SaveFileError, "damaged"):
             SaveFile.read(self.path)

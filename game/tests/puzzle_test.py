@@ -23,6 +23,7 @@ sys.path.insert(0, ".")
 
 from game.actions import Action, Mode, OFFERED_ACTIONS
 from game.cell_attrs import CellAttrs
+from game.marks_setting import MarksSetting
 from game.puzzle import Puzzle
 from game.puzzles.board_3x3 import Board3x3
 from game.tests.recording_ui import RecordingUI
@@ -699,6 +700,13 @@ class TestPuzzle(TestCase):
         for row, col in ((0, 0), (0, 1), (1, 1), (2, 2)):
             self.assertEqual(self.__cell_of(restored, row, col).value(), self.__cell(row, col).value())
             self.assertEqual(self.__cell_of(restored, row, col).attr(), self.__cell(row, col).attr())
+
+    def test_restore_brings_back_the_marks_setting(self):
+        self.puzzle.play_()
+        self.puzzle.handle(Action.MARKS)
+        self.puzzle.handle(Action.MARKS)
+        restored = self.__restored_puzzle()
+        self.assertEqual(restored.saved_state().marks, MarksSetting(3, MarksSetting.BOX_ONLY))
 
     def test_restored_moves_can_be_undone(self):
         self.__play_a_few_moves()

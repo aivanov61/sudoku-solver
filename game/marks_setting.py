@@ -40,6 +40,13 @@ class MarksSetting:
     threshold: int = None  # None while marks are off
     kinds: tuple = BOX_ONLY
 
+    def __post_init__(self):
+        """Refuse a setting next() would never reach, such as one from a damaged save file"""
+        if self.threshold not in (None, *MarksSetting.THRESHOLDS):
+            raise ValueError(f"Unknown threshold for marks: {self.threshold}")
+        if self.kinds not in (MarksSetting.BOX_ONLY, MarksSetting.EVERY_HOUSE):
+            raise ValueError(f"Unknown kinds of house for marks: {self.kinds}")
+
     def is_on(self) -> bool:
         return self.threshold is not None
 
