@@ -106,19 +106,20 @@ Press `a` to fill in, without explanations, every move that `n` would find, one 
 
 A "must be" mark is a small digit in the middle of an empty cell: that value has only a few places left in the cell's box, and this cell is one of them. Solvers call this Snyder notation. A mark in two cells of a box means the value must be in one of those two. A value with a single mark in its box is a hidden single: it can go only there.
 
-Marks are off at first. Press `c` to open the configure menu, which lists the settings under the heading **Must-be marks (Snyder notation)**:
-- **Kind of house:** `box` marks values with few places left in their box; `box, row or column` marks a value with few enough places in any of the three.
-- **Threshold:** `off`, or how few places a value must have left to be marked, from `2 or fewer places` to `5 or fewer places`.
+At first, only the cells you tag with `m` show their marks (see Tags below): tag a cell and its marks show at once, untag it and they go. Press `c` to open the configure menu, which lists the settings under the heading **Must-be marks (Snyder notation)**:
+- **Kind of house:** `box` (the default) marks values with few places left in their box; `box, row or column` marks a value with few enough places in any of the three.
+- **Threshold:** how few places a value must have left to be marked, from `2 or fewer places` (the default) to `5 or fewer places`.
+- **Whole puzzle:** `off` (the default) shows marks only in tagged cells; `on` shows them in every empty cell.
 
-Each line shows its choice and where it is among them, e.g. `Threshold .......... 2 or fewer places (2 of 5)`. Use the up and down arrows to choose a line, and `TAB` or the right arrow to move to the next choice (`Shift-TAB` or the left arrow for the previous one); the choices go round at either end. `ENTER` does nothing here. Press `ESC` (or `q`) to go back to the puzzle with the new settings; there's nothing to confirm, since you can always change them back.
+Each line shows its choice and where it is among them, e.g. `Threshold .......... 2 or fewer places (1 of 4)`. Use the up and down arrows to choose a line, and `TAB` or the right arrow to move to the next choice (`Shift-TAB` or the left arrow for the previous one); the choices go round at either end. `ENTER` does nothing here. Press `ESC` (or `q`) to go back to the puzzle with the new settings; there's nothing to confirm, since you can always change them back.
 
-The marks update after every key, as values are entered, deleted, undone or filled in. Up to three marks are spaced out; four or five are shown closed up; more than that show `.....`. During setup the marks are hidden, and they come back when you start playing.
+The marks update after every key, as values are entered, deleted, undone or filled in. Up to three marks are spaced out; four or five are shown closed up; more than that show `.....`. With a high threshold and rows and columns included, that happens often: in a row, column or box with 5 or fewer empty cells, every possible value has 5 or fewer places, so every one is marked. During setup the marks are hidden, and they come back when you start playing.
 
 Box marks are the safest to read: two marks in a box always mean "one of these two". With rows and columns included, two marks that happen to line up in a row may come from two different houses (say one from its row, the other from its box), so they don't necessarily mean the value must be in one of them.
 
 ## Tags
 
-Press `m` to tag the selected cell, to pick it out while you think, and `m` again to untag it. A tagged empty cell shows its small digits, its possible values and any "must be" marks, in steel blue. Once the cell has a value the steel blue is gone, since the value takes the place of the small digits, but the tag stays: when the value is deleted or undone, the steel blue comes back. Tags work in both modes, undo and rewind leave them alone, and they are saved with the puzzle.
+Press `m` to tag the selected cell, to pick it out while you think, and `m` again to untag it. A tagged empty cell shows its small digits in steel blue: its possible values and, while playing, its "must be" marks, which a tagged cell shows even when the rest of the puzzle doesn't (see above). Once the cell has a value the steel blue is gone, since the value takes the place of the small digits, but the tag stays: when the value is deleted or undone, the steel blue comes back. Tags work in both modes, undo and rewind leave them alone, and they are saved with the puzzle.
 
 ## Finishing the puzzle
 
@@ -128,7 +129,7 @@ When the last empty cell is filled in, the status line says, until your next key
 
 Press `s` at any time, in either mode, to save the puzzle to a file. The status line asks for the file name and offers the last one you used (`sudoku` the first time). Save files always end in `.json`, which is shown after the name but never typed: the cursor starts just before it, and the left and right arrows move within the name but not into the `.json`. Type to insert at the cursor, `Backspace` to remove the character before it and `Delete` the one at it; press `ENTER` to accept the name, or `ESC` to cancel. A name without a folder is kept in the `saved_games` folder, which is created the first time you save; to put a file anywhere else, include its folder in the name, for example `.\sudoku` for the current folder. If the file already exists, it asks before replacing it. If the board is still empty, there's nothing to save, and it just tells you so.
 
-Press `o` to restore a saved puzzle the same way. It brings back everything: the givens, every value you entered, guesses and their shading, the mode, where the cursor was, which cells you tagged, and which "must be" marks were shown (files saved before marks existed come back with marks off). Undo and rewind keep working through the restored moves. The restored puzzle replaces the current one completely, so if the board holds any values, it asks you to confirm first.
+Press `o` to restore a saved puzzle the same way. It brings back everything: the givens, every value you entered, guesses and their shading, the mode, where the cursor was, which cells you tagged, and how the "must be" marks were configured (files saved before marks existed come back with the defaults: marks in tagged cells only). Undo and rewind keep working through the restored moves. The restored puzzle replaces the current one completely, so if the board holds any values, it asks you to confirm first.
 
 A puzzle can only be restored into the layout it was saved from. A file saved by a newer version of the program can't be restored; the program says so, and you can update the program to restore it. A file that only adds something newer, such as a new setting, is restored without it, and the bottom line names what was ignored (or just counts it, when the names don't fit). Saving the puzzle again leaves the ignored entries out.
 

@@ -120,8 +120,9 @@ class Cell:
     # Interface required for the board
 
     def refresh_marks(self, setting: MarksSetting) -> None:
-        """Show the marks the setting asks for, reporting any change"""
-        marks = self.__must_be(setting.threshold, setting.kinds) if setting.is_on() else ()
+        """Show the marks the setting asks for in this cell (none without a setting), reporting any change"""
+        is_shown = setting is not None and setting.shows_marks(self._tagged)
+        marks = self.__must_be(setting.threshold, setting.kinds) if is_shown else ()
         if marks != self._marks:
             self._marks = marks
             self.__report_change()

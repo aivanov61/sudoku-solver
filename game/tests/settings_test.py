@@ -39,14 +39,14 @@ class TestSettings(TestCase):
     def test_options_as_chosen_go_back_to_their_own_settings(self):
         with patch.object(Settings, "KINDS", (MarksSetting, OtherSetting)):
             options = Settings().options()
-            chosen = Settings().from_options([options[0].with_choice(1), options[1].with_choice(2), options[2]])
+            chosen = Settings().from_options([options[0].with_choice(1), options[1].with_choice(1), *options[2:]])
             self.assertEqual(chosen.of(MarksSetting), MarksSetting(3, MarksSetting.EVERY_HOUSE))
             self.assertEqual(chosen.of(OtherSetting), OtherSetting())
 
     def test_settings_are_saved_by_name_and_read_back(self):
         settings = Settings({MarksSetting.NAME: self.MARKS})
         saved = settings.saved()
-        self.assertEqual(saved, {"marks": {"threshold": 3, "kinds": ["box", "row", "column"]}})
+        self.assertEqual(saved, {"marks": {"threshold": 3, "kinds": ["box", "row", "column"], "whole_puzzle": False}})
         self.assertEqual(Settings.from_saved(saved), settings)
 
     def test_a_setting_missing_from_what_was_saved_is_its_default(self):

@@ -34,7 +34,7 @@ class TestSaveFile(TestCase):
     SAVED = SavedPuzzle(
         layout="Standard 9x9",
         initializing=False,
-        settings=Settings({MarksSetting.NAME: MarksSetting(3, MarksSetting.EVERY_HOUSE)}),
+        settings=Settings({MarksSetting.NAME: MarksSetting(3, MarksSetting.EVERY_HOUSE, True)}),
         selected_cell=(4, 7),
         tags=[(1, 2), (6, 0)],
         givens=[(0, 0, 5), (8, 8, 1)],
@@ -71,7 +71,7 @@ class TestSaveFile(TestCase):
 
     def test_settings_are_saved_by_name(self):
         SaveFile.write(self.path, self.SAVED)
-        marks = {"threshold": 3, "kinds": ["box", "row", "column"]}
+        marks = {"threshold": 3, "kinds": ["box", "row", "column"], "whole_puzzle": True}
         self.assertEqual(self.__json()["state"]["settings"], {"marks": marks})
 
     def test_a_file_saved_without_tags_is_read_with_none(self):
@@ -87,6 +87,25 @@ class TestSaveFile(TestCase):
         del data["state"]["settings"]
         self.__write_json(data)
         self.assertEqual(SaveFile.read(self.path).settings, Settings())
+
+    def test_a_version_1_file_with_marks_off_is_read_with_threshold_2_for_tagged_cells_only(self):
+        self.__write_version_1({"threshold": None, "kinds": ["box", "row", "column"]})
+        expected = MarksSetting(2, MarksSetting.EVERY_HOUSE, whole_puzzle=False)
+        self.assertEqual(SaveFile.read(self.path).settings.of(MarksSetting), expected)
+
+    def test_a_version_1_file_with_marks_on_is_read_with_marks_for_the_whole_puzzle(self):
+        self.__write_version_1({"threshold": 3, "kinds": ["box"]})
+        expected = MarksSetting(3, MarksSetting.BOX_ONLY, whole_puzzle=True)
+        self.assertEqual(SaveFile.read(self.path).settings.of(MarksSetting), expected)
+
+    def test_a_version_1_file_without_settings_is_read_with_the_default_settings(self):
+        self.__write_version_1(None)
+        self.assertEqual(SaveFile.read(self.path).settings, Settings())
+
+    def test_a_version_1_file_with_damaged_marks_is_damaged(self):
+        self.__write_version_1("dots")
+        with self.assertRaisesRegex(SaveFileError, "damaged"):
+            SaveFile.read(self.path)
 
     def test_entries_from_a_newer_version_are_read_as_ignored_each_with_its_path(self):
         SaveFile.write(self.path, self.SAVED)
@@ -162,6 +181,16 @@ class TestSaveFile(TestCase):
     def __json(self) -> dict:
         with open(self.path) as file:
             return json.load(file)
+
+    def __write_version_1(self, marks) -> None:
+        """Write the puzzle as version 1 saved it: with the marks given, or with no settings at all for None"""
+        SaveFile.write(self.path, self.SAVED)
+        data = {**self.__json(), "version": 1}
+        if marks is None:
+            del data["state"]["settings"]
+        else:
+            data["state"]["settings"]["marks"] = marks
+        self.__write_json(data)
 
     def __write_json(self, data) -> None:
         with open(self.path, "w") as file:

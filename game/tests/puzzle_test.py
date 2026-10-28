@@ -453,6 +453,21 @@ class TestPuzzle(TestCase):
         self.puzzle.handle(Action.PLAY)
         self.assertEqual(self.__cell(0, 0).marks(), (4,))
 
+    def test_a_tagged_cell_shows_its_marks_at_once_and_hides_them_once_untagged(self):
+        self.__leave_4_two_places_in_box_0()
+        self.puzzle.play_()
+        self.puzzle.selected_cell = (0, 0)
+        self.puzzle.handle(Action.TAG)
+        self.assertEqual((self.__cell(0, 0).marks(), self.__cell(0, 2).marks()), ((4,), ()))
+        self.puzzle.handle(Action.TAG)
+        self.assertEqual(self.__cell(0, 0).marks(), ())
+
+    def test_a_tagged_cell_hides_its_marks_in_setup(self):
+        self.__leave_4_two_places_in_box_0()
+        self.puzzle.selected_cell = (0, 0)
+        self.puzzle.handle(Action.TAG)
+        self.assertEqual(self.__cell(0, 0).marks(), ())
+
     def test_marks_configured_in_setup_show_once_playing(self):
         self.__leave_4_two_places_in_box_0()
         self.__turn_on_box_marks()
@@ -735,7 +750,7 @@ class TestPuzzle(TestCase):
 
     def test_restore_brings_back_the_marks_setting(self):
         self.puzzle.play_()
-        self.ui.choices = [0, 2]
+        self.ui.choices = [0, 1, 0]
         self.puzzle.handle(Action.CONFIGURE)
         restored = self.__restored_puzzle()
         self.assertEqual(restored.saved_state().settings.of(MarksSetting), MarksSetting(3, MarksSetting.BOX_ONLY))
@@ -838,8 +853,8 @@ class TestPuzzle(TestCase):
             self.__enter(row, col, 4)
 
     def __turn_on_box_marks(self):
-        """Configure marks for values with 2 or fewer places in their box"""
-        self.ui.choices = [0, 1]
+        """Configure marks, in the whole puzzle, for values with 2 or fewer places in their box"""
+        self.ui.choices = [0, 0, 1]
         self.puzzle.handle(Action.CONFIGURE)
 
     def __leave_4_no_place_in_row_0(self):

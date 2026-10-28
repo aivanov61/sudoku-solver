@@ -92,9 +92,9 @@ class TestBoard(TestCase):
     def test_refresh_marks_has_every_cell_show_the_marks_the_setting_asks_for(self):
         for row, col in ((1, 4), (2, 7), (4, 1), (7, 2)):
             self.board.cell(row, col).set(4)
-        self.board.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY))
+        self.board.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
         self.assertEqual(self.board.cell(0, 0).marks(), (4,))
-        self.board.refresh_marks(MarksSetting())
+        self.board.refresh_marks(None)
         self.assertEqual([cell for cell in self.board.cells() if cell.marks()], [])
 
     def test_givens_are_the_values_entered_as_initial(self):

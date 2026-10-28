@@ -300,41 +300,49 @@ class TestCell(TestCase):
 
     # Must-be marks
 
-    def test_cell_has_no_marks_while_marks_are_off(self):
+    def test_cell_has_no_marks_without_a_setting(self):
+        self.__counted_house(House.BOX, {4: 1})
+        self.cell.refresh_marks(None)
+        self.assertEqual(self.cell.marks(), ())
+
+    def test_cell_shows_its_marks_only_once_tagged_unless_for_the_whole_puzzle(self):
         self.__counted_house(House.BOX, {4: 1})
         self.cell.refresh_marks(MarksSetting())
         self.assertEqual(self.cell.marks(), ())
+        self.cell.set_tagged(True)
+        self.cell.refresh_marks(MarksSetting())
+        self.assertEqual(self.cell.marks(), (4,))
 
     def test_cell_marks_values_with_few_enough_places_in_its_box(self):
         self.__counted_house(House.BOX, {4: 2, 6: 1, 7: 3})
-        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY))
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
         self.assertEqual(self.cell.marks(), (4, 6))
 
     def test_cell_marks_from_rows_and_columns_only_when_asked_to(self):
         self.__counted_house(House.BOX, {})
         self.__counted_house(House.ROW, {5: 2})
         self.__counted_house(House.COLUMN, {3: 2, 5: 2})
-        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY))
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
         self.assertEqual(self.cell.marks(), ())
-        self.cell.refresh_marks(MarksSetting(2, MarksSetting.EVERY_HOUSE))
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.EVERY_HOUSE, True))
         self.assertEqual(self.cell.marks(), (3, 5))
 
     def test_cell_marks_only_its_possible_values(self):
         self.cell.remove_possible(4)
         self.__counted_house(House.BOX, {4: 1})
-        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY))
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
         self.assertEqual(self.cell.marks(), ())
 
     def test_cell_with_a_value_has_no_marks(self):
         self.cell.set(8)
         self.__counted_house(House.BOX, {8: 1})
-        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY))
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
         self.assertEqual(self.cell.marks(), ())
 
     def test_cell_reports_a_change_only_when_its_marks_change(self):
         self.__counted_house(House.BOX, {4: 2})
-        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY))
-        self.cell.refresh_marks(MarksSetting(3, MarksSetting.BOX_ONLY))
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
+        self.cell.refresh_marks(MarksSetting(3, MarksSetting.BOX_ONLY, True))
         self.parent.cell_changed.assert_called_once_with(self.cell)
 
     # Private functions

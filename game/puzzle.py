@@ -248,7 +248,7 @@ class Puzzle:
 
     def __refresh_marks(self) -> None:
         """Have the cells show the marks of the setting while playing, and none in setup"""
-        self.__board.refresh_marks(MarksSetting() if self._initializing else self.__settings.of(MarksSetting))
+        self.__board.refresh_marks(None if self._initializing else self.__settings.of(MarksSetting))
 
     def __action_received(self, action) -> None:
         """Any action ends the notice and the completion report; any action but "n" cancels the move a previous "n" pointed out"""

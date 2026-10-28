@@ -72,7 +72,7 @@ class Board(ABC):
         return self.first_cell_where(Cell.is_marked_in_conflict) is not None
 
     def refresh_marks(self, setting: MarksSetting) -> None:
-        """Have every cell show the "must be" marks (Snyder notation) the setting asks for"""
+        """Have every cell show the "must be" marks (Snyder notation) the setting asks for, none for a setting of None"""
         for cell in self.cells():
             cell.refresh_marks(setting)
 

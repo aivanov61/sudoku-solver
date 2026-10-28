@@ -55,8 +55,10 @@ class SaveFile:
     """
 
     FORMAT = "sudoku-save"
-    VERSION = 1
-    UPGRADES = {}  # version: function returning that version's state converted to the next version
+    VERSION = 2
+    UPGRADES = {  # version: function returning that version's state converted to the next version
+        1: lambda state: SaveFile.__marks_with_whole_puzzle(state),  # version 2 turns marks off with whole_puzzle
+    }
     FOLDER = "saved_games"
     EXTENSION = ".json"
 
@@ -80,8 +82,11 @@ class SaveFile:
                 f"{path} is from a newer version - update sudoku to restore this file. "
             )
         state = data["state"]
-        for version in range(data["version"], SaveFile.VERSION):
-            state = SaveFile.UPGRADES[version](state)
+        try:
+            for version in range(data["version"], SaveFile.VERSION):
+                state = SaveFile.UPGRADES[version](state)
+        except (AttributeError, KeyError, TypeError):
+            raise SaveFile.__damaged(path)
         return SaveFile.__saved_puzzle(path, {**data, "state": state})
 
     # Private functions
@@ -101,6 +106,18 @@ class SaveFile:
 
     def __damaged(path) -> SaveFileError:
         return SaveFileError(f"Cannot restore {path} - it is not a saved puzzle, or it is damaged. ")
+
+    def __marks_with_whole_puzzle(state) -> dict:
+        """
+        Return the version 1 state as version 2 saves it: marks that were off (no threshold) show in tagged cells
+        only, with a threshold of 2, and marks that were on show in the whole puzzle
+        """
+        marks = state.get("settings", {}).get("marks")
+        if marks is None:
+            return state
+        threshold = marks["threshold"]
+        upgraded = {"threshold": threshold or 2, "kinds": marks["kinds"], "whole_puzzle": threshold is not None}
+        return {**state, "settings": {**state["settings"], "marks": upgraded}}
 
     def __saved_puzzle(path, data) -> SavedPuzzle:
         """Turn the file's saved state back into a SavedPuzzle, with tuples where JSON stored lists"""
