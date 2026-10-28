@@ -31,9 +31,9 @@ class House:
         self.kind = kind
         self.cells = cells
 
-    def places(self, value) -> list:
-        """Return the cells, in order, that can still hold the value"""
-        return [cell for cell in self.cells if value in cell.possible_values()]
+    def places(self, value, ruled_out=frozenset()) -> list:
+        """Return the cells, in order, that can still hold the value, leaving out each (cell, value) ruled out"""
+        return [cell for cell in self.cells if value in cell.possible_values() and (cell, value) not in ruled_out]
 
     def has_no_place_for(self, value) -> bool:
         """Return True if no cell holds the value and none can any more"""

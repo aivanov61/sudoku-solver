@@ -97,6 +97,19 @@ class TestBoard(TestCase):
         self.board.refresh_marks(None)
         self.assertEqual([cell for cell in self.board.cells() if cell.marks()], [])
 
+    def test_houses_are_every_box_then_every_row_and_column(self):
+        houses = self.board.houses()
+        self.assertEqual([house.kind for house in houses], ["box"] * 9 + ["row"] * 9 + ["column"] * 9)
+        self.assertEqual([(cell.row, cell.col) for cell in houses[10].cells], [(1, col) for col in range(9)])
+        self.assertEqual([(cell.row, cell.col) for cell in houses[19].cells], [(row, 1) for row in range(9)])
+
+    def test_refresh_marks_passes_on_the_values_ruled_out(self):
+        cell = self.board.cell(0, 0)
+        cell.set_tagged(True)
+        ruled_out = {(cell, value): "why" for value in range(2, 10)}
+        self.board.refresh_marks(MarksSetting(), ruled_out)
+        self.assertEqual(cell.marks(), (1,))
+
     def test_givens_are_the_values_entered_as_initial(self):
         self.board.cell(1, 1).set(4, (CellAttrs.INITIAL,))
         self.board.cell(0, 5).set(7, (CellAttrs.INITIAL,))

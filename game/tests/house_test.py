@@ -37,6 +37,10 @@ class TestHouse(TestCase):
         cells = [self.__cell({4, 5}), self.__cell({5}), self.__cell(set()), self.__cell({4})]
         self.assertEqual(House(House.BOX, cells).places(4), [cells[0], cells[3]])
 
+    def test_places_leave_out_the_cells_the_value_is_ruled_out_of(self):
+        cells = [self.__cell({4, 5}), self.__cell({4})]
+        self.assertEqual(House(House.BOX, cells).places(4, ruled_out={(cells[0], 4)}), [cells[1]])
+
     def test_a_value_with_no_place_left_has_no_places(self):
         cells = [self.__cell({5}), self.__cell(set())]
         self.assertEqual(House(House.COLUMN, cells).places(4), [])

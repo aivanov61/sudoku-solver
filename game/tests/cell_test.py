@@ -331,6 +331,18 @@ class TestCell(TestCase):
         self.__related_forced(3)
         self.assertEqual(self.__tagged_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True)), (5,))
 
+    def test_a_tagged_cell_leaves_out_the_values_ruled_out_of_it(self):
+        self.__leave_possible({3, 5, 7})
+        self.cell.set_tagged(True)
+        self.cell.refresh_marks(MarksSetting(), ruled_out={(self.cell, 3): "why"})
+        self.assertEqual(self.cell.marks(), (5, 7))
+
+    def test_a_tagged_cell_with_one_value_left_once_others_are_ruled_out_shows_it(self):
+        self.__leave_possible({3, 5})
+        self.cell.set_tagged(True)
+        self.cell.refresh_marks(MarksSetting(), ruled_out={(self.cell, 3): "why"})
+        self.assertEqual(self.cell.marks(), (5,))
+
     def test_a_tagged_cell_with_a_value_shows_nothing(self):
         self.cell.set(8)
         self.assertEqual(self.__tagged_marks(), ())
@@ -340,6 +352,22 @@ class TestCell(TestCase):
         self.assertEqual(self.cell.forced_value(), 4)
         self.__leave_possible({6})
         self.assertEqual(self.cell.forced_value(), 6)
+
+    def test_candidates_are_the_possible_values_but_those_ruled_out(self):
+        self.__leave_possible({3, 5, 7})
+        self.assertEqual(self.cell.candidates({(self.cell, 5): "why", (MagicMock(), 3): "elsewhere"}), {3, 7})
+
+    def test_forced_value_counts_the_values_ruled_out(self):
+        self.__leave_possible({3, 5})
+        self.assertEqual(self.cell.forced_value({(self.cell, 5): "why"}), 3)
+
+    def test_hidden_single_counts_the_values_ruled_out(self):
+        self.__counted_house(House.BOX, {})
+        house = self.parent.houses_of.return_value[0]
+        other = MagicMock()
+        house.places.side_effect = lambda value, ruled_out=frozenset(): [self.cell] if value == 4 else [self.cell, other]
+        self.assertEqual(self.cell.hidden_single({(other, 4): "why"}), (4, house))
+        house.places.assert_any_call(4, {(other, 4): "why"})
 
     def test_forced_value_is_none_when_nothing_forces_one(self):
         self.__counted_house(House.BOX, {4: 2})
@@ -425,7 +453,7 @@ class TestCell(TestCase):
     def __counted_house(self, kind, counts):
         """Add a house of this cell where each value in counts has that many places, and any other value 9"""
         house = MagicMock(kind=kind)
-        house.places.side_effect = lambda value: [self.cell] * counts.get(value, 9)
+        house.places.side_effect = lambda value, ruled_out=frozenset(): [self.cell] * counts.get(value, 9)
         self.parent.houses_of.return_value.append(house)
 
     def __house(self, kind, all_but):

@@ -83,9 +83,12 @@ class RectangularBlock:
                     seen.add(cell)
                     yield cell
 
+    def box(self) -> House:
+        return House(House.BOX, list(self.__cells()))
+
     def houses_of(self, row, col):
         """Yield the houses of the cell at row, col: this block's box, then its row and column from the board"""
-        yield House(House.BOX, list(self.__cells()))
+        yield self.box()
         yield House(House.ROW, list(self.parent.cells_in_row(row)))
         yield House(House.COLUMN, list(self.parent.cells_in_col(col)))
 

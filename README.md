@@ -139,7 +139,7 @@ some guidance:
 - ui/terminal/menu_note.py - a grayed-out menu line explaining the choice above it; `MenuNote` class
 - ui/terminal/menu_choice.py - a menu line offering choices; `MenuChoice` class
 - game/puzzle_solver.py - finds and makes the next obvious move (n) or all of them (a) by applying the solving rules; `PuzzleSolver` class
-- game/rules/ - one solving rule per file (`Rule` subclasses); game/rules/order.py sets the order they are applied in
+- game/rules/ - one solving rule per file (`Rule` subclasses), and `IntersectionRule`, the base of the pointing pair and box/line reduction rules; game/rules/order.py sets the order they are applied in
 - game/rectangular_block.py - creates/manages a rectangular block of 3x3 cells; `RectangularBlock` class.
 - game/cell.py - creates/manages an individual cell; `Cell` class
 - game/cell_solver.py - keeps the possible values of a cell; `CellSolver` class

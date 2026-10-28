@@ -38,6 +38,13 @@ class TestRule(TestCase):
         move = ExampleRule().find(MagicMock())
         self.assertEqual((move.outcome, move.hint, move.cell, move.value), (Outcome.MOVED, "Because. [example] ", cell, 3))
 
+    def test_a_rule_rules_nothing_out_unless_it_says_so(self):
+        class ExampleRule(Rule):
+            def find(self, puzzle):
+                return None
+
+        self.assertEqual(ExampleRule().eliminations(MagicMock()), {})
+
     def test_every_rule_has_a_name(self):
         for rule in RULES:
             self.assertTrue(rule.NAME, rule)

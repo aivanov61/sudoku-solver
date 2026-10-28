@@ -23,6 +23,14 @@ from unittest.mock import MagicMock
 sys.path.insert(0, ".")
 
 
+def board_puzzle(board):
+    """A mock puzzle whose houses and cells are those of a real board, for rules that look at houses"""
+    puzzle = MagicMock()
+    puzzle.houses.side_effect = board.houses
+    puzzle.first_cell_where.side_effect = board.first_cell_where
+    return puzzle
+
+
 def find_with(rule, cell):
     """Return the rule's move in a mock puzzle whose first matching cell is the given one, and the puzzle"""
     puzzle = MagicMock()

@@ -85,11 +85,13 @@ If you enter a value that's already in the same row, column or box, the cell tur
 
 Press `n` to be shown the next obvious move. It looks, left to right and top to bottom, for an empty cell whose value can be worked out from the board, moves the cursor there and explains on the bottom line, in steel blue, why that value must go there. Press `n` again to fill it in (also in steel blue), or press any other key to carry on yourself. Press `u` to take a filled-in move back.
 
-It finds two kinds of move, and ends each explanation with the name of the rule in brackets:
+It finds these kinds of move, and ends each explanation with the name of the rule in brackets:
 - **A single value** `[single value]`: only one value fits the cell, because every other value is already in its row, column or box.
 - **A hidden single** `[hidden single]`: a value can go nowhere else in the cell's box, row or column, even though other values would still fit the cell.
+- **A pointing pair** `[pointing pair]`: when, within one box, a value can only go in one row (or column), the value in that row must be in this box, so it can't go anywhere else in the row. When that leaves a cell a single value, or a value only one place, `n` explains both steps, e.g. "Only 9 fits here: in one box, 4 can only go in one row, which rules 4 out here."
+- **A box/line reduction** `[box/line reduction]`: the other way round. When, within one row (or column), a value can only go in one box, it can't go anywhere else in that box.
 
-If a cell qualifies both ways, it explains the single value.
+`n` tries them in this order, so if a cell qualifies more than one way, it explains the simplest. Values ruled out by pointing pairs and box/line reductions aren't taken off the cells' bottom lines; `n` only shows them when they lead to a value to fill in, and tagged cells leave them out of what they must be (see Tags).
 
 You don't have to press `n` the second time: with the cursor already on the cell, you can type the value yourself. You can even enter it as a guess, with a shifted digit, although it isn't really a guess. That turns it into a checkpoint. `r` rewinds to the most recent guess, and everything entered after it is shaded, so making guesses at the points you consider key decisions lets you solve the puzzle in stages and step back to any of them.
 
@@ -121,9 +123,9 @@ Box marks are the safest to read: two marks in a box always mean "one of these t
 
 Press `m` to tag the selected cell, to pick it out while you think, and `m` again to untag it. A tagged empty cell shows its small digits in steel blue: its possible values on the bottom line and, while playing, what it must be on the middle line, whatever the "must be" settings:
 - If the cell is forced, just that value: its only possible value, or a value that has no other place in its row, column or box.
-- Otherwise, its possible values, less any value that a cell in its row, column or box is forced to hold.
+- Otherwise, its possible values, less any value that a cell in its row, column or box is forced to hold, and less any value a pointing pair or box/line reduction rules out of it (see Next).
 
-So in a row that needs 4, 8 and 9, where the 4 can only go in one of the three cells, that cell shows **4** and the other two show **8 9**. This looks only at what is forced right now, one step, so it never gives away more than the next move would; it will get sharper as the program learns more solving rules. Once the cell has a value the steel blue is gone, since the value takes the place of the small digits, but the tag stays: when the value is deleted or undone, the steel blue comes back. Tags work in both modes, undo and rewind leave them alone, and they are saved with the puzzle.
+So in a row that needs 4, 8 and 9, where the 4 can only go in one of the three cells, that cell shows **4** and the other two show **8 9**. This looks only at what is forced or ruled out right now, one step, so it never gives away more than the next move would; it gets sharper as the program learns more solving rules. Once the cell has a value the steel blue is gone, since the value takes the place of the small digits, but the tag stays: when the value is deleted or undone, the steel blue comes back. Tags work in both modes, undo and rewind leave them alone, and they are saved with the puzzle.
 
 ## Finishing the puzzle
 

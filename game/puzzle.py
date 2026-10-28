@@ -184,6 +184,10 @@ class Puzzle:
         """Return the first cell, left to right and top to bottom, for which condition(cell) is true, or None"""
         return self.__board.first_cell_where(condition)
 
+    def houses(self) -> list:
+        """Return every house of the board: each box, then every row and every column"""
+        return self.__board.houses()
+
     def select(self, cell) -> None:
         self.selected_cell = (cell.row, cell.col)
 
@@ -247,8 +251,11 @@ class Puzzle:
         return Message(hint, MessageKind.HINT) if hint else None
 
     def __refresh_marks(self) -> None:
-        """Have the cells show the marks of the setting while playing, and none in setup"""
-        self.__board.refresh_marks(None if self._initializing else self.__settings.of(MarksSetting))
+        """Have the cells show their marks while playing, tagged ones leaving out what the rules rule out; none in setup"""
+        if self._initializing:
+            self.__board.refresh_marks(None)
+        else:
+            self.__board.refresh_marks(self.__settings.of(MarksSetting), self.__solver.ruled_out())
 
     def __action_received(self, action) -> None:
         """Any action ends the notice and the completion report; any action but "n" cancels the move a previous "n" pointed out"""

@@ -19,9 +19,11 @@ import sys
 
 sys.path.insert(0, ".")
 
+from game.rules.box_line_rule import BoxLineRule
 from game.rules.conflicts_rule import ConflictsRule
 from game.rules.dead_end_rule import DeadEndRule
 from game.rules.hidden_single_rule import HiddenSingleRule
+from game.rules.pointing_pair_rule import PointingPairRule
 from game.rules.single_value_rule import SingleValueRule
 
 # The order the solver applies the rules in: rules that stop solving come before rules that make moves
@@ -30,4 +32,6 @@ RULES = (
     DeadEndRule,
     SingleValueRule,
     HiddenSingleRule,
+    PointingPairRule,
+    BoxLineRule,
 )

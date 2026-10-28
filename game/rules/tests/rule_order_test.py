@@ -24,17 +24,21 @@ from unittest import main, TestCase
 sys.path.insert(0, ".")
 
 from game import rules
+from game.rules.box_line_rule import BoxLineRule
 from game.rules.conflicts_rule import ConflictsRule
 from game.rules.dead_end_rule import DeadEndRule
 from game.rules.hidden_single_rule import HiddenSingleRule
 from game.rules.order import RULES
+from game.rules.pointing_pair_rule import PointingPairRule
 from game.rules.rule import Rule
 from game.rules.single_value_rule import SingleValueRule
 
 
 class TestRuleOrder(TestCase):
     def test_rules_are_applied_conflicts_first_then_dead_ends_then_moves(self):
-        self.assertEqual(RULES, (ConflictsRule, DeadEndRule, SingleValueRule, HiddenSingleRule))
+        self.assertEqual(
+            RULES, (ConflictsRule, DeadEndRule, SingleValueRule, HiddenSingleRule, PointingPairRule, BoxLineRule)
+        )
 
     def test_every_rule_in_the_rules_folder_is_in_the_order(self):
         defined = set()
@@ -43,7 +47,7 @@ class TestRuleOrder(TestCase):
             defined |= {
                 obj
                 for obj in vars(module).values()
-                if inspect.isclass(obj) and issubclass(obj, Rule) and obj is not Rule
+                if inspect.isclass(obj) and issubclass(obj, Rule) and not inspect.isabstract(obj)
             }
         self.assertEqual(defined, set(RULES))
 

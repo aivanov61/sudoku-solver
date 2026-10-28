@@ -72,6 +72,13 @@ class PuzzleSolver:
         moves = (rule.find(self.__puzzle) for rule in self.__rules)
         return next((move for move in moves if move), None)
 
+    def ruled_out(self) -> dict:
+        """Return {(cell, value): why} for every value the rules rule out of a cell now"""
+        ruled_out = {}
+        for rule in self.__rules:
+            ruled_out.update(rule.eliminations(self.__puzzle))
+        return ruled_out
+
     def make_move(self, move) -> None:
         """Fill in the value of a move that fills a cell"""
         self.__puzzle.enter_solved_value(move.cell, move.value)

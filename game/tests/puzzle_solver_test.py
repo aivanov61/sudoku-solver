@@ -48,6 +48,22 @@ class TestPuzzleSolver(TestCase):
         self.assertIsNone(solver.find_move())
         self.assertEqual(self.consulted, ["a", "b"])
 
+    def test_ruled_out_gathers_every_rules_eliminations(self):
+        first, second = MagicMock(), MagicMock()
+
+        def ruling_out(eliminations):
+            class EliminatingRule(Rule):
+                def find(self, puzzle):
+                    return None
+
+                def eliminations(self, puzzle):
+                    return eliminations
+
+            return EliminatingRule
+
+        rules = [ruling_out({(first, 4): "why"}), ruling_out({(second, 5): "why not"})]
+        self.assertEqual(PuzzleSolver(self.puzzle, rules).ruled_out(), {(first, 4): "why", (second, 5): "why not"})
+
     def test_making_a_move_enters_its_value(self):
         cell = MagicMock()
         PuzzleSolver(self.puzzle, []).make_move(Move(Outcome.MOVED, "hint", cell, 3))

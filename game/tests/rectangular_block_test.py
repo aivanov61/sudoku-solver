@@ -51,6 +51,11 @@ class TestRectangularBlock(TestCase):
         self.parent.cells_in_row.assert_called_once_with(1)
         self.parent.cells_in_col.assert_called_once_with(7)
 
+    def test_box_is_the_house_of_every_cell_in_the_block(self):
+        box = self.block.box()
+        self.assertEqual(box.kind, House.BOX)
+        self.assertEqual(sorted((c.row, c.col) for c in box.cells), [(r, c) for r in range(3) for c in range(6, 9)])
+
     def test_houses_of_asks_parent_only_after_the_box(self):
         houses = self.block.houses_of(1, 7)
         next(houses)

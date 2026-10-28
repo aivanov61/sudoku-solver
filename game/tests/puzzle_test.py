@@ -467,6 +467,18 @@ class TestPuzzle(TestCase):
         self.puzzle.handle(Action.TAG)
         self.assertEqual(self.__cell(0, 8).marks(), (8, 9))
 
+    def test_a_tagged_cell_leaves_out_what_a_pointing_pair_rules_out(self):
+        for row, col, value in ((1, 0, 1), (1, 1, 2), (1, 2, 3), (2, 0, 5), (2, 1, 6), (5, 2, 4)):
+            self.__enter(row, col, value)
+        self.puzzle.play_()
+        self.puzzle.selected_cell = (0, 8)
+        self.puzzle.handle(Action.TAG)
+        self.assertNotIn(4, self.__cell(0, 8).marks())
+        self.assertIn(4, self.__cell(0, 8).possible_values())
+
+    def test_houses_are_the_boards(self):
+        self.assertEqual([house.kind for house in self.puzzle.houses()], ["box"] * 9 + ["row"] * 9 + ["column"] * 9)
+
     def test_a_tagged_cell_hides_its_marks_in_setup(self):
         self.__leave_4_two_places_in_box_0()
         self.puzzle.selected_cell = (0, 0)

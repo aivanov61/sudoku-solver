@@ -23,6 +23,7 @@ sys.path.insert(0, ".")
 
 from game.cell import Cell
 from game.cell_attrs import CellAttrs
+from game.house import House
 from game.marks_setting import MarksSetting
 
 
@@ -71,10 +72,20 @@ class Board(ABC):
     def has_conflicts(self) -> bool:
         return self.first_cell_where(Cell.is_marked_in_conflict) is not None
 
-    def refresh_marks(self, setting: MarksSetting) -> None:
-        """Have every cell show the "must be" marks (Snyder notation) the setting asks for, none for a setting of None"""
+    def refresh_marks(self, setting: MarksSetting, ruled_out=frozenset()) -> None:
+        """
+        Have every cell show its marks: what it must be once tagged, leaving out each (cell, value) ruled out, or
+        else the "must be" marks (Snyder notation) the setting asks for; none for a setting of None
+        """
         for cell in self.cells():
-            cell.refresh_marks(setting)
+            cell.refresh_marks(setting, ruled_out)
+
+    def houses(self) -> list:
+        """Return every house: each block's box, then every row and every column"""
+        boxes = [block.box() for block in self._blocks()]
+        rows = [House(House.ROW, list(self.cells_in_row(row))) for row in range(self.v_cells)]
+        columns = [House(House.COLUMN, list(self.cells_in_col(col))) for col in range(self.h_cells)]
+        return boxes + rows + columns
 
     def givens(self) -> list:
         """Return (row, col, value) for each value entered while setting up the puzzle"""
