@@ -21,6 +21,7 @@ from dataclasses import dataclass
 
 sys.path.insert(0, ".")
 
+from game.actions import Action
 from game.config_option import ConfigOption
 from game.house import House
 
@@ -40,6 +41,10 @@ class MarksSetting:
     THRESHOLDS = (2, 3, 4, 5)
     BOX_ONLY = (House.BOX,)
     EVERY_HOUSE = (House.BOX, House.ROW, House.COLUMN)
+    WHOLE_PUZZLE_NOTES = (  # for off, then on; {key} is the key that tags a cell
+        "Only cells you tag with {key} show their marks (tag in PLAY or SETUP)",
+        "Every empty cell shows its marks; {key} still picks out the cells you tag",
+    )
 
     threshold: int = 2
     kinds: tuple = BOX_ONLY
@@ -65,7 +70,10 @@ class MarksSetting:
         return [
             ConfigOption(self.GROUP, "Kind of house", kinds, self.kinds),
             ConfigOption(self.GROUP, "Threshold", thresholds, self.threshold),
-            ConfigOption(self.GROUP, "Whole puzzle", (("off", False), ("on", True)), self.whole_puzzle),
+            ConfigOption(
+                self.GROUP, "Whole puzzle", (("off", False), ("on", True)), self.whole_puzzle, self.WHOLE_PUZZLE_NOTES,
+                Action.TAG,
+            ),
         ]
 
     def from_options(options) -> "MarksSetting":

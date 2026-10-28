@@ -46,8 +46,8 @@ class TestMenuChoice(TestCase):
             self.choice.handle(key)
         self.assertEqual(self.choice.chosen, 1)
 
-    def test_can_be_selected_but_not_picked(self):
-        self.assertEqual((self.choice.is_selectable(), self.choice.is_picked_by_enter()), (True, False))
+    def test_enter_picks_it_with_the_index_chosen(self):
+        self.assertEqual((self.choice.is_picked_by_enter(), self.choice.value), (True, 1))
 
 
 if __name__ == "__main__":

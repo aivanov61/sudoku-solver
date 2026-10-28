@@ -22,13 +22,16 @@ from dataclasses import dataclass, replace
 class ConfigOption:
     """
     A setting the player can configure: the group it is listed under, its name, the choices it offers as
-    (label, value) pairs, and the value chosen
+    (label, value) pairs, the value chosen, and optionally a note explaining each choice.  A note can name the
+    key for an action as {key}, since only the user interface knows which key that is.
     """
 
     group: str
     name: str
     choices: tuple  # (label, value) for each choice, in the order offered
     value: object
+    notes: tuple = ()  # a note for each choice, in the same order ("" for none), or none at all
+    note_action: object = None  # the Action whose key the notes name as {key}
 
     def labels(self) -> list:
         return [label for label, _ in self.choices]

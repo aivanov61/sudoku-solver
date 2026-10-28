@@ -26,6 +26,7 @@ class MenuChoice(MenuItem):
     """
     A menu line offering choices, showing the one chosen and where it is among them, e.g. "Size ... large (3 of 3)".
     TAB or right moves to the next choice and Shift-TAB or left to the previous one, going round at either end.
+    ENTER picks it, giving the index chosen as its value.
     """
 
     INDENT = "    "  # under its heading
@@ -41,6 +42,13 @@ class MenuChoice(MenuItem):
     def text(self) -> str:
         position = f"({self.chosen + 1} of {len(self.__labels)})"
         return f"{self.__name + ' ':.<{self.NAME_WIDTH}} {self.__labels[self.chosen]} {position}"
+
+    @property
+    def value(self) -> int:
+        return self.chosen
+
+    def is_picked_by_enter(self) -> bool:
+        return True
 
     def handle(self, key) -> None:
         if key in self.NEXT_KEYS + self.PREVIOUS_KEYS:

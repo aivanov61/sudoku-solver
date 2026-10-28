@@ -20,6 +20,7 @@ from unittest import main, TestCase
 
 sys.path.insert(0, ".")
 
+from game.actions import Action
 from game.house import House
 from game.marks_setting import MarksSetting
 
@@ -44,6 +45,15 @@ class TestMarksSetting(TestCase):
                                               "5 or fewer places"])
         self.assertEqual(whole.labels(), ["off", "on"])
         self.assertEqual((kind.value, threshold.value, whole.value), (MarksSetting.EVERY_HOUSE, 3, True))
+
+    def test_the_whole_puzzle_choices_have_notes_naming_the_tag_key(self):
+        _kind, threshold, whole = MarksSetting().options()
+        self.assertEqual(threshold.notes, ())
+        self.assertEqual(whole.note_action, Action.TAG)
+        self.assertEqual(whole.notes, (
+            "Only cells you tag with {key} show their marks (tag in PLAY or SETUP)",
+            "Every empty cell shows its marks; {key} still picks out the cells you tag",
+        ))
 
     def test_a_setting_is_made_from_its_options_as_chosen(self):
         kind, threshold, whole = MarksSetting().options()

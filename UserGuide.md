@@ -111,7 +111,7 @@ At first, only the cells you tag with `m` show their marks (see Tags below): tag
 - **Threshold:** how few places a value must have left to be marked, from `2 or fewer places` (the default) to `5 or fewer places`.
 - **Whole puzzle:** `off` (the default) shows marks only in tagged cells; `on` shows them in every empty cell.
 
-Each line shows its choice and where it is among them, e.g. `Threshold .......... 2 or fewer places (1 of 4)`. Use the up and down arrows to choose a line, and `TAB` or the right arrow to move to the next choice (`Shift-TAB` or the left arrow for the previous one); the choices go round at either end. `ENTER` does nothing here. Press `ESC` (or `q`) to go back to the puzzle with the new settings; there's nothing to confirm, since you can always change them back.
+Each line shows its choice and where it is among them, e.g. `Threshold .......... 2 or fewer places (1 of 4)`. Use the up and down arrows to choose a line, and `TAB` or the right arrow to move to the next choice (`Shift-TAB` or the left arrow for the previous one); the choices go round at either end. A gray line under a setting explains the choice made, such as which cells show marks. Press `ENTER` to go back to the puzzle with the new settings, or `ESC` (or `q`) to go back with the settings as they were.
 
 The marks update after every key, as values are entered, deleted, undone or filled in. Up to three marks are spaced out; four or five are shown closed up; more than that show `.....`. With a high threshold and rows and columns included, that happens often: in a row, column or box with 5 or fewer empty cells, every possible value has 5 or fewer places, so every one is marked. During setup the marks are hidden, and they come back when you start playing.
 

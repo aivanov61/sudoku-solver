@@ -141,14 +141,14 @@ class Commands:
             "keys": "mM",
             "label": "m",
             "name": "tag",
-            "long": 'Use "m" to tag (mark) a cell, or untag it - while empty, it shows its small digits in steel blue',
+            "long": 'Use "m" to tag (mark) a cell, or untag it - tagged cells show their "must be" marks; see "c" for the options',
         },
         {
             "command": Action.CONFIGURE,
             "keys": "cC",
             "label": "c",
             "name": "config",
-            "long": 'Use "c" to configure the game, such as the "must be" marks; ESC goes back to the puzzle',
+            "long": 'Use "c" to configure the game, such as the "must be" marks; ENTER applies, ESC cancels',
         },
         {
             "command": Action.SAVE,
@@ -181,6 +181,10 @@ class Commands:
         binding = next((binding for binding in bindings if Commands.__is_offered(binding["command"], offered)), bindings[0])
         is_digit = key in Commands.DIGITS + Commands.SHIFTED_DIGITS
         return binding["command"], int(key.translate(Commands.unshifted_value)) if is_digit else None
+
+    def label_for(command) -> str:
+        """Return the label naming the command's keys, e.g. "m" for tagging a cell"""
+        return next(binding["label"] for binding in Commands.BINDINGS if binding["command"] == command)
 
     def panel(offered) -> list:
         """The offered commands' lines for the command panel: (keys, name)"""

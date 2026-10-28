@@ -75,6 +75,9 @@ class TestCommands(TestCase):
     def test_unknown_key_is_no_command(self):
         self.assertIsNone(Commands.command_for("x", PLAY))
 
+    def test_the_label_for_a_command_names_its_key(self):
+        self.assertEqual(Commands.label_for(Action.TAG), "m")
+
     # Help
 
     def test_help_lists_only_what_the_mode_offers(self):

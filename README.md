@@ -136,6 +136,7 @@ some guidance:
 - ui/terminal/menu_item.py - the base class of menu lines; `MenuItem` class
 - ui/terminal/menu_entry.py - a menu line that ENTER picks; `MenuEntry` class
 - ui/terminal/menu_heading.py - a menu line naming a group; `MenuHeading` class
+- ui/terminal/menu_note.py - a grayed-out menu line explaining the choice above it; `MenuNote` class
 - ui/terminal/menu_choice.py - a menu line offering choices; `MenuChoice` class
 - game/puzzle_solver.py - finds and makes the next obvious move (n) or all of them (a) by applying the solving rules; `PuzzleSolver` class
 - game/rules/ - one solving rule per file (`Rule` subclasses); game/rules/order.py sets the order they are applied in

@@ -32,6 +32,9 @@ class TestConfigOption(TestCase):
     def test_the_chosen_index_is_where_the_value_is_among_the_choices(self):
         self.assertEqual(self.OPTION.chosen_index(), 1)
 
+    def test_an_option_has_no_notes_unless_given_them(self):
+        self.assertEqual((self.OPTION.notes, self.OPTION.note_action), ((), None))
+
     def test_with_choice_returns_the_option_with_that_choice_made(self):
         self.assertEqual(self.OPTION.with_choice(2).value, 3)
         self.assertEqual(self.OPTION.value, 2)

@@ -27,6 +27,7 @@ from ui.terminal.menu import Menu
 from ui.terminal.menu_choice import MenuChoice
 from ui.terminal.menu_entry import MenuEntry
 from ui.terminal.menu_heading import MenuHeading
+from ui.terminal.menu_note import MenuNote
 
 
 class TestMenu(TestCase):
@@ -110,10 +111,17 @@ class TestMenu(TestCase):
         self.assertEqual(choice.chosen, 1)
         self.assertEqual(self.__item_lines()[1], "    [" + choice.text() + "]")
 
-    def test_enter_on_a_choice_picks_nothing(self):
+    def test_enter_on_a_choice_picks_it(self):
         self.entries = [MenuChoice("Size", ["small", "large"])]
-        self.assertIsNone(self.__choose(self.ENTER, self.ESCAPE, quit_question=None))
-        self.assertEqual(self.entries[0].chosen, 0)
+        self.assertEqual(self.__choose(self.TAB, self.ENTER, quit_question=None), 1)
+
+    def test_a_note_is_shown_grayed_out_under_its_choice_and_skipped(self):
+        choice = MenuChoice("Size", ["small", "large"])
+        self.entries = [choice, MenuNote(choice, ["Fits anywhere", "Needs room"]), MenuChoice("Color", ["red"])]
+        self.__choose(self.DOWN, self.ESCAPE, quit_question=None)
+        self.assertEqual(
+            self.__item_lines()[1:], [MenuNote.INDENT + "<Fits anywhere>", "    [" + self.entries[2].text() + "]"]
+        )
 
     def test_shift_tab_read_as_two_keys_is_taken_as_one(self):
         choice = MenuChoice("Size", ["small", "medium", "large"])

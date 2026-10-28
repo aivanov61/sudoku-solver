@@ -31,6 +31,7 @@ from ui.terminal.input import Input
 from ui.terminal.menu import Menu
 from ui.terminal.menu_choice import MenuChoice
 from ui.terminal.menu_heading import MenuHeading
+from ui.terminal.menu_note import MenuNote
 
 
 class TerminalUI:
@@ -39,7 +40,7 @@ class TerminalUI:
     panel, and shows the game's messages and asks its questions on the status line.
     """
 
-    CONFIGURE_KEYS_HELP = "Up/down to choose, TAB/Shift-TAB or right/left to change, ESC for the puzzle"
+    CONFIGURE_KEYS_HELP = "↑/↓ to choose, TAB/Shift-TAB or ←/→ to change, ENTER to apply, ESC to cancel"
 
     def __init__(self, display: Display, v_cells: int, h_cells: int):
         display.geometry(v_cells, h_cells)
@@ -90,9 +91,14 @@ class TerminalUI:
         return name + extension if name else None
 
     def configure(self, options) -> list:
-        """Show the options in a menu, each group under a heading, until ESC; return them as chosen"""
+        """
+        Show the options in a menu, each group under a heading; return them as chosen once ENTER applies them, or as
+        they were if ESC cancels
+        """
         choices = [MenuChoice(option.name, option.labels(), option.chosen_index()) for option in options]
-        Menu("Configure", self.__menu_items(options, choices), self.CONFIGURE_KEYS_HELP, self.__display).choose()
+        menu = Menu("Configure", self.__menu_items(options, choices), self.CONFIGURE_KEYS_HELP, self.__display)
+        if menu.choose() is None:
+            return options
         return [option.with_choice(choice.chosen) for option, choice in zip(options, choices)]
 
     def guess_depth_changed(self, depth) -> None:
@@ -146,14 +152,21 @@ class TerminalUI:
             self.__showing_missing = cell
 
     def __menu_items(self, options, choices) -> list:
-        """Return the choices, with a heading before the first of each group"""
+        """Return the choices, with a heading before the first of each group, and its notes under each that has them"""
         items, group = [], None
         for option, choice in zip(options, choices):
             if option.group != group:
                 group = option.group
                 items.append(MenuHeading(group))
             items.append(choice)
+            if option.notes:
+                items.append(MenuNote(choice, self.__notes_with_key(option)))
         return items
+
+    def __notes_with_key(self, option) -> list:
+        """Return the option's notes, naming the key for their action where they say {key}"""
+        key = Commands.label_for(option.note_action) if option.note_action else ""
+        return [note.format(key=key) for note in option.notes]
 
     def __carry_out(self, game: Puzzle, command, digit) -> None:
         """Show the help screen, or hand the action to the game, surviving an action that breaks"""

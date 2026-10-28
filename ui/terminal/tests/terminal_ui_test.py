@@ -293,15 +293,29 @@ class TestTerminalUI(TestCase):
         self.assertEqual(menu.call_args.args[0], "Configure")
         self.assertEqual([option.value for option in chosen], [1, 1, 1])
 
+    def test_configure_shows_an_options_notes_under_it_with_the_key_of_their_action(self):
+        notes = ("Tag with {key} first", "")
+        options = [ConfigOption("Marks", "Whole", (("off", False), ("on", True)), False, notes, Action.TAG)]
+        with patch("ui.terminal.terminal_ui.Menu", side_effect=self.__menu_pressing_tab_on_line(1)):
+            self.ui.configure(options)
+        self.assertEqual(self.shown_items, [("MenuHeading", "Marks"), ("MenuChoice", "Whole"), ("MenuNote", "Tag")])
+        self.assertEqual(self.shown_texts[2], "Tag with m first")
+
+    def test_configure_cancelled_returns_the_options_as_they_were(self):
+        options = [ConfigOption("Marks", "Kind", (("a", 1), ("b", 2)), 1)]
+        with patch("ui.terminal.terminal_ui.Menu", side_effect=self.__menu_pressing_tab_on_line(1, picked=None)):
+            self.assertEqual(self.ui.configure(options), options)
+
     # Private functions
 
-    def __menu_pressing_tab_on_line(self, line):
-        """A stand-in for Menu that keeps the items it is shown and presses TAB on one of them"""
+    def __menu_pressing_tab_on_line(self, line, picked=0):
+        """A stand-in for Menu that keeps the items it is shown, presses TAB on one of them, then returns picked"""
 
         def menu(title, items, keys_help, display):
-            self.shown_items = [(type(item).__name__, item.text().split(" ")[0]) for item in items]
+            self.shown_texts = [item.text() for item in items]
+            self.shown_items = [(type(item).__name__, text.split(" ")[0]) for item, text in zip(items, self.shown_texts)]
             items[line].handle("KEY_TAB")
-            return MagicMock()
+            return MagicMock(**{"choose.return_value": picked})
 
         return menu
 
