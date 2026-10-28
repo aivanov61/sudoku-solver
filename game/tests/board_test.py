@@ -22,6 +22,7 @@ sys.path.insert(0, ".")
 
 from game.board import Board
 from game.cell_attrs import CellAttrs
+from game.marks_setting import MarksSetting
 from game.puzzles.board_3x3 import Board3x3
 
 
@@ -87,6 +88,14 @@ class TestBoard(TestCase):
         self.assertFalse(self.board.has_conflicts())
         self.board.cell(4, 0).set(5)
         self.assertTrue(self.board.has_conflicts())
+
+    def test_refresh_marks_has_every_cell_show_the_marks_the_setting_asks_for(self):
+        for row, col in ((1, 4), (2, 7), (4, 1), (7, 2)):
+            self.board.cell(row, col).set(4)
+        self.board.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY))
+        self.assertEqual(self.board.cell(0, 0).marks(), (4,))
+        self.board.refresh_marks(MarksSetting())
+        self.assertEqual([cell for cell in self.board.cells() if cell.marks()], [])
 
     def test_givens_are_the_values_entered_as_initial(self):
         self.board.cell(1, 1).set(4, (CellAttrs.INITIAL,))

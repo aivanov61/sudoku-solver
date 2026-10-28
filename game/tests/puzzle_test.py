@@ -415,6 +415,41 @@ class TestPuzzle(TestCase):
         self.assertIn("change the setup before playing", self.__status_of(restored, ui))
         self.assertEqual(restored.selected_cell, (0, 8))
 
+    # Must-be marks
+
+    def test_marks_cycle_saying_which_values_they_mark(self):
+        self.puzzle.play_()
+        self.puzzle.handle(Action.MARKS)
+        self.assertEqual(self.__status(), "Must-be marks (config 1 of 8): 2 or fewer 'must be' values in their box. ")
+        self.assertEqual(self.ui.statuses[-1].kind, MessageKind.INFO)
+
+    def test_marks_show_once_turned_on(self):
+        self.__leave_4_two_places_in_box_0()
+        self.puzzle.play_()
+        self.assertEqual(self.__cell(0, 0).marks(), ())
+        self.puzzle.handle(Action.MARKS)
+        self.assertEqual((self.__cell(0, 0).marks(), self.__cell(0, 2).marks()), ((4,), (4,)))
+
+    def test_marks_follow_every_entry(self):
+        self.__leave_4_two_places_in_box_0()
+        self.puzzle.play_()
+        self.puzzle.handle(Action.MARKS)
+        self.__enter(7, 2, 4)
+        self.assertEqual((self.__cell(0, 0).marks(), self.__cell(0, 2).marks()), ((4,), ()))
+
+    def test_marks_are_hidden_in_setup_and_come_back_in_play(self):
+        self.__leave_4_two_places_in_box_0()
+        self.puzzle.play_()
+        self.puzzle.handle(Action.MARKS)
+        self.puzzle.handle(Action.INIT)
+        self.assertEqual(self.__cell(0, 0).marks(), ())
+        self.puzzle.handle(Action.PLAY)
+        self.assertEqual(self.__cell(0, 0).marks(), (4,))
+
+    def test_marks_are_refused_in_setup(self):
+        self.puzzle.handle(Action.MARKS)
+        self.assertIn("This works only while playing", self.ui.last_informed())
+
     # Next
 
     def test_first_next_moves_to_the_cell_and_shows_why_without_filling_it(self):
@@ -749,6 +784,11 @@ class TestPuzzle(TestCase):
     def __fill_row(self, row, start_col, values):
         for col, value in enumerate(values, start_col):
             self.__cell(row, col).set(value)
+
+    def __leave_4_two_places_in_box_0(self):
+        """Put 4 in rows 1 and 2 and in column 1, leaving 4 two places in box 0: row 0, columns 0 and 2"""
+        for row, col in ((1, 4), (2, 7), (4, 1)):
+            self.__enter(row, col, 4)
 
     def __leave_4_no_place_in_row_0(self):
         """Fill row 0 but for 4 and 9, and put 4 in column 7, so a 4 in column 8 leaves row 0 no place for one"""

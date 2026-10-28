@@ -23,6 +23,7 @@ sys.path.insert(0, ".")
 
 from game.cell import Cell
 from game.cell_attrs import CellAttrs
+from game.marks_setting import MarksSetting
 
 
 class Board(ABC):
@@ -69,6 +70,11 @@ class Board(ABC):
 
     def has_conflicts(self) -> bool:
         return self.first_cell_where(Cell.is_marked_in_conflict) is not None
+
+    def refresh_marks(self, setting: MarksSetting) -> None:
+        """Have every cell show the "must be" marks (Snyder notation) the setting asks for"""
+        for cell in self.cells():
+            cell.refresh_marks(setting)
 
     def givens(self) -> list:
         """Return (row, col, value) for each value entered while setting up the puzzle"""

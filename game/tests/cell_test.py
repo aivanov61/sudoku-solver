@@ -24,6 +24,7 @@ sys.path.insert(0, ".")
 from game.cell import Cell
 from game.cell_attrs import CellAttrs
 from game.house import House
+from game.marks_setting import MarksSetting
 
 
 class TestCell(TestCase):
@@ -275,6 +276,45 @@ class TestCell(TestCase):
         self.__house(House.BOX, all_but={4})
         self.assertIsNone(self.cell.unplaceable_value())
 
+    # Must-be marks
+
+    def test_cell_has_no_marks_while_marks_are_off(self):
+        self.__counted_house(House.BOX, {4: 1})
+        self.cell.refresh_marks(MarksSetting())
+        self.assertEqual(self.cell.marks(), ())
+
+    def test_cell_marks_values_with_few_enough_places_in_its_box(self):
+        self.__counted_house(House.BOX, {4: 2, 6: 1, 7: 3})
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY))
+        self.assertEqual(self.cell.marks(), (4, 6))
+
+    def test_cell_marks_from_rows_and_columns_only_when_asked_to(self):
+        self.__counted_house(House.BOX, {})
+        self.__counted_house(House.ROW, {5: 2})
+        self.__counted_house(House.COLUMN, {3: 2, 5: 2})
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY))
+        self.assertEqual(self.cell.marks(), ())
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.EVERY_HOUSE))
+        self.assertEqual(self.cell.marks(), (3, 5))
+
+    def test_cell_marks_only_its_possible_values(self):
+        self.cell.remove_possible(4)
+        self.__counted_house(House.BOX, {4: 1})
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY))
+        self.assertEqual(self.cell.marks(), ())
+
+    def test_cell_with_a_value_has_no_marks(self):
+        self.cell.set(8)
+        self.__counted_house(House.BOX, {8: 1})
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY))
+        self.assertEqual(self.cell.marks(), ())
+
+    def test_cell_reports_a_change_only_when_its_marks_change(self):
+        self.__counted_house(House.BOX, {4: 2})
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY))
+        self.cell.refresh_marks(MarksSetting(3, MarksSetting.BOX_ONLY))
+        self.parent.cell_changed.assert_called_once_with(self.cell)
+
     # Private functions
 
     def __setup_parent(self):
@@ -296,6 +336,12 @@ class TestCell(TestCase):
         cell.value.return_value = value
         self.parent.related_cells.return_value.append(cell)
         return cell
+
+    def __counted_house(self, kind, counts):
+        """Add a house of this cell where each value in counts has that many places, and any other value 9"""
+        house = MagicMock(kind=kind)
+        house.places.side_effect = lambda value: [self.cell] * counts.get(value, 9)
+        self.parent.houses_of.return_value.append(house)
 
     def __house(self, kind, all_but):
         """Add a house of this cell and one other, where every value but those in all_but can also go"""

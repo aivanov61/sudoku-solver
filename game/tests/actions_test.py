@@ -34,12 +34,12 @@ class TestActions(TestCase):
         setup = OFFERED_ACTIONS[Mode.SETUP]
         self.assertIn(Action.PLAY, setup)
         self.assertIn(Action.DEL, setup)
-        for action in (Action.INIT, Action.GUESS, Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT):
+        for action in (Action.INIT, Action.GUESS, Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT, Action.MARKS):
             self.assertNotIn(action, setup)
 
     def test_play_offers_guesses_and_solving_but_no_clearing(self):
         play = OFFERED_ACTIONS[Mode.PLAY]
-        for action in (Action.INIT, Action.GUESS, Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT):
+        for action in (Action.INIT, Action.GUESS, Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT, Action.MARKS):
             self.assertIn(action, play)
         self.assertNotIn(Action.PLAY, play)
         self.assertNotIn(Action.DEL, play)

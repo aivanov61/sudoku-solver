@@ -36,7 +36,7 @@ class TestCommands(TestCase):
             [
                 ("ESC", "SETUP"), ("?", "help"), ("1-9", "value"), ("shift 1-9", "guess"),
                 ("k ↑", "up"), ("j ↓", "down"), ("h ←", "left"), ("l →", "right"),
-                ("u", "undo"), ("r", "rewind"), ("a", "auto"), ("n", "next"),
+                ("u", "undo"), ("r", "rewind"), ("a", "auto"), ("n", "next"), ("m", "marks"),
                 ("s", "save"), ("o", "open"), ("q CTRL-C", "quit"),
             ],
         )

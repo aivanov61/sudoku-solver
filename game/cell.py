@@ -21,6 +21,7 @@ from game.border import Border
 from game.cell_attrs import CellAttrs
 from game.cell_solver import CellSolver
 from game.house import House
+from game.marks_setting import MarksSetting
 
 if TYPE_CHECKING:
     from game.rectangular_block import RectangularBlock
@@ -44,6 +45,7 @@ class Cell:
         self._value = None
         self._solver = CellSolver(parent)  # Use the Solver class
         self._attrs = tuple()
+        self._marks = ()  # the "must be" marks (Snyder notation) the cell shows
         self._parent = parent
         self.row = row
         self.col = col
@@ -70,6 +72,10 @@ class Cell:
 
     def possible_values(self) -> set:
         return self._solver.possible_values()
+
+    def marks(self) -> tuple:
+        """Return the "must be" marks (Snyder notation): possible values with few places left in the cell's houses"""
+        return self._marks
 
     # Interface required for blocks
 
@@ -99,6 +105,15 @@ class Cell:
 
     def is_marked_in_conflict(self) -> bool:
         return any(attr in CellAttrs.CONFLICT_ATTRS for attr in self._attrs)
+
+    # Interface required for the board
+
+    def refresh_marks(self, setting: MarksSetting) -> None:
+        """Show the marks the setting asks for, reporting any change"""
+        marks = self.__must_be(setting.threshold, setting.kinds) if setting.is_on() else ()
+        if marks != self._marks:
+            self._marks = marks
+            self.__report_change()
 
     # Interface required for related cells
 
@@ -171,6 +186,12 @@ class Cell:
 
     def __report_change(self) -> None:
         self._parent.cell_changed(self)
+
+    def __must_be(self, threshold, kinds) -> tuple:
+        """Return, in order, the possible values with threshold places or fewer in a house of the kinds"""
+        houses = [house for house in self._parent.houses_of(self.row, self.col) if house.kind in kinds]
+        few_places = lambda value: any(len(house.places(value)) <= threshold for house in houses)
+        return tuple(value for value in sorted(self.possible_values()) if few_places(value))
 
     def __first_in_houses(self, values, applies) -> tuple:
         """

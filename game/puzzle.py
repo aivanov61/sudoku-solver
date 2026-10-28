@@ -25,6 +25,7 @@ from game.cell import Cell
 from game.cell_attrs import CellAttrs
 from game.completion_report import CompletionReport
 from game.game_file import GameFile
+from game.marks_setting import MarksSetting
 from game.moves import Moves
 from game.puzzle_solver import PuzzleSolver
 from game.rules.dead_end_rule import DeadEndRule
@@ -62,7 +63,8 @@ class Puzzle:
         self.selected_cell = (0, 0)  # row, col (NOT x, y)
         self.is_playing = True
 
-        self.__notice = None  # a warning shown on the status line until the next command
+        self.__notice = None  # a warning or a new setting, shown on the status line until the next command
+        self.__marks = MarksSetting()  # which "must be" marks to show while playing
         self.__board = board
         self.__ui = ui
         board.report_changes_to(ui.cell_changed)
@@ -86,6 +88,7 @@ class Puzzle:
         """Carry out the player's action (with its digit, for values and guesses), then show the status"""
         self.__action_received(action)
         getattr(self, f"{action.value}_")(*([] if digit is None else [digit]))
+        self.__refresh_marks()
         self.display_status()
 
     def force_quit_(self) -> None:
@@ -157,6 +160,13 @@ class Puzzle:
         if not self.__solving_refused():
             self.__inform(self.__solver.auto())
 
+    def marks_(self) -> None:
+        """Show the next kind of "must be" marks (Snyder notation), saying which"""
+        if self.__refused_while_initializing():
+            return
+        self.__marks = self.__marks.next()
+        self.__notice = Message(self.__marks.description(), MessageKind.INFO)
+
     def save_(self) -> None:
         self.__game_file.save()
 
@@ -221,6 +231,10 @@ class Puzzle:
         """Return why the move "n" pointed out is right, or None if there is none"""
         hint = self.__solver.pending_hint()
         return Message(hint, MessageKind.HINT) if hint else None
+
+    def __refresh_marks(self) -> None:
+        """Have the cells show the marks of the setting while playing, and none in setup"""
+        self.__board.refresh_marks(MarksSetting() if self._initializing else self.__marks)
 
     def __action_received(self, action) -> None:
         """Any action ends the notice and the completion report; any action but "n" cancels the move a previous "n" pointed out"""

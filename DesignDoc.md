@@ -21,6 +21,7 @@ The code is also meant as an example of clean, object-oriented Python built with
 | Next (`n`) | Working for single values and hidden singles (see 5.6) |
 | Auto (`a`) | Working: makes every move `n` would, one after another (see 5.6) |
 | Save and restore (`s`, `o`) | Working (see 5.8) |
+| "Must be" marks (`m`) | Worked out and cycled with `m`, but not drawn yet (see 5.9) |
 | Redo | Not implemented. |
 
 ## 3. Running and testing
@@ -55,6 +56,7 @@ Supporting modules:
 | `game/user_interface.py` | `UserInterface`, `Message`, `MessageKind` | The port through which the game talks to the player (section 4.4) |
 | `ui/terminal/terminal_ui.py` | `TerminalUI` | The terminal's implementation of the port: runs the play loop, draws the board, the command panel and the help screen, and shows messages and questions on the status line |
 | `game/border.py` | `Border` | Which sides of a cell lie on its block's edge (layout data) |
+| `game/marks_setting.py` | `MarksSetting` | Which "must be" marks (Snyder notation) cells show, and the order `m` steps through them |
 | `game/house.py` | `House` | A box, row or column: a group of cells that must hold every value once, where a value can still go in it, and whether a missing value has no place left |
 | `ui/terminal/display.py` | `Display` | All terminal drawing, through `blessed` |
 | `game/cell_attrs.py` | `CellAttrs` | What a cell's attributes mean: how its value got there, conflict marks, guess depth |
@@ -245,6 +247,15 @@ The first two *stop* solving: every `n` repeats their warning, and there is noth
 - **Where files go:** `SaveFile.located(name)` puts a name without a folder in `SaveFile.FOLDER` (`saved_games`, relative to where the program runs); a name with any folder, even `.`, is used as given. `SaveFile.write()` creates `saved_games` when it is missing, but no other folder. `GameFile` remembers the name as typed and shows the located path in its messages. `saved_games/` is in `.gitignore`.
 - **Save (`s`)** warns "Nothing to save - the board is empty." if no cell has a value; otherwise it asks for a file name with the user interface's `ask_file_name(prompt, default, extension)`, offering the last name saved or restored, without its extension (`GameFile.DEFAULT_FILE_NAME`, `sudoku`, at first), and passing `SaveFile.EXTENSION` (`.json`), which the player never types. On the terminal, `Display.ask(msg, default, suffix)` shows the extension after the name, with the cursor before it; the arrows move the cursor within the name, Backspace and Delete remove the character before or at it, and typed characters are inserted at it. `TerminalUI` adds the extension to the name it returns, and an empty name counts as cancelled. `GameFile` then confirms before replacing an existing file. The puzzle's `saved_state()` builds the `SavedPuzzle`; givens are the cells whose attributes include `INITIAL`.
 - **Restore (`o`)** reads the file first, so a bad file or one from another layout only warns and changes nothing. If the board has any values, it then confirms. `GameFile.restore()` hands the `SavedPuzzle` to the puzzle's `restore(saved)`, which empties every cell, clears the moves, enters the givens in setup mode, switches to the saved mode, and replays the moves through `Moves.enter()`, the same path as typed and solved values. Undo, rewind and guess shading then work as if the moves had just been made. After redrawing, it points out any dead end the same way as after a typed value (selecting the first one and showing a notice).
+
+### 5.9 "Must be" marks (Snyder notation)
+
+A "must be" mark shows, in an empty cell, a value that has only a few places left in one of the cell's houses, this cell among them: what solvers call Snyder notation. A value with one place is a hidden single (5.6).
+
+- **`MarksSetting`** (`marks_setting.py`, frozen) says which marks to show: off (`threshold` `None`, the default), or each value with at most `threshold` places (2 to 5) in one of the cell's houses of the given `kinds`: `BOX_ONLY`, or `EVERY_HOUSE` (box, row and column). Per box is the default because two marks in a box always mean "one of these two"; marks from rows and columns can be misread as pairs when two of them line up from different houses. `next()` steps through every setting: off, box 2 to 5, every house 2 to 5, then off again. `description()` says which of the 8 settings that show marks it is and what it marks, for the status line, e.g. "Must-be marks (config 1 of 8): 2 or fewer 'must be' values in their box."
+- **Cells keep their marks.** `Cell.refresh_marks(setting)` works them out from the cell's houses (`House.places()`), keeps them and reports a change, like any other change, only when they differ; `marks()` gives them to the user interface. A filled cell has no possible values, so it has no marks.
+- **The puzzle refreshes them after every command:** `handle()` calls `Board.refresh_marks()` with the setting while playing, and with marks off in setup mode, so a mark that changes because of a change anywhere in its houses (an entry, undo, rewind, auto, a restore) is always current, and the marks come back when play resumes.
+- **`m`** (`Action.MARKS`, offered only while playing) calls `marks_()`, which moves to the next setting and shows its description as a notice until the next command.
 
 ## 6. Display
 
