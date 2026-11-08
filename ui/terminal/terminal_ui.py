@@ -215,7 +215,7 @@ class TerminalUI:
         return ""
 
     def __styled(self, message, room) -> str:
-        """Successes and hints in the solved style (steel blue), everything else in yellow"""
+        """Successes and hints in the solved style (light sky blue), everything else in yellow"""
         text = self.__fitting_text(message, room)
         if message.kind in (MessageKind.SUCCESS, MessageKind.HINT):
             return self.__display.styled(text, (CellAttrs.SOLVED,))

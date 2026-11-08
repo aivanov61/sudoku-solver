@@ -27,7 +27,7 @@ class DisplayAttrs:
     - Primary (at most one per cell)
         - INITIAL - FG=Purple, BG=Lavender
         - GUESS - FG=Green, BG=[shade of gray]
-        - SOLVED - FG=SteelBlue, BG=[shade of gray]
+        - SOLVED - FG=LightSkyBlue, BG=[shade of gray]
     - Additional (optional)
         - CONFLICTING - FG=BoldRed, BG=BrightYellow
         - CONFLICTED - FG=[primary], BG=Yellow
@@ -39,7 +39,7 @@ class DisplayAttrs:
     MISSING_VALUE = "white_on_red"  # a value with no place left, shown in a cell while a warning says so
     GRAY_STEP = 10
     MAX_GRAY_LEVEL = 100  # There are no gray levels greater than 100
-    TAGGED_COLOR = "steelblue"  # the small digits of a cell the player tagged
+    TAGGED_COLOR = "lightskyblue"  # the small digits of a cell the player tagged
 
     @dataclass
     class FgBgAttr:
@@ -50,7 +50,7 @@ class DisplayAttrs:
         # The following are mutually exclusive basic required attributes
         CellAttrs.INITIAL: FgBgAttr(("purple",), ("lavender",)),
         CellAttrs.GUESS: FgBgAttr(("green",), None),
-        CellAttrs.SOLVED: FgBgAttr(("steelblue",), None),
+        CellAttrs.SOLVED: FgBgAttr(("lightskyblue",), None),
     }
 
     ATTRS_OPTIONAL = {

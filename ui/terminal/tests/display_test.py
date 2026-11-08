@@ -113,7 +113,7 @@ class TestDisplayPossibleValues(TestCase):
     def test_possible_values_of_a_tagged_cell_are_drawn_in_the_tag_color(self, echo):
         display = board_display()
         display.draw_cell_possible_values(0, 0, [5], tagged=True)
-        self.assertTrue(echo.call_args_list[-1].args[0].startswith(display.term.steelblue))
+        self.assertTrue(echo.call_args_list[-1].args[0].startswith(display.term.lightskyblue))
 
 
 class TestDisplayMarks(TestCase):
@@ -144,7 +144,7 @@ class TestDisplayMarks(TestCase):
         display = board_display()
         with patch("ui.terminal.display.echo") as echo:
             display.draw_cell_marks(0, 0, (4,), tagged=True)
-        self.assertTrue(echo.call_args_list[-1].args[0].startswith(display.term.steelblue))
+        self.assertTrue(echo.call_args_list[-1].args[0].startswith(display.term.lightskyblue))
 
     # Private functions
 
@@ -204,8 +204,8 @@ class TestDisplayCommandPanel(TestCase):
 
 class TestDisplayStyled(TestCase):
     def test_text_is_styled_with_the_rendered_attributes(self):
-        term = MagicMock(steelblue="<steelblue>", normal="</>")
-        self.assertEqual(board_display(term).styled("hint", (CellAttrs.SOLVED,)), "<steelblue>hint</>")
+        term = MagicMock(lightskyblue="<lightskyblue>", normal="</>")
+        self.assertEqual(board_display(term).styled("hint", (CellAttrs.SOLVED,)), "<lightskyblue>hint</>")
 
 
 class TestDisplayStatusLine(TestCase):

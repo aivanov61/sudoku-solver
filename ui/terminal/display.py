@@ -145,7 +145,7 @@ class Display:
         echo(self.term.move_xy(x, y))
 
     def styled(self, text, attrs) -> str:
-        """Return the text styled with the attributes' colors, e.g. (CellAttrs.SOLVED,) for steel blue"""
+        """Return the text styled with the attributes' colors, e.g. (CellAttrs.SOLVED,) for light sky blue"""
         return getattr(self.term, Attrs.render(attrs)) + text + self.term.normal
 
     def draw_cell_marks(self, row=0, col=0, marks=(), attrs=(), tagged=False):

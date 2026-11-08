@@ -44,11 +44,11 @@ class TestDisplayRenderAttrs(TestCase):
         out = DisplayAttrs.render(t)
         self.assertEqual(out, "purple_on_lavender")
 
-    def test_solved_attribute_renders_steelblue(self):
-        self.assertEqual(DisplayAttrs.render(CellAttrs.SOLVED), "steelblue")
+    def test_solved_attribute_renders_lightskyblue(self):
+        self.assertEqual(DisplayAttrs.render(CellAttrs.SOLVED), "lightskyblue")
 
     def test_solved_attribute_keeps_the_guess_shading(self):
-        self.assertEqual(DisplayAttrs.render((CellAttrs.SOLVED, dict(depth=1))), "steelblue_on_gray10")
+        self.assertEqual(DisplayAttrs.render((CellAttrs.SOLVED, dict(depth=1))), "lightskyblue_on_gray10")
 
     def test_guess_attribute_renders_green(self):
         out = DisplayAttrs.render(CellAttrs.GUESS)
@@ -81,8 +81,8 @@ class TestDisplayRenderAttrs(TestCase):
         self.assertEqual(DisplayAttrs.render_small_digits((dict(depth=2),), False), "on_gray20")
 
     def test_small_digits_of_a_tagged_cell_render_in_the_tag_color(self):
-        self.assertEqual(DisplayAttrs.render_small_digits((), True), "steelblue")
-        self.assertEqual(DisplayAttrs.render_small_digits((dict(depth=2),), True), "steelblue_on_gray20")
+        self.assertEqual(DisplayAttrs.render_small_digits((), True), "lightskyblue")
+        self.assertEqual(DisplayAttrs.render_small_digits((dict(depth=2),), True), "lightskyblue_on_gray20")
 
     def test_only_a_depth_beyond_the_last_shade_runs_out_of_shades(self):
         self.assertFalse(DisplayAttrs.is_beyond_last_shade(0))

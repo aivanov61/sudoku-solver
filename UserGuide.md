@@ -85,7 +85,7 @@ If you enter a value that's already in the same row, column or box, the cell tur
 
 ## Next: an obvious move
 
-Press `n` to be shown the next obvious move. It looks, left to right and top to bottom, for an empty cell whose value can be worked out from the board, moves the cursor there and explains on the bottom line, in steel blue, why that value must go there. Press `n` again to fill it in (also in steel blue), or press any other key to carry on yourself. Press `u` to take a filled-in move back.
+Press `n` to be shown the next obvious move. It looks, left to right and top to bottom, for an empty cell whose value can be worked out from the board, moves the cursor there and explains on the bottom line, in light sky blue, why that value must go there. Press `n` again to fill it in (also in light sky blue), or press any other key to carry on yourself. Press `u` to take a filled-in move back.
 
 It finds these kinds of move, and ends each explanation with the name of the rule in brackets:
 - **A single value** `[single value]`: only one value fits the cell, because every other value is already in its row, column or box.
@@ -104,7 +104,7 @@ It won't move if:
 
 ## Auto: all the obvious moves
 
-Press `a` to fill in, without explanations, every move that `n` would find, one after another, until there are none left. The values are shown in steel blue, the cursor ends on the last one filled in, and the bottom line tells you why it stopped, for the same reasons as `n`. Each value is a separate entry, so `u` takes them back one at a time. To take them all back at once, enter a guess before pressing `a` and use `r`.
+Press `a` to fill in, without explanations, every move that `n` would find, one after another, until there are none left. The values are shown in light sky blue, the cursor ends on the last one filled in, and the bottom line tells you why it stopped, for the same reasons as `n`. Each value is a separate entry, so `u` takes them back one at a time. To take them all back at once, enter a guess before pressing `a` and use `r`.
 
 ## "Must be" marks
 
@@ -123,15 +123,15 @@ Box marks are the safest to read: two marks in a box always mean "one of these t
 
 ## Tags
 
-Press `m` to tag the selected cell, to pick it out while you think, and `m` again to untag it. A tagged empty cell shows its small digits in steel blue: its possible values on the bottom line and, while playing, what it must be on the middle line, whatever the "must be" settings:
+Press `m` to tag the selected cell, to pick it out while you think, and `m` again to untag it. A tagged empty cell shows its small digits in light sky blue: its possible values on the bottom line and, while playing, what it must be on the middle line, whatever the "must be" settings:
 - If the cell is forced, just that value: its only possible value, or a value that has no other place in its row, column or box.
 - Otherwise, its possible values, less any value that a cell in its row, column or box is forced to hold, and less any value a pointing pair or box/line reduction rules out of it (see Next).
 
-So in a row that needs 4, 8 and 9, where the 4 can only go in one of the three cells, that cell shows **4** and the other two show **8 9**. This looks only at what is forced or ruled out right now, one step, so it never gives away more than the next move would; it gets sharper as the program learns more solving rules. Once the cell has a value the steel blue is gone, since the value takes the place of the small digits, but the tag stays: when the value is deleted or undone, the steel blue comes back. Tags work in both modes, undo and rewind leave them alone, and they are saved with the puzzle.
+So in a row that needs 4, 8 and 9, where the 4 can only go in one of the three cells, that cell shows **4** and the other two show **8 9**. This looks only at what is forced or ruled out right now, one step, so it never gives away more than the next move would; it gets sharper as the program learns more solving rules. Once the cell has a value the light sky blue is gone, since the value takes the place of the small digits, but the tag stays: when the value is deleted or undone, the light sky blue comes back. Tags work in both modes, undo and rewind leave them alone, and they are saved with the puzzle.
 
 ## Finishing the puzzle
 
-When the last empty cell is filled in, the status line says, until your next key, that the puzzle is **solved** (in steel blue) or **complete, with errors** (in yellow) if any values clash. You can still type over values, or undo, to fix errors. The status line reports again whenever that changes: once the errors are fixed, or when the puzzle is complete again after undo or rewind emptied a cell. `n` and `a` have nothing left to do, so they just remind you that the puzzle is solved, or that it's complete with errors and you should undo or change values to fix them.
+When the last empty cell is filled in, the status line says, until your next key, that the puzzle is **solved** (in light sky blue) or **complete, with errors** (in yellow) if any values clash. You can still type over values, or undo, to fix errors. The status line reports again whenever that changes: once the errors are fixed, or when the puzzle is complete again after undo or rewind emptied a cell. `n` and `a` have nothing left to do, so they just remind you that the puzzle is solved, or that it's complete with errors and you should undo or change values to fix them.
 
 ## Saving and restoring
 
@@ -148,8 +148,8 @@ A puzzle can only be restored into the layout it was saved from. A file saved by
 | Purple on lavender | A given number from setup |
 | Orange | A value you entered |
 | Green on gray | A guess; gray backgrounds also mark values entered after a guess |
-| Steel blue | A value filled in by `n` or `a`; "solved" on the status line |
-| Steel blue small digits | A cell you tagged with `m` |
+| Light sky blue | A value filled in by `n` or `a`; "solved" on the status line |
+| Light sky blue small digits | A cell you tagged with `m` |
 | Bold red on bright yellow | The value you just entered is already in the same row, column or box |
 | Usual color on yellow | Holds a value that a newer entry clashes with |
 | Yellow text on the status line | A warning. If it waits, press any key to continue. |
