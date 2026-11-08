@@ -84,6 +84,19 @@ class TestMoves(TestCase):
         self.moves.enter(later, 4)
         later.set.assert_called_with(4, ())
 
+    def test_clearing_a_cell_is_recorded_and_leaves_it_with_no_attributes(self):
+        self.moves.enter(self.__cell(0, 0), 3, CellAttrs.GUESS)
+        cleared = self.__cell(1, 2, value=5, attr=(dict(depth=1),))
+        self.moves.enter(cleared, None)
+        cleared.set.assert_called_with(None, ())
+        self.assertEqual(self.moves.recorded()[-1], (1, 2, None, None))
+
+    def test_undoing_a_clear_restores_the_value(self):
+        cell = self.__cell(value=7, attr=(CellAttrs.SOLVED,))
+        self.moves.enter(cell, None)
+        self.moves.undo()
+        cell.set.assert_called_with(7, (CellAttrs.SOLVED,))
+
     def test_rewind_undoes_back_to_the_most_recent_guess_and_returns_its_cell(self):
         guess = self.__cell(0, 0)
         self.moves.enter(self.__cell(5, 5), 1)

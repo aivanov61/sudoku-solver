@@ -130,10 +130,10 @@ class Puzzle:
             self.__switch_mode(initializing=True)
 
     def del_(self) -> None:
-        if not self._initializing:
-            self.__warn("Deleting a cell value can only be done while initializing the puzzle. ")
-            return
-        self.__selected_cell().set(None)
+        """Clear the selected cell, if it holds a value; while playing, a given is refused and undo brings the value back"""
+        cell = self.__selected_cell()
+        if cell.value() and not self.__refused_as_given(cell):
+            self.__moves.enter(cell, None)
 
     def undo_(self) -> None:
         if self.__refused_while_initializing():
@@ -267,14 +267,19 @@ class Puzzle:
     def __enter(self, val, prim_attr) -> None:
         """Enter the value in the selected cell, with its primary attribute, then point out any dead end"""
         cell = self.__selected_cell()
-        if not self._initializing and CellAttrs.INITIAL in cell.attr():
-            self.__warn("Cannot change an initial value while playing. ")
-            return
-        self.__moves.enter(cell, val, prim_attr)
-        self.__found_dead_end()
+        if not self.__refused_as_given(cell):
+            self.__moves.enter(cell, val, prim_attr)
+            self.__found_dead_end()
 
     def __selected_cell(self) -> Cell:
         return self.__board.cell(*self.selected_cell)
+
+    def __refused_as_given(self, cell) -> bool:
+        """Warn that a given cannot be changed while playing, returning whether the cell is one"""
+        is_refused = not self._initializing and CellAttrs.INITIAL in cell.attr()
+        if is_refused:
+            self.__warn("Cannot change an initial value while playing. ")
+        return is_refused
 
     def __warn(self, text) -> None:
         self.__ui.inform(Message(text, MessageKind.WARNING))

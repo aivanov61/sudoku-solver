@@ -35,7 +35,7 @@ class TestCommands(TestCase):
             Commands.panel(PLAY),
             [
                 ("ESC", "SETUP"), ("?", "help"), ("1-9", "value"), ("shift 1-9", "guess"),
-                ("k ↑", "up"), ("j ↓", "down"), ("h ←", "left"), ("l →", "right"),
+                ("k ↑", "up"), ("j ↓", "down"), ("h ←", "left"), ("l →", "right"), ("Del Bksp", "clear"),
                 ("u", "undo"), ("r", "rewind"), ("a", "auto"), ("n", "next"), ("m", "tag"), ("c", "config"),
                 ("s", "save"), ("o", "open"), ("q CTRL-C", "quit"),
             ],
@@ -47,7 +47,7 @@ class TestCommands(TestCase):
             [
                 ("ESC", "PLAY"), ("?", "help"), ("1-9", "value"),
                 ("k ↑", "up"), ("j ↓", "down"), ("h ←", "left"), ("l →", "right"),
-                ("Del", "clear"), ("m", "tag"), ("c", "config"), ("s", "save"), ("o", "open"), ("q CTRL-C", "quit"),
+                ("Del Bksp", "clear"), ("m", "tag"), ("c", "config"), ("s", "save"), ("o", "open"), ("q CTRL-C", "quit"),
             ],
         )
 
@@ -64,7 +64,11 @@ class TestCommands(TestCase):
 
     def test_a_key_maps_to_its_action_even_where_the_mode_does_not_offer_it(self):
         self.assertEqual(Commands.command_for("u", SETUP), (Action.UNDO, None))
-        self.assertEqual(Commands.command_for("KEY_DELETE", PLAY), (Action.DEL, None))
+
+    def test_delete_and_backspace_both_clear_in_either_mode(self):
+        for offered in (SETUP, PLAY):
+            self.assertEqual(Commands.command_for("KEY_DELETE", offered), (Action.DEL, None))
+            self.assertEqual(Commands.command_for("KEY_BACKSPACE", offered), (Action.DEL, None))
 
     def test_both_cases_of_a_letter_work(self):
         self.assertEqual(Commands.command_for("N", PLAY), (Action.NEXT, None))
@@ -83,7 +87,6 @@ class TestCommands(TestCase):
     def test_help_lists_only_what_the_mode_offers(self):
         self.assertNotIn("u", self.__help_keys(SETUP))
         self.assertIn("u", self.__help_keys(PLAY))
-        self.assertNotIn("Del", self.__help_keys(PLAY))
 
     def test_help_lines_up_the_dashes_after_the_keys(self):
         for offered in (SETUP, PLAY):

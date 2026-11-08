@@ -61,7 +61,7 @@ Use the arrow keys and/or the hjkl keys (left, down, up, right) to move around.
 Use the '?' to get help on possible commands.  Enter numbers in the squares
 (I call them cells in the code) for the given numbers in your puzzle.  You
 will notice that these numbers show up in purple on a lavender background.
-Use the Delete key to clear a cell.
+Use the Delete or Backspace key to clear a cell.
 
 When you are done, hit the ESC key to enter the **PLAY** mode.  If you
 accidentally hit the ESC key before completing the puzzle, or you notice a

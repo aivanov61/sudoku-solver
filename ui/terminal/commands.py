@@ -103,10 +103,10 @@ class Commands:
         },
         {
             "command": Action.DEL,
-            "keys": ["KEY_DELETE"],
-            "label": "Del",
+            "keys": ["KEY_DELETE", "KEY_BACKSPACE"],
+            "label": "Del Bksp",
             "name": "clear",
-            "long": "Delete/clear a given number",
+            "long": 'Use DELETE or BACKSPACE to clear a cell - while playing, "u" brings its value back',
         },
         {
             "command": Action.UNDO,

@@ -33,7 +33,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 |---|---|
 | Arrow keys, or `h` `j` `k` `l` | Move left, down, up, right |
 | `1`–`9` | Enter a given number. Givens are shown in purple on lavender. |
-| `Delete` | Clear the selected cell |
+| `Delete` or `Backspace` | Clear the selected cell |
 | `m` | Tag (mark) the selected cell, or untag it (see below) |
 | `u` `r` `a` `n`, shifted `1`–`9` | Not available in setup (no guesses either); they remind you to press `ESC` to start playing |
 | `ESC` | Finish setup and start playing. Not allowed while given numbers clash, or while an empty cell has no possible values left (the cursor moves to that cell). |
@@ -50,6 +50,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | Arrow keys, or `h` `j` `k` `l` | Move left, down, up, right |
 | `1`–`9` | Enter a value |
 | Shifted `1`–`9` (`!` `@` `#` `$` `%` `^` `&` `*` `(` on a US keyboard) | Enter a **guess** (see below) |
+| `Delete` or `Backspace` | Clear the selected cell; `u` brings its value back |
 | `u` | Undo your last entry |
 | `r` | Rewind: undo everything entered after your most recent guess, keeping the guess (or undo everything, if there's no guess). Asks you to confirm, since it can't be undone. |
 | `n` | Next: show an obvious next move and why; press `n` again to fill it in (see below) |
@@ -65,7 +66,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 
 When the program asks you to confirm, press `y` to go ahead. Any other key cancels.
 
-You can't change the puzzle's given numbers during play. To fix a typo in the setup, undo all your moves, press `ESC` to go back to setup mode, correct it and press `ESC` again.
+You can't change or clear the puzzle's given numbers during play. To fix a typo in the setup, undo all your moves, press `ESC` to go back to setup mode, correct it and press `ESC` again.
 
 ## Dead ends
 
@@ -76,6 +77,8 @@ A dead end is either an empty cell with no possible values left, or a value that
 When you're stuck and need to try a value, enter it as a guess with a shifted digit. Guesses are shown in green on a gray background.
 
 Every value you enter after a guess gets the same gray background, so you can see everything that depends on it. Each new guess makes the gray a shade lighter. If a guess turns out wrong, press `r` to rewind: everything entered after the guess is undone, and the cursor lands on the guessed cell so you can type a different guess over it. Pressing `r` again also undoes that guess and rewinds to the guess before it. After ten nested guesses there are no lighter shades left: the program warns you when you go past the last shade and then reuses it for any deeper guesses. If you undo back within the shades and later go past the last one again, it warns you again.
+
+Clearing a guess with `Delete` or `Backspace` works like typing over it: what you enter next keeps the same shade, and `r` still rewinds to that guess and brings it back.
 
 Guesses also make good checkpoints, even for values you're sure of: see "Next: an obvious move" below.
 
@@ -131,7 +134,7 @@ So in a row that needs 4, 8 and 9, where the 4 can only go in one of the three c
 
 ## Finishing the puzzle
 
-When the last empty cell is filled in, the status line says, until your next key, that the puzzle is **solved** (in light sky blue) or **complete, with errors** (in yellow) if any values clash. You can still type over values, or undo, to fix errors. The status line reports again whenever that changes: once the errors are fixed, or when the puzzle is complete again after undo or rewind emptied a cell. `n` and `a` have nothing left to do, so they just remind you that the puzzle is solved, or that it's complete with errors and you should undo or change values to fix them.
+When the last empty cell is filled in, the status line says, until your next key, that the puzzle is **solved** (in light sky blue) or **complete, with errors** (in yellow) if any values clash. You can still type over values, clear them, or undo, to fix errors. The status line reports again whenever that changes: once the errors are fixed, or when the puzzle is complete again after undo or rewind emptied a cell. `n` and `a` have nothing left to do, so they just remind you that the puzzle is solved, or that it's complete with errors and you should undo or change values to fix them.
 
 ## Saving and restoring
 

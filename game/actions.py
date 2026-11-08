@@ -56,7 +56,7 @@ OFFERED_ACTIONS = {
         Action.CONFIGURE, Action.SAVE, Action.OPEN, Action.QUIT,
     ),
     Mode.PLAY: (
-        Action.INIT, Action.VALUE, Action.GUESS, Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT,
+        Action.INIT, Action.VALUE, Action.GUESS, Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT, Action.DEL,
         Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT, Action.TAG, Action.CONFIGURE, Action.SAVE, Action.OPEN,
         Action.QUIT,
     ),

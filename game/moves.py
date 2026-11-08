@@ -49,11 +49,11 @@ class Moves:
     # Interface required for the puzzle
 
     def enter(self, cell, value, prim_attr=None) -> None:
-        """Enter a value with its primary attribute (None for a typed value) and record it while playing"""
+        """Enter a value with its primary attribute (None for a typed value) and record it while playing; value None clears the cell"""
         is_playing = not self.__puzzle.is_initializing()
         if prim_attr == CellAttrs.GUESS and is_playing:
             self.__one_guess_deeper()
-        attr = self.__attributes(prim_attr)
+        attr = self.__attributes(prim_attr) if value else ()
         if is_playing:
             self.__record(cell, value, attr)
         cell.set(value, attr)

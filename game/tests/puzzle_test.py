@@ -289,6 +289,89 @@ class TestPuzzle(TestCase):
         self.puzzle.rewind_()
         self.assertEqual(self.__cell(2, 2).value(), 3)
 
+    # Clearing a value
+
+    def test_clearing_a_value_while_playing_empties_the_cell_and_gives_the_value_back(self):
+        self.puzzle.play_()
+        self.__enter(4, 4, 5)
+        self.puzzle.handle(Action.DEL)
+        self.assertIsNone(self.__cell(4, 4).value())
+        self.__assert_all_cells_have_all_values()
+
+    def test_clearing_a_given_during_setup_empties_the_cell(self):
+        self.__enter(4, 4, 5)
+        self.puzzle.handle(Action.DEL)
+        self.assertIsNone(self.__cell(4, 4).value())
+        self.assertEqual(self.__cell(4, 4).attr(), ())
+        self.__assert_all_cells_have_all_values()
+
+    def test_undo_brings_back_a_cleared_value_and_selects_its_cell(self):
+        self.puzzle.play_()
+        self.__enter(4, 4, 5)
+        self.puzzle.handle(Action.DEL)
+        self.puzzle.selected_cell = (0, 0)
+        self.puzzle.handle(Action.UNDO)
+        self.assertEqual(self.__cell(4, 4).value(), 5)
+        self.assertEqual(self.puzzle.selected_cell, (4, 4))
+
+    def test_undo_brings_back_a_cleared_guess_as_a_guess(self):
+        self.puzzle.play_()
+        self.__enter(4, 4, 5, guess=True)
+        attr = self.__cell(4, 4).attr()
+        self.puzzle.handle(Action.DEL)
+        self.puzzle.handle(Action.UNDO)
+        self.assertEqual(self.__cell(4, 4).attr(), attr)
+
+    def test_a_cell_cleared_after_a_guess_is_not_shaded(self):
+        self.puzzle.play_()
+        self.__enter(1, 1, 2, guess=True)
+        self.__enter(4, 4, 5)
+        self.puzzle.handle(Action.DEL)
+        self.assertEqual(self.__cell(4, 4).attr(), ())
+
+    def test_clearing_a_guess_keeps_the_shading_of_what_is_entered_next(self):
+        self.puzzle.play_()
+        self.__enter(1, 1, 2, guess=True)
+        self.puzzle.handle(Action.DEL)
+        self.__enter(4, 4, 5)
+        self.assertEqual(self.__cell(4, 4).attr(), (dict(depth=1),))
+
+    def test_rewind_brings_back_a_cleared_guess(self):
+        self.puzzle.play_()
+        self.__enter(1, 1, 2, guess=True)
+        self.puzzle.handle(Action.DEL)
+        self.__rewind()
+        self.assertEqual(self.__cell(1, 1).value(), 2)
+        self.assertEqual(self.puzzle.selected_cell, (1, 1))
+
+    def test_clearing_a_given_while_playing_is_refused(self):
+        self.__enter(4, 4, 5)
+        self.puzzle.play_()
+        self.puzzle.handle(Action.DEL)
+        self.assertEqual(self.__cell(4, 4).value(), 5)
+        self.assertIn("Cannot change an initial value", self.ui.last_informed())
+
+    def test_clearing_an_empty_cell_while_playing_is_not_a_move(self):
+        self.puzzle.play_()
+        self.puzzle.selected_cell = (4, 4)
+        self.puzzle.handle(Action.DEL)
+        self.assertEqual(self.puzzle.saved_state().moves, [])
+        self.assertEqual(self.ui.informed, [])
+
+    def test_clearing_a_conflicting_value_while_playing_clears_the_conflict(self):
+        self.puzzle.play_()
+        self.__enter(4, 4, 5)
+        self.__enter(4, 0, 5)
+        self.puzzle.handle(Action.DEL)
+        self.assertFalse(self.puzzle.has_conflicts())
+
+    def test_a_clear_counts_as_a_move_when_going_back_to_setup(self):
+        self.puzzle.play_()
+        self.__enter(4, 4, 5)
+        self.puzzle.handle(Action.DEL)
+        self.puzzle.init_()
+        self.assertIn("undo everything first", self.ui.last_informed())
+
     # Setup and play modes
 
     def test_play_is_refused_while_there_are_conflicts(self):
@@ -730,6 +813,16 @@ class TestPuzzle(TestCase):
         self.__enter(8, 8, self.__solution(8, 8))
         self.assertIn("solved", self.__status())
 
+    def test_status_reports_completion_again_after_a_cell_is_cleared(self):
+        self.__fill_solution(skip=(8, 8))
+        self.puzzle.play_()
+        self.__enter(8, 8, self.__solution(8, 8))
+        self.__status()
+        self.puzzle.handle(Action.DEL)
+        self.assertEqual(self.__status(), "")
+        self.__enter(8, 8, self.__solution(8, 8))
+        self.assertIn("solved", self.__status())
+
     def test_status_reports_no_completion_while_initializing(self):
         self.__fill_solution()
         self.assertEqual(self.__status(), "")
@@ -787,6 +880,15 @@ class TestPuzzle(TestCase):
         self.assertIsNone(self.__cell_of(restored, 2, 2).value())
         self.assertIsNone(self.__cell_of(restored, 1, 1).value())
         self.assertEqual(self.__cell_of(restored, 0, 1).value(), 2)
+
+    def test_restore_replays_a_cleared_value_and_it_can_be_undone(self):
+        self.__play_a_few_moves()
+        self.puzzle.handle(Action.DEL)
+        restored = self.__restored_puzzle()
+        self.assertIsNone(self.__cell_of(restored, 2, 2).value())
+        self.assertEqual(self.__cell_of(restored, 2, 2).attr(), ())
+        restored.undo_()
+        self.assertEqual(self.__cell_of(restored, 2, 2).value(), 4)
 
     def test_restore_in_setup_mode_stays_in_setup_mode(self):
         self.__enter(0, 0, 1)
