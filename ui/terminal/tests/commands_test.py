@@ -88,6 +88,10 @@ class TestCommands(TestCase):
         self.assertNotIn("u", self.__help_keys(SETUP))
         self.assertIn("u", self.__help_keys(PLAY))
 
+    def test_help_calls_the_mode_setup(self):
+        for offered in (SETUP, PLAY):
+            self.assertNotIn("initializ", Commands.long_help(offered).lower())
+
     def test_help_lines_up_the_dashes_after_the_keys(self):
         for offered in (SETUP, PLAY):
             lines = Commands.long_help(offered).split("\n")

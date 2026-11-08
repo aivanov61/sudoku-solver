@@ -329,11 +329,11 @@ class Puzzle:
     def __check_for_active_play(self) -> bool:
         is_actively_playing = not self.__moves.is_empty()
         if is_actively_playing:
-            self.__warn("Cannot initialize puzzle while playing - undo everything first. ")
+            self.__warn("Cannot go back to setup while playing - undo everything first. ")
         return is_actively_playing
 
     def __warn_nothing_to_undo(self) -> None:
-        self.__warn("Cannot undo initialized puzzle.  ESC will re-enter initialization mode. ")
+        self.__warn("Nothing to undo - ESC goes back to setup. ")
 
     def __solving_refused(self) -> bool:
         """Warn, returning True, if "n" or "a" cannot solve: in setup mode, or once the puzzle is complete"""

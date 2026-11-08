@@ -43,14 +43,14 @@ class Commands:
             "keys": ["KEY_ESCAPE"],
             "label": "ESC",
             "name": "PLAY",
-            "long": "Hit ESC to exit initialization mode and start playing the puzzle",
+            "long": "Hit ESC to finish setup and start playing the puzzle",
         },
         {
             "command": Action.INIT,
             "keys": ["KEY_ESCAPE"],
             "label": "ESC",
             "name": "SETUP",
-            "long": "Hit ESC to re-enter initialization mode (once everything has been undone)",
+            "long": "Hit ESC to go back to setup (once everything has been undone)",
         },
         {
             "command": HELP,

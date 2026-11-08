@@ -13,7 +13,7 @@ This program lets you type in a 9x9 Sudoku puzzle, such as one from a newspaper 
 
 The terminal window needs to be at least **80 columns wide and 29 lines tall**. If it's smaller, the program asks you to resize it. Press `Enter` when you're done, or `CTRL-C` to quit. A message too long for the status line is split onto the lines below it if the window has any, and cut short with `…` if it runs out of lines; the grid never moves.
 
-For a narrow screen, such as a phone, run `python sudoku.py --no-panel`. The command panel beside the grid is left out, so 55 columns are enough; the window needs 31 lines, two more than usual, so long messages such as `n`'s explanations have room below the status line. While the status line is blank, it shows the mode in gray (`PLAY - ? for commands`), and `?` lists the commands as usual. On Android, the Termux app (from F-Droid) runs the program: install `python` and `git` with `pkg install`, then follow the steps above.
+For a narrow screen, such as a phone, run `python sudoku.py --no-panel`. The command panel beside the grid is left out, so 55 columns are enough; the window needs 31 lines, two more than usual, so long messages such as `n`'s explanations have room below the status line. While the status line is blank, it shows the mode in gray (`PLAY - ? for commands`), and `?` lists the commands as usual. On Android, the Termux app (from F-Droid, version >= 0.118.3) runs the program: install `python` and `git` with `pkg install`, then follow the steps above.
 
 ## The screen
 
@@ -35,6 +35,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | `1`–`9` | Enter a given number. Givens are shown in purple on lavender. |
 | `Delete` or `Backspace` | Clear the selected cell |
 | `m` | Tag (mark) the selected cell, or untag it (see below) |
+| `c` | Configure: change settings such as the "must be" marks (see below) |
 | `u` `r` `a` `n`, shifted `1`–`9` | Not available in setup (no guesses either); they remind you to press `ESC` to start playing |
 | `ESC` | Finish setup and start playing. Not allowed while given numbers clash, or while an empty cell has no possible values left (the cursor moves to that cell). |
 | `?` | Show the setup commands, with a longer description of each |
@@ -113,12 +114,7 @@ Press `a` to fill in, without explanations, every move that `n` would find, one 
 
 A "must be" mark is a small digit in the middle of an empty cell: that value has only a few places left in the cell's box, and this cell is one of them. Solvers call this Snyder notation. A mark in two cells of a box means the value must be in one of those two. A value with a single mark in its box is a hidden single: it can go only there.
 
-Snyder marks are off at first; a cell you tag with `m` shows what it must be instead (see Tags below). Press `c` to open the configure menu, which lists the settings under the heading **Must-be marks (Snyder notation)**:
-- **Kind of house:** `box` (the default) marks values with few places left in their box; `box, row or column` marks a value with few enough places in any of the three.
-- **Threshold:** how few places a value must have left to be marked, from `2 or fewer places` (the default) to `5 or fewer places`.
-- **Whole puzzle:** `off` (the default) shows no Snyder marks; `on` shows them in every empty cell that isn't tagged. Kind of house and threshold apply only here.
-
-Each line shows its choice and where it is among them, e.g. `Threshold .......... 2 or fewer places (1 of 4)`. Use the up and down arrows to choose a line, and `TAB` or the right arrow to move to the next choice (`Shift-TAB` or the left arrow for the previous one); the choices go round at either end. A gray line under a setting explains the choice made, such as which cells show marks. Press `ENTER` to go back to the puzzle with the new settings, or `ESC` (or `q`) to go back with the settings as they were.
+Snyder marks are off at first; a cell you tag with `m` shows what it must be instead (see Tags below). To show marks throughout the puzzle, turn on **Whole puzzle** in the configure menu (see "Configuration" below).
 
 The marks update after every key, as values are entered, deleted, undone or filled in. Up to three marks are spaced out; four or five are shown closed up; more than that show `.....`. With a high threshold and rows and columns included, that happens often: in a row, column or box with 5 or fewer empty cells, every possible value has 5 or fewer places, so every one is marked. During setup the marks are hidden, and they come back when you start playing.
 
@@ -131,6 +127,27 @@ Press `m` to tag the selected cell, to pick it out while you think, and `m` agai
 - Otherwise, its possible values, less any value that a cell in its row, column or box is forced to hold, and less any value a pointing pair or box/line reduction rules out of it (see Next).
 
 So in a row that needs 4, 8 and 9, where the 4 can only go in one of the three cells, that cell shows **4** and the other two show **8 9**. This looks only at what is forced or ruled out right now, one step, so it never gives away more than the next move would; it gets sharper as the program learns more solving rules. Once the cell has a value the light sky blue is gone, since the value takes the place of the small digits, but the tag stays: when the value is deleted or undone, the light sky blue comes back. Tags work in both modes, undo and rewind leave them alone, and they are saved with the puzzle.
+
+## Configuration
+
+Press `c`, in either mode, to open the configure menu. It lists the settings, grouped under headings. Each line shows its setting, its current choice and where that choice is among them, e.g. `Threshold .......... 2 or fewer places (1 of 4)`. A gray line under a setting explains the choice made, such as which cells show marks.
+
+| Key | Action |
+|---|---|
+| Up and down arrows | Choose a line |
+| `TAB` or right arrow | Move to the next choice; the choices go round at either end |
+| `Shift-TAB` or left arrow | Move to the previous choice |
+| `ENTER` | Go back to the puzzle with the new settings |
+| `ESC` or `q` | Go back to the puzzle with the settings as they were |
+
+Your settings are saved with the puzzle (see "Saving and restoring" below).
+
+### Must-be marks (Snyder notation)
+
+These settings choose which "must be" marks are shown (see "Must be" marks above):
+- **Kind of house:** `box` (the default) marks values with few places left in their box; `box, row or column` marks a value with few enough places in any of the three.
+- **Threshold:** how few places a value must have left to be marked, from `2 or fewer places` (the default) to `5 or fewer places`.
+- **Whole puzzle:** `off` (the default) shows no Snyder marks; `on` shows them in every empty cell that isn't tagged. Kind of house and threshold apply only here.
 
 ## Finishing the puzzle
 
@@ -165,5 +182,5 @@ A puzzle can only be restored into the layout it was saved from. A file saved by
 ## Troubleshooting
 
 - **The grid looks broken or there are odd characters:** make sure your terminal uses UTF-8 and a font with box-drawing characters.
-- **The program asks you to resize:** make the window at least 80 × 29 and press `Enter`.
+- **The program asks you to resize:** make the window at least 80 × 29 (55 × 31 with `--no-panel`) and press `Enter`.
 - **Something looks wrong on screen:** press `?` and then any key. Returning from help redraws the whole screen.
