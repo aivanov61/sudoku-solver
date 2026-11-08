@@ -17,10 +17,7 @@
 
 """Shared by the rule tests: ask a rule for its move in a mock puzzle"""
 
-import sys
 from unittest.mock import MagicMock
-
-sys.path.insert(0, ".")
 
 
 def board_puzzle(board):

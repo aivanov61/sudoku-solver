@@ -15,11 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-import sys
-
 from dataclasses import dataclass, field
-
-sys.path.insert(0, ".")
 
 from game.marks_setting import MarksSetting
 

@@ -18,12 +18,9 @@
 import dataclasses
 import json
 import os
-import sys
 import tempfile
 from unittest import main, TestCase
 from unittest.mock import patch
-
-sys.path.insert(0, ".")
 
 from game.marks_setting import MarksSetting
 from game.save_file import SavedPuzzle, SaveFile, SaveFileError

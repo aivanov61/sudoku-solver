@@ -16,11 +16,8 @@
 # -----------------------------------------------------------------------------
 
 import ast
-import sys
 from pathlib import Path
 from unittest import main, TestCase
-
-sys.path.insert(0, ".")
 
 
 class TestPackageBoundary(TestCase):

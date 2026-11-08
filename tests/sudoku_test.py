@@ -15,13 +15,10 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-import sys
 from unittest import main, TestCase
 from unittest.mock import call, MagicMock, patch
 
 from blessed.keyboard import Keystroke
-
-sys.path.insert(0, ".")
 
 from sudoku import Main
 

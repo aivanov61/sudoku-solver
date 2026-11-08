@@ -15,11 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-import sys
-
 from typing import TYPE_CHECKING
-
-sys.path.insert(0, ".")
 
 from game.rules.order import RULES
 from game.rules.rule import Move, Outcome

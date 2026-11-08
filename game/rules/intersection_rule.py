@@ -15,11 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-import sys
-
 from abc import abstractmethod
-
-sys.path.insert(0, ".")
 
 from game.house import House
 from game.rules.rule import Move, Outcome, Rule

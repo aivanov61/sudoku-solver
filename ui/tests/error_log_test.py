@@ -16,12 +16,9 @@
 # -----------------------------------------------------------------------------
 
 import os
-import sys
 import tempfile
 from unittest import main, TestCase
 from unittest.mock import patch
-
-sys.path.insert(0, ".")
 
 from ui.error_log import ErrorLog
 

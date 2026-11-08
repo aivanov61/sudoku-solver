@@ -15,10 +15,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-import sys
-
-sys.path.insert(0, ".")
-
 from ui.terminal.menu_choice import MenuChoice
 from ui.terminal.menu_item import MenuItem
 

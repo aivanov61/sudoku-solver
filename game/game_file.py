@@ -16,11 +16,8 @@
 # -----------------------------------------------------------------------------
 
 import os
-import sys
 
 from typing import TYPE_CHECKING
-
-sys.path.insert(0, ".")
 
 from game.save_file import SavedPuzzle, SaveFile, SaveFileError
 from game.user_interface import Message, MessageKind, UserInterface

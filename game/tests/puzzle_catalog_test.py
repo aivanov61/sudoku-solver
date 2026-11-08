@@ -20,8 +20,6 @@ import sys
 import tempfile
 from unittest import main, TestCase
 
-sys.path.insert(0, ".")
-
 from game.puzzle_catalog import PuzzleCatalog
 from game.puzzles.board_3x3 import Board3x3
 

@@ -15,10 +15,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-import sys
-
-sys.path.insert(0, ".")
-
 from game.actions import Action, Mode, OFFERED_ACTIONS
 from game.board import Board
 from game.cell import Cell

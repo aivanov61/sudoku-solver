@@ -15,11 +15,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-import sys
 from unittest import main, TestCase
 from unittest.mock import patch
-
-sys.path.insert(0, ".")
 
 from game.actions import Action, Mode, OFFERED_ACTIONS
 from game.cell_attrs import CellAttrs

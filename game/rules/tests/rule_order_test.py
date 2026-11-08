@@ -18,10 +18,7 @@
 import importlib
 import inspect
 import pkgutil
-import sys
 from unittest import main, TestCase
-
-sys.path.insert(0, ".")
 
 from game import rules
 from game.rules.box_line_rule import BoxLineRule

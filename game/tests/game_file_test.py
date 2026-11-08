@@ -17,12 +17,9 @@
 
 import dataclasses
 import os
-import sys
 import tempfile
 from unittest import main, TestCase
 from unittest.mock import MagicMock, patch
-
-sys.path.insert(0, ".")
 
 from game.game_file import GameFile
 from game.tests.recording_ui import RecordingUI

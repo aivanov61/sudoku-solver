@@ -15,11 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-import sys
-
 from abc import ABC, abstractmethod
-
-sys.path.insert(0, ".")
 
 from game.cell import Cell
 from game.cell_attrs import CellAttrs

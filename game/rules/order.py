@@ -15,10 +15,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-import sys
-
-sys.path.insert(0, ".")
-
 from game.rules.box_line_rule import BoxLineRule
 from game.rules.conflicts_rule import ConflictsRule
 from game.rules.dead_end_rule import DeadEndRule

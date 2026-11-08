@@ -94,7 +94,7 @@ See [UserGuide.md](UserGuide.md) for the full list of keys and colors.
 ## Testing
 
 Run all the unit tests with `py -m pytest` (or `python -m pytest`), or run a single
-test file directly, e.g. `python game/tests/cell_test.py`.  Each folder of code has
+test file as a module, e.g. `python -m game.tests.cell_test`.  Each folder of code has
 its tests in a `tests/` folder beside it.  Two tests are meant to be
 watched: `ui/terminal/tests/display_test.py::TestDisplay` draws on the terminal and
 `ui/terminal/tests/input_test.py` waits for a key press.

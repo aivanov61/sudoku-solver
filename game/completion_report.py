@@ -15,11 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-import sys
-
 from typing import TYPE_CHECKING
-
-sys.path.insert(0, ".")
 
 from game.user_interface import Message, MessageKind
 

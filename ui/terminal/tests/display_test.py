@@ -16,10 +16,7 @@
 # -----------------------------------------------------------------------------
 
 import random
-import sys
 import textwrap
-
-sys.path.insert(0, ".")
 
 from unittest import main, TestCase
 from unittest.mock import MagicMock, patch

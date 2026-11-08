@@ -15,10 +15,6 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-import sys
-
-sys.path.insert(0, ".")
-
 from game.actions import Action
 from game.cell_attrs import CellAttrs
 from game.puzzle import Puzzle

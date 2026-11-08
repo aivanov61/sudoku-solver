@@ -16,9 +16,6 @@
 # -----------------------------------------------------------------------------
 
 import argparse
-import sys
-
-sys.path.insert(0, ".")
 
 from game.puzzle import Puzzle
 from game.puzzle_catalog import PuzzleCatalog

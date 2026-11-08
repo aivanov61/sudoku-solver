@@ -18,11 +18,8 @@
 import importlib
 import inspect
 import pkgutil
-import sys
 
 from dataclasses import dataclass, field
-
-sys.path.insert(0, ".")
 
 from game.board import Board
 

@@ -15,10 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-import sys
 from unittest import main, TestCase
-
-sys.path.insert(0, ".")
 
 from game.puzzles.board_3x3 import Board3x3
 from game.rules.box_line_rule import BoxLineRule
