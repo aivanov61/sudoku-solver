@@ -1,0 +1,24 @@
+# Settings for the development tools (see requirements-dev.txt); the program itself needs only requirements.txt
+
+[tool.ruff]
+line-length = 150
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "PLE"]  # rules that catch mistakes; matters of style are left to the code base's own norms
+ignore = [
+    "B008",  # a default made by a call is fine for an immutable object, such as Border()
+    "B027",  # an empty method in a base class is a hook its subclasses may override
+    "B904",  # the save file turns a low-level error into the one message the player needs
+    "B905",  # the zipped lists are built to match: settings options and their choices
+    "E731",  # a named lambda is the idiom here for a short local condition
+]
+
+[tool.coverage.run]
+branch = true
+source = ["game", "ui", "sudoku"]
+omit = ["*/tests/*", "*/keyboard_query.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+sort = "cover"

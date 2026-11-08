@@ -128,7 +128,7 @@ class Display:
         """Return the screen row of the upper-left corner of the cell given its row relative to other cells"""
         return self.CELL_HEIGHT * cell_row
 
-    def draw_cell_value(self, row=0, col=0, value=" ", attrs=dict()):
+    def draw_cell_value(self, row=0, col=0, value=" ", attrs=()):
         """Draw the value in the middle of the cell using the rendered attributes"""
         self.move_to_cell(row, col)
         echo(self.styled(str(value), attrs))
@@ -155,7 +155,7 @@ class Display:
         echo(self.term.move_xy(x, y))
         echo(self.__small_digits_style(attrs, tagged) + self.__marks_text(marks) + self.term.normal)
 
-    def draw_cell_possible_values(self, row=0, col=0, values=[], attrs=dict(), tagged=False):
+    def draw_cell_possible_values(self, row=0, col=0, values=(), attrs=(), tagged=False):
         """Draw the possible values at the bottom of the cell"""
         values = sorted(values) if len(values) <= self.CELL_HORIZONTAL_SIZE else "....."
         x = self.x(col) + 1

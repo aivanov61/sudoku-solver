@@ -39,7 +39,7 @@ class TestInputDecoding(TestCase):
         self.assertEqual(self.__get_cmd_with([Keystroke("x"), Keystroke("u")]), (Action.UNDO, None))
 
     def test_special_keys_are_decoded_by_name(self):
-        self.assertEqual(self.__get_cmd_with([Keystroke("[A", code=1, name="KEY_UP")]), (Action.UP, None))
+        self.assertEqual(self.__get_cmd_with([Keystroke("\x1b[A", code=1, name="KEY_UP")]), (Action.UP, None))
 
     def test_a_timeout_is_no_command(self):
         self.assertIsNone(self.__get_cmd_with([Keystroke("")]))

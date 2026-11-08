@@ -16,7 +16,7 @@
 # -----------------------------------------------------------------------------
 
 from unittest import main, TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from game.cell import Cell
 from game.house import House

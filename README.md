@@ -99,6 +99,11 @@ its tests in a `tests/` folder beside it.  Two tests are meant to be
 watched: `ui/terminal/tests/display_test.py::TestDisplay` draws on the terminal and
 `ui/terminal/tests/input_test.py` waits for a key press.
 
+To work on the code, install the development tools with `pip install -r requirements-dev.txt`
+(`pyproject.toml` holds their settings).  From the top-level directory:
+- `py -m ruff check` looks for likely mistakes, such as unused imports
+- `py -m coverage run -m pytest`, then `py -m coverage report`, shows which lines the tests never run
+
 ## Purpose and Design
 
 The purpose of writing this program is three-fold:
