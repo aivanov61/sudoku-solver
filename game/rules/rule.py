@@ -19,6 +19,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 
+from game.user_interface import Highlight
+
 
 class Outcome(Enum):
     MOVED = "moved"  # the move fills in a cell
@@ -34,10 +36,21 @@ class Move:
     cell: object = None  # the cell to fill in or to point the player at, if any
     value: int = None  # the value to fill in (MOVED), or the value that has no place left (STOPPED)
     house: object = None  # the house the value has no place left in (STOPPED)
+    highlight: Highlight = None  # what the hint points at on the board, if anything
 
     def missing(self) -> tuple:
         """Return (cell, value) for a warning about a value with no place left, to show it in the cell; or None"""
         return (self.cell, self.value) if self.outcome is Outcome.STOPPED and self.value else None
+
+
+@dataclass(frozen=True)
+class Elimination:
+    """A value ruled out of a cell"""
+
+    why: str  # why it is ruled out, such as: in box 2, 4 can only go in row 1
+    rule: str  # the NAME of the rule that ruled it out
+    relied_on: tuple = ()  # each (cell, value) that had to be ruled out first
+    highlight: Highlight = None  # what the reason points at on the board, if anything
 
 
 class Rule(ABC):
@@ -59,13 +72,13 @@ class Rule(ABC):
 
     def eliminations(self, puzzle, ruled_out=frozenset()) -> dict:
         """
-        Return {(cell, value): why} for each value this rule rules out of a cell now, once each (cell, value) in
-        ruled_out is left out; most rules rule out none
+        Return {(cell, value): Elimination} for each value this rule rules out of a cell now, once each (cell, value)
+        in ruled_out is left out; most rules rule out none
         """
         return {}
 
     # Interface required for subclasses
 
-    def _move(self, outcome, hint, cell=None, value=None, house=None) -> Move:
+    def _move(self, outcome, hint, cell=None, value=None, house=None, highlight=None) -> Move:
         """Return a move whose hint ends with this rule's name"""
-        return Move(outcome, f"{hint} [{self.NAME}] ", cell, value, house)
+        return Move(outcome, f"{hint} [{self.NAME}] ", cell, value, house, highlight)

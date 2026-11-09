@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING
 from game.eliminations_setting import EliminationsSetting
 from game.rules.order import RULES
 from game.rules.rule import Move, Outcome
-from game.user_interface import Message, MessageKind
+from game.user_interface import Message, MessageKind, Step
 
 if TYPE_CHECKING:
     from game.puzzle import Puzzle
@@ -57,9 +57,10 @@ class PuzzleSolver:
             move = self.find_move()
         return None if self.__puzzle.is_complete() else self.__why_solving_stopped(move)
 
-    def pending_hint(self) -> str:
+    def pending_hint(self) -> Message:
         """Return why the move pointed out by next() is right, or None if there is none"""
-        return self.__pending_move.hint if self.__pending_move else None
+        move = self.__pending_move
+        return Message(move.hint, MessageKind.HINT, highlight=move.highlight) if move else None
 
     def cancel_pending_move(self) -> None:
         self.__pending_move = None
@@ -70,7 +71,7 @@ class PuzzleSolver:
         return next((move for move in moves if move), None)
 
     def ruled_out(self) -> dict:
-        """Return {(cell, value): why} for every value the rules rule out of a cell now"""
+        """Return {(cell, value): Elimination} for every value the rules rule out of a cell now"""
         ruled_out = {}
         for rule in self.__rules:
             ruled_out.update(rule.eliminations(self.__puzzle))
@@ -78,7 +79,7 @@ class PuzzleSolver:
 
     def removed(self, setting: EliminationsSetting) -> dict:
         """
-        Return {(cell, value): why}, in the order found, for the values the setting takes off the cells: what its
+        Return {(cell, value): Elimination}, in the order found, for the values the setting takes off the cells: what its
         rules rule out, then what they rule out once those are gone, until they rule out nothing more
         """
         rules = [rule for rule in self.__rules if setting.includes(rule)]
@@ -89,6 +90,13 @@ class PuzzleSolver:
                 for found, why in rule.eliminations(self.__puzzle, removed).items():
                     removed.setdefault(found, why)
         return removed
+
+    def removal_steps(self, cell, setting: EliminationsSetting) -> list:
+        """Return the Steps explaining what the setting takes off the cell: every removal needed for it, oldest first"""
+        removed = self.removed(setting)
+        chain = self.__chain_of(cell, removed)
+        numbers = {found: number for number, found in enumerate(chain, 1)}
+        return [self.__step(found, removed[found], numbers) for found in chain]
 
     def make_move(self, move) -> None:
         """Fill in the value of a move that fills a cell"""
@@ -116,3 +124,29 @@ class PuzzleSolver:
         if move.cell is not None:
             self.__puzzle.select(move.cell)
         return Message(move.hint, MessageKind.WARNING, move.missing())
+
+    def __chain_of(self, cell, removed) -> list:
+        """Return, in the order found, each (cell, value) removed from the cell and each one those rely on"""
+        needed, to_follow = set(), [found for found in removed if found[0] is cell]
+        while to_follow:
+            found = to_follow.pop()
+            if found not in needed:
+                needed.add(found)
+                to_follow.extend(removed[found].relied_on)
+        return [found for found in removed if found in needed]
+
+    def __step(self, found, elimination, numbers) -> Step:
+        """Return the step for one removal, numbered among the others, its short text for a line too narrow for it all"""
+        cell, value = found
+        count = f"({numbers[found]}/{len(numbers)}) "
+        reason = elimination.why + self.__see_steps(elimination.relied_on, numbers)
+        text = f"{count}{value} is ruled out here: {reason} [{elimination.rule}] "
+        short = f"{count}{value} ruled out: {reason}"
+        return Step(cell, Message(text, MessageKind.INFO, short=short, highlight=elimination.highlight))
+
+    def __see_steps(self, relied_on, numbers) -> str:
+        """Return which earlier steps the removals relied on come from, such as: (see steps 1, 2); or nothing if none"""
+        if not relied_on:
+            return ""
+        steps = sorted(numbers[found] for found in relied_on)
+        return f" (see step{'s' if len(steps) > 1 else ''} {', '.join(map(str, steps))})"

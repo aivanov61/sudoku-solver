@@ -30,11 +30,30 @@ class MessageKind(Enum):
 
 
 @dataclass(frozen=True)
+class Highlight:
+    """What a message points at on the board: a box, the places a value can still go, and the cells it can't"""
+
+    box: object  # the House
+    value: int
+    cells: tuple  # where the value can still go, as far as it explains the message
+    gone: tuple = ()  # the cells the message rules the value out of, and the empty cells of its house it can't go in
+
+
+@dataclass(frozen=True)
 class Message:
     text: str
     kind: MessageKind
     missing: tuple = None  # (cell, value): a value with no place left, shown in the cell while the message is
     short: str = None  # a shorter text, shown instead when the whole text doesn't fit
+    highlight: Highlight = None  # what the message points at, shown on the board while the message is
+
+
+@dataclass(frozen=True)
+class Step:
+    """One step of an explanation the player walks through: the message, and the cell it is about"""
+
+    cell: object
+    message: Message
 
 
 class UserInterface(Protocol):
@@ -61,6 +80,9 @@ class UserInterface(Protocol):
     def configure(self, options) -> list:
         """Let the player change the options (see ConfigOption), returning them as chosen; the game then shows the
         board afresh"""
+
+    def walk_through(self, steps) -> None:
+        """Let the player go back and forth through the steps (see Step), each shown with its cell, until done"""
 
     def guess_depth_changed(self, depth) -> None:
         """Hear that values are now entered depth guesses deep (0 when no guess is in play)"""

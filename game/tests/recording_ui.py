@@ -32,6 +32,7 @@ class RecordingUI:
         self.shown_boards = []  # the cells of every board shown whole
         self.changed_cells = []  # every cell reported changed
         self.modes = []  # (mode, offered actions) for every mode announced
+        self.walked = []  # the steps of every walk_through()
 
     # Interface required for the game
 
@@ -54,6 +55,9 @@ class RecordingUI:
         if self.choices is None:
             return options
         return [option.with_choice(index) for option, index in zip(options, self.choices)]
+
+    def walk_through(self, steps) -> None:
+        self.walked.append(steps)
 
     def guess_depth_changed(self, depth) -> None:
         self.guess_depths.append(depth)

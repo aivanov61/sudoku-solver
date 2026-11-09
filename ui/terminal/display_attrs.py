@@ -42,6 +42,9 @@ class DisplayAttrs:
     MAX_GRAY_LEVEL = 100  # There are no gray levels greater than 100
     TAGGED_COLOR = "lightskyblue"  # the small digits of a cell the player tagged
     REMOVED_VALUES = "yellow"  # the possible values of a cell that has lost some as ruled out
+    HIGHLIGHTED_BORDER = "yellow"  # the edges of a box a message points at, while it is shown
+    HIGHLIGHTED_VALUE = "yellow_on_black"  # a value shown where it can still go, in the cells a message points at
+    RULED_OUT_VALUE = "white_on_red"  # a value shown where it can't go, in the cells a message points at
 
     @dataclass
     class FgBgAttr:

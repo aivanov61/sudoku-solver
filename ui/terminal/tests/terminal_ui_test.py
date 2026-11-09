@@ -21,7 +21,7 @@ from unittest.mock import call, MagicMock, patch
 from game.actions import Action, Mode, OFFERED_ACTIONS
 from game.cell_attrs import CellAttrs
 from game.config_option import ConfigOption
-from game.user_interface import Message, MessageKind
+from game.user_interface import Highlight, Message, MessageKind, Step
 from ui.terminal.commands import Commands
 from ui.terminal.display import Display
 from ui.terminal.terminal_ui import TerminalUI
@@ -178,6 +178,26 @@ class TestTerminalUI(TestCase):
         self.display.draw_cell_missing_value.assert_not_called()
         self.display.draw_cell_marks.assert_not_called()
         self.display.draw_cell_value.assert_not_called()
+
+    def test_status_shows_what_the_message_points_at(self):
+        box, places, gone = self.__status_pointing_at_a_box()
+        self.assertEqual(self.display.draw_box_edges.call_args_list, [call(c.row, c.col, c.borders, True) for c in box])
+        self.assertEqual(self.display.draw_cell_highlighted_value.call_args_list, [call(c.row, c.col, 4) for c in places])
+        self.assertEqual(self.display.draw_cell_ruled_out_value.call_args_list, [call(c.row, c.col, 4) for c in gone])
+
+    def test_the_next_status_takes_back_what_the_message_pointed_at(self):
+        box, places, gone = self.__status_pointing_at_a_box()
+        self.display.reset_mock()
+        self.__status(None)
+        self.assertEqual(self.display.draw_box_edges.call_args_list, [call(c.row, c.col, c.borders, False) for c in box])
+        self.assertEqual(self.display.draw_cell_marks.call_count, len(places) + len(gone))
+
+    def test_what_a_message_pointed_at_is_taken_back_only_once(self):
+        self.__status_pointing_at_a_box()
+        self.__status(None)
+        self.display.reset_mock()
+        self.__status(None)
+        self.display.draw_box_edges.assert_not_called()
 
     def test_inform_shows_a_missing_value_until_the_player_has_seen_the_message(self):
         self.ui.inform(Message("stuck", MessageKind.WARNING, (self.__cell(2, 5, value=None), 4)))
@@ -339,7 +359,58 @@ class TestTerminalUI(TestCase):
                 self.ui.configure(options)
         self.assertEqual([call.kwargs["start"] for call in menu.call_args_list], [0, 3, 1])
 
+    # Walking through steps
+
+    def test_walking_shows_the_first_step_with_the_cursor_on_its_cell(self):
+        self.__walk(["w"])
+        self.display.show_on_status_line.assert_called_once_with("<yellow>step 0</yellow>")
+        self.display.move_to_cell.assert_called_once_with(0, 1)
+
+    def test_walking_moves_the_cursor_after_showing_the_step(self):
+        self.__walk(["w"])
+        names = [name for name, _args, _kwargs in self.display.method_calls]
+        self.assertLess(names.index("show_on_status_line"), names.index("move_to_cell"))
+
+    def test_down_keys_go_to_later_steps_and_up_keys_to_earlier_ones(self):
+        self.__walk(["j", "KEY_DOWN", "k", "KEY_UP", "J", "K", "w"])
+        self.assertEqual(self.__rows_visited(), [0, 1, 2, 1, 0, 1, 0])
+
+    def test_walking_does_not_wrap_from_the_last_step(self):
+        self.__walk(["j", "j", "j", "w"])
+        self.assertEqual(self.__rows_visited(), [0, 1, 2, 2])
+
+    def test_walking_does_not_wrap_from_the_first_step(self):
+        self.__walk(["k", "w"])
+        self.assertEqual(self.__rows_visited(), [0, 0])
+
+    def test_w_enter_escape_and_ctrl_c_each_end_the_walk(self):
+        for key in ("w", "W", "KEY_ENTER", "KEY_ESCAPE", None):
+            self.display.reset_mock()
+            self.__walk([key])
+            self.assertEqual(self.__rows_visited(), [0], key)
+
+    def test_walking_listens_only_for_its_own_keys(self):
+        keys = self.__walk(["w"]).call_args.args[0]
+        self.assertEqual(set(keys), {"k", "K", "KEY_UP", "j", "J", "KEY_DOWN", "w", "W", "KEY_ENTER", "KEY_ESCAPE"})
+
     # Private functions
+
+    def __status_pointing_at_a_box(self) -> tuple:
+        """Show a message pointing at a box of three cells, the first two the places for 4, and two cells it is gone from; return those"""
+        box, gone = [self.__cell(1, col) for col in range(3)], [self.__cell(5, col) for col in range(2)]
+        highlight = Highlight(MagicMock(cells=box), 4, tuple(box[:2]), tuple(gone))
+        self.__status(Message("why", MessageKind.INFO, highlight=highlight))
+        return box, box[:2], gone
+
+    def __walk(self, keys):
+        """Walk through three steps, on cells (n, n + 1), with the keys pressed; return the stand-in for reading keys"""
+        steps = [Step(MagicMock(row=n, col=n + 1), Message(f"step {n}", MessageKind.WARNING)) for n in range(3)]
+        with patch("ui.terminal.terminal_ui.Input.get_key_of", side_effect=keys) as get_key_of:
+            self.ui.walk_through(steps)
+        return get_key_of
+
+    def __rows_visited(self) -> list:
+        return [cursor.args[0] for cursor in self.display.move_to_cell.call_args_list]
 
     def __menu_pressing_tab_on_line(self, line, picked=0):
         """A stand-in for Menu that keeps the items it is shown, presses TAB on one of them, then returns picked"""

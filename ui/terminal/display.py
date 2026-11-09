@@ -45,6 +45,9 @@ class Display:
     - draw_cell_value(row, col, value) - draw the value of the cell in the middle of the cell
     - draw_cell_marks(row, col, marks) - draw an empty cell's "must be" marks across the middle of the cell
     - draw_cell_missing_value(row, col, value) - draw a value with no place left in the middle of the cell, in red
+    - draw_cell_highlighted_value(row, col, value) - draw a value a message points at in the middle of the cell, in yellow
+    - draw_cell_ruled_out_value(row, col, value) - draw a value a message rules out in the middle of the cell, in red
+    - draw_box_edges(row, col, border, highlighted) - draw just the cell's sides on its block's edge, yellow if highlighted
     - draw_cell_possible_values(row, col, values) - draw all the possible cell values at the bottom of the cell
     - draw_command_panel(title, entries) - draw the mode's title and its commands to the right of the puzzle
 
@@ -135,8 +138,26 @@ class Display:
 
     def draw_cell_missing_value(self, row=0, col=0, value=" "):
         """Draw a value with no place left in the middle of the cell, in the missing value's colors"""
-        self.move_to_cell(row, col)
-        echo(getattr(self.term, Attrs.MISSING_VALUE)(str(value)))
+        self.__draw_in_middle(row, col, value, Attrs.MISSING_VALUE)
+
+    def draw_cell_highlighted_value(self, row=0, col=0, value=" "):
+        """Draw a value a message points at in the middle of the cell, in the highlighted value's colors"""
+        self.__draw_in_middle(row, col, value, Attrs.HIGHLIGHTED_VALUE)
+
+    def draw_cell_ruled_out_value(self, row=0, col=0, value=" "):
+        """Draw a value a message rules out in the middle of the cell, in the ruled out value's colors"""
+        self.__draw_in_middle(row, col, value, Attrs.RULED_OUT_VALUE)
+
+    def draw_box_edges(self, row=0, col=0, border=Border(), highlighted=False):
+        """Draw just the sides of the cell that lie on its block's edge, leaving the rest of the cell alone"""
+        x, y = self.x(col), self.y(row)
+        right, bottom = x + self.CELL_WIDTH, y + self.CELL_HEIGHT
+        across, down = range(x, right + 1), range(y, bottom + 1)
+        spots = [(spot, y) for spot in across if border.is_top()] + [(spot, bottom) for spot in across if border.is_bottom()]
+        spots += [(x, spot) for spot in down if border.is_left()] + [(right, spot) for spot in down if border.is_right()]
+        style = getattr(self.term, Attrs.HIGHLIGHTED_BORDER if highlighted else "normal")
+        for spot_x, spot_y in spots:
+            echo(self.term.move_xy(spot_x, spot_y) + style + self.fullblock + self.term.normal)
 
     def move_to_cell(self, row=0, col=0):
         """Move to the middle of the cell"""
@@ -229,6 +250,10 @@ class Display:
                 self.term.inkey()
         except KeyboardInterrupt:
             pass
+
+    def __draw_in_middle(self, row, col, value, style) -> None:
+        self.move_to_cell(row, col)
+        echo(getattr(self.term, style)(str(value)))
 
     def __panel_x(self) -> int:
         """The screen column where the command panel starts: past the puzzle's right edge and a gap"""

@@ -50,7 +50,25 @@ class TestInputDecoding(TestCase):
     def test_input_error_is_a_forced_quit(self):
         self.assertEqual(self.__get_cmd_with(OSError()), (Action.FORCE_QUIT, None))
 
+    def test_get_key_of_skips_other_keys_and_returns_the_key_by_name(self):
+        keys = [Keystroke("x"), Keystroke("\x1b[A", code=1, name="KEY_UP")]
+        self.assertEqual(self.__get_key_of_with(keys), "KEY_UP")
+
+    def test_get_key_of_returns_a_character_as_it_is(self):
+        self.assertEqual(self.__get_key_of_with([Keystroke("w")]), "w")
+
+    def test_get_key_of_returns_none_after_ctrl_c(self):
+        self.assertIsNone(self.__get_key_of_with(KeyboardInterrupt()))
+
+    def test_get_key_of_returns_none_after_an_input_error(self):
+        self.assertIsNone(self.__get_key_of_with(OSError()))
+
     # Private functions
+
+    def __get_key_of_with(self, keys):
+        display = MagicMock()
+        display.term.inkey.side_effect = keys
+        return Input(display).get_key_of(("w", "KEY_UP"))
 
     def __get_cmd_with(self, keys):
         display = MagicMock()

@@ -57,6 +57,7 @@ You start in **setup mode**, where you type in the puzzle's given numbers. Then 
 | `n` | Next: show an obvious next move and why; press `n` again to fill it in (see below) |
 | `a` | Auto: fill in every obvious move, one after another (see below) |
 | `m` | Tag (mark) the selected cell, or untag it (see below); works in setup too |
+| `w` | Go step by step through why values were taken off the selected cell (see "Ruled-out values" below) |
 | `c` | Configure: change settings such as the "must be" marks (see below); works in setup too |
 | `ESC` | Go back to setup mode (only once everything has been undone) |
 | `?` | Show the playing commands, with a longer description of each |
@@ -94,7 +95,7 @@ Press `n` to be shown the next obvious move. It looks, left to right and top to 
 It finds these kinds of move, and ends each explanation with the name of the rule in brackets:
 - **A single value** `[single value]`: only one value fits the cell, because every other value is already in its row, column or box.
 - **A hidden single** `[hidden single]`: a value can go nowhere else in the cell's box, row or column, even though other values would still fit the cell.
-- **A pointing pair** `[pointing pair]`: when, within one box, a value can only go in one row (or column), the value in that row must be in this box, so it can't go anywhere else in the row. When that leaves a cell a single value, or a value only one place, `n` explains both steps, e.g. "Only 9 fits here: in one box, 4 can only go in one row, which rules 4 out here."
+- **A pointing pair** `[pointing pair]`: when, within one box, a value can only go in one row (or column), the value in that row must be in this box, so it can't go anywhere else in the row. When that leaves a cell a single value, or a value only one place, `n` explains both steps, e.g. "Only 9 fits here: in box 1, 4 can only go in row 1, which rules 4 out here." Boxes are numbered across and then down, rows from the top and columns from the left. While such a hint is showing, the box it names has a yellow border, and the value is shown in yellow where it can still go and white on red where it is ruled out.
 - **A box/line reduction** `[box/line reduction]`: the other way round. When, within one row (or column), a value can only go in one box, it can't go anywhere else in that box.
 
 `n` tries them in this order, so if a cell qualifies more than one way, it explains the simplest. Values ruled out by pointing pairs and box/line reductions aren't taken off the cells' bottom lines unless you ask for that (see "Configuration" below); `n` only shows them when they lead to a value to fill in, and tagged cells leave them out of what they must be (see Tags).
@@ -161,6 +162,12 @@ The bottom line of a cell that has lost any values turns yellow, so you can see 
 
 This changes only what you see. `n`, `a` and the dead end warnings work the same at every level, and you can still enter a value that was taken off. A removed value comes back when its reason goes, such as after an undo. During setup nothing is taken off. Snyder marks count only the values still shown, and a tagged cell leaves out what is taken off as well as what it leaves out at `none`.
 
+To see why, select a cell and press `w` while playing. The bottom line explains one removal at a time in yellow, starting with the earliest, and the cursor moves to the cell each one is about. The box the reason names gets a yellow border and the board shows the value it is about: yellow where it can still go, and white on red where this step rules it out and in every empty cell of the box, row or column the reason starts from where it can't go, whether a value already there keeps it out or an earlier step ruled it out. If a step leaves a box with only one place for the value, that place is yellow too. So you can follow it on the board:
+
+`(2/3) 4 is ruled out here: in box 1, 4 can only go in row 1 (see step 1) [pointing pair]`
+
+"(see step 1)" means this removal needed step 1 to happen first. The steps include every removal this cell's depend on, so some are about other cells. Use `j` or `↓` for the next step and `k` or `↑` for the one before; they stop at the last and the first. `w`, `ENTER` or `ESC` finishes and puts the cursor back on your cell, and no other key does anything until then. If nothing was taken off the cell, `w` just says so.
+
 ## Finishing the puzzle
 
 When the last empty cell is filled in, the status line says, until your next key, that the puzzle is **solved** (in light sky blue) or **complete, with errors** (in yellow) if any values clash. You can still type over values, clear them, or undo, to fix errors. The status line reports again whenever that changes: once the errors are fixed, or when the puzzle is complete again after undo or rewind emptied a cell. `n` and `a` have nothing left to do, so they just remind you that the puzzle is solved, or that it's complete with errors and you should undo or change values to fix them.
@@ -183,6 +190,8 @@ A puzzle can only be restored into the layout it was saved from. A file saved by
 | Light sky blue | A value filled in by `n` or `a`; "solved" on the status line |
 | Light sky blue small digits | A cell you tagged with `m` |
 | Yellow bottom line | Values were taken off this cell (see "Configuration") |
+| Yellow box border and yellow digits | The box a hint or `w` step names, and where the value can still go |
+| White on red digits with a yellow box border | Where that hint or `w` step rules the value out, and the empty cells of the house it starts from where the value can't go |
 | Bold red on bright yellow | The value you just entered is already in the same row, column or box |
 | Usual color on yellow | Holds a value that a newer entry clashes with |
 | Yellow text on the status line | A warning. If it waits, press any key to continue. |

@@ -48,6 +48,12 @@ class TestRectangularBlock(TestCase):
         self.parent.cells_in_row.assert_called_once_with(1)
         self.parent.cells_in_col.assert_called_once_with(7)
 
+    def test_houses_of_a_cell_are_numbered(self):
+        self.parent.box_number.return_value = 3
+        box, row, col = self.block.houses_of(1, 7)
+        self.assertEqual((box.name(), row.name(), col.name()), ("box 3", "row 2", "column 8"))
+        self.parent.box_number.assert_called_once_with(self.block)
+
     def test_box_is_the_house_of_every_cell_in_the_block(self):
         box = self.block.box()
         self.assertEqual(box.kind, House.BOX)

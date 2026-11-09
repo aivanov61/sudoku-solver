@@ -26,6 +26,3 @@ class PointingPairRule(IntersectionRule):
 
     def _is_source(self, house: House) -> bool:
         return house.kind == House.BOX
-
-    def _reason(self, value, source: House, target: House) -> str:
-        return f"in one box, {value} can only go in one {target.kind}"

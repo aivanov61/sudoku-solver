@@ -33,7 +33,7 @@ class TestCommands(TestCase):
             [
                 ("ESC", "SETUP"), ("?", "help"), ("1-9", "value"), ("shift 1-9", "guess"),
                 ("k ↑", "up"), ("j ↓", "down"), ("h ←", "left"), ("l →", "right"), ("Del Bksp", "clear"),
-                ("u", "undo"), ("r", "rewind"), ("a", "auto"), ("n", "next"), ("m", "tag"), ("c", "config"),
+                ("u", "undo"), ("r", "rewind"), ("a", "auto"), ("n", "next"), ("m", "tag"), ("w", "why"), ("c", "config"),
                 ("s", "save"), ("o", "open"), ("q CTRL-C", "quit"),
             ],
         )
@@ -78,6 +78,10 @@ class TestCommands(TestCase):
 
     def test_the_label_for_a_command_names_its_key(self):
         self.assertEqual(Commands.label_for(Action.TAG), "m")
+
+    def test_keys_for_gives_every_key_of_a_command(self):
+        self.assertEqual(Commands.keys_for(Action.UP), ("k", "K", "KEY_UP"))
+        self.assertEqual(Commands.keys_for(Action.WHY), ("w", "W"))
 
     # Help
 

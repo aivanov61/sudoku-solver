@@ -80,7 +80,7 @@ class Puzzle:
 
     def display_status(self) -> None:
         """Show a notice, a newly changed completion, or why the move "n" pointed out is right, if any; otherwise leave it blank"""
-        self.__ui.status(self.__notice or self.__report.message() or self.__pending_hint())
+        self.__ui.status(self.__notice or self.__report.message() or self.__solver.pending_hint())
 
     def handle(self, action, digit=None) -> None:
         """Carry out the player's action (with its digit, for values and guesses), then show the status"""
@@ -163,6 +163,16 @@ class Puzzle:
         cell = self.__selected_cell()
         cell.set_tagged(not cell.is_tagged())
 
+    def why_(self) -> None:
+        """Walk the player through why values are gone from the selected cell; only while playing"""
+        if self.__refused_while_initializing():
+            return
+        steps = self.__solver.removal_steps(self.__selected_cell(), self.__settings.of(EliminationsSetting))
+        if steps:
+            self.__ui.walk_through(steps)
+        else:
+            self.__notice = Message("No values have been taken off this cell. ", MessageKind.INFO)
+
     def configure_(self) -> None:
         """Let the player change the settings, such as the "must be" marks, then show the board afresh with them"""
         self.__settings = self.__settings.from_options(self.__ui.configure(self.__settings.options()))
@@ -241,11 +251,6 @@ class Puzzle:
         self._initializing = initializing
         mode = Mode.SETUP if initializing else Mode.PLAY
         self.__ui.mode_changed(mode, OFFERED_ACTIONS[mode])
-
-    def __pending_hint(self) -> Message:
-        """Return why the move "n" pointed out is right, or None if there is none"""
-        hint = self.__solver.pending_hint()
-        return Message(hint, MessageKind.HINT) if hint else None
 
     def __refresh_marks(self) -> None:
         """

@@ -187,6 +187,53 @@ class TestDisplayMissingValue(TestCase):
         display.term.move_xy.assert_called_with(*middle)
         self.assertEqual(echo.call_args.args[0], "<white on red>4")
 
+    def test_a_highlighted_value_is_drawn_yellow_on_black_in_the_middle_of_its_cell(self):
+        display = board_display(MagicMock())
+        display.term.yellow_on_black = lambda text: f"<yellow on black>{text}"
+        with patch("ui.terminal.display.echo") as echo:
+            display.draw_cell_highlighted_value(2, 5, 4)
+        middle = (display.x(5) + Display.CELL_WIDTH // 2, display.y(2) + Display.CELL_VALUE_ROW)
+        display.term.move_xy.assert_called_with(*middle)
+        self.assertEqual(echo.call_args.args[0], "<yellow on black>4")
+
+
+class TestDisplayRuledOutValue(TestCase):
+    def test_a_ruled_out_value_is_drawn_white_on_red_in_the_middle_of_its_cell(self):
+        display = board_display(MagicMock())
+        display.term.white_on_red = lambda text: f"<white on red>{text}"
+        with patch("ui.terminal.display.echo") as echo:
+            display.draw_cell_ruled_out_value(2, 5, 4)
+        middle = (display.x(5) + Display.CELL_WIDTH // 2, display.y(2) + Display.CELL_VALUE_ROW)
+        display.term.move_xy.assert_called_with(*middle)
+        self.assertEqual(echo.call_args.args[0], "<white on red>4")
+
+
+class TestDisplayBoxEdges(TestCase):
+    def test_a_top_edge_is_drawn_across_the_cell_in_yellow_when_highlighted(self):
+        drawn = self.__drawn_edges(Border({Border.TOP}), highlighted=True)
+        self.assertEqual(drawn, [f"({x},3)<yellow>█</>" for x in range(6, 13)])
+
+    def test_a_left_edge_is_drawn_down_the_cell_as_usual_when_not_highlighted(self):
+        drawn = self.__drawn_edges(Border({Border.LEFT}), highlighted=False)
+        self.assertEqual(drawn, [f"(6,{y})</>█</>" for y in range(3, 7)])
+
+    def test_a_right_and_a_bottom_edge_are_on_the_far_sides_of_the_cell(self):
+        drawn = self.__drawn_edges(Border({Border.RIGHT, Border.BOTTOM}), highlighted=True)
+        self.assertEqual(set(drawn), {f"({x},6)<yellow>█</>" for x in range(6, 13)} | {f"(12,{y})<yellow>█</>" for y in range(3, 7)})
+
+    def test_a_cell_inside_its_block_has_no_edges_to_draw(self):
+        self.assertEqual(self.__drawn_edges(Border(), highlighted=True), [])
+
+    # Private functions
+
+    def __drawn_edges(self, border, highlighted) -> list:
+        """Return what is drawn for the edges of the cell at (1, 1), on a terminal that names its styles and positions"""
+        term = MagicMock(yellow="<yellow>", normal="</>")
+        term.move_xy.side_effect = lambda x, y: f"({x},{y})"
+        with patch("ui.terminal.display.echo") as echo:
+            board_display(term).draw_box_edges(1, 1, border, highlighted)
+        return [draw.args[0] for draw in echo.call_args_list]
+
 
 class TestDisplayCommandPanel(TestCase):
     def test_title_and_commands_are_drawn_right_of_the_puzzle(self):

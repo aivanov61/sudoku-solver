@@ -35,6 +35,7 @@ class Action(Enum):
     AUTO = "auto"
     NEXT = "next"
     TAG = "tag"
+    WHY = "why"
     CONFIGURE = "configure"
     SAVE = "save"
     OPEN = "open"
@@ -57,7 +58,7 @@ OFFERED_ACTIONS = {
     ),
     Mode.PLAY: (
         Action.INIT, Action.VALUE, Action.GUESS, Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT, Action.DEL,
-        Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT, Action.TAG, Action.CONFIGURE, Action.SAVE, Action.OPEN,
-        Action.QUIT,
+        Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT, Action.TAG, Action.WHY, Action.CONFIGURE, Action.SAVE,
+        Action.OPEN, Action.QUIT,
     ),
 }

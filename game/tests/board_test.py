@@ -100,6 +100,10 @@ class TestBoard(TestCase):
         self.assertEqual([(cell.row, cell.col) for cell in houses[10].cells], [(1, col) for col in range(9)])
         self.assertEqual([(cell.row, cell.col) for cell in houses[19].cells], [(row, 1) for row in range(9)])
 
+    def test_houses_are_numbered_from_1_boxes_left_to_right_then_down(self):
+        houses = self.board.houses()
+        self.assertEqual([houses[index].name() for index in (0, 1, 3, 10, 19)], ["box 1", "box 2", "box 4", "row 2", "column 2"])
+
     def test_refresh_marks_passes_on_the_values_ruled_out(self):
         cell = self.board.cell(0, 0)
         cell.set_tagged(True)

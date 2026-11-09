@@ -30,6 +30,9 @@ class TestHouse(TestCase):
     def test_the_kinds_are_named_as_players_know_them(self):
         self.assertEqual((House.BOX, House.ROW, House.COLUMN), ("box", "row", "column"))
 
+    def test_a_house_is_named_by_its_kind_and_number(self):
+        self.assertEqual(House(House.ROW, [], 3).name(), "row 3")
+
     def test_places_are_the_cells_that_can_still_hold_the_value_in_order(self):
         cells = [self.__cell({4, 5}), self.__cell({5}), self.__cell(set()), self.__cell({4})]
         self.assertEqual(House(House.BOX, cells).places(4), [cells[0], cells[3]])

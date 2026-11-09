@@ -38,6 +38,9 @@ class TerminalUI:
 
     MODE_HINT = "{mode} - ? for commands"  # on a blank status line, when there is no command panel
     CONFIGURE_KEYS_HELP = "↑/↓ to choose, TAB/Shift-TAB or ←/→ to change, ENTER to apply, ESC to cancel"
+    EARLIER_STEP_KEYS = Commands.keys_for(Action.UP)
+    LATER_STEP_KEYS = Commands.keys_for(Action.DOWN)
+    STEPS_DONE_KEYS = (*Commands.keys_for(Action.WHY), "KEY_ENTER", "KEY_ESCAPE")
 
     def __init__(self, display: Display, v_cells: int, h_cells: int):
         display.geometry(v_cells, h_cells)
@@ -50,6 +53,7 @@ class TerminalUI:
         self.__drawn = {}  # (row, col): (attributes, value, possible values, marks) of each cell as last drawn
         self.__showing_missing = None  # the cell showing a message's missing value, until the message goes
         self.__configure_line = 0  # the line the configure menu opens on: the one it was last left on
+        self.__showing_highlight = None  # what a message points at on the board, until the message goes
 
     # Interface required for Main
 
@@ -68,19 +72,19 @@ class TerminalUI:
 
     def status(self, message) -> None:
         """
-        Show the message, and its missing value in its cell, until the next status, clearing any lines a longer
-        message wrapped onto; without the command panel, a blank status line shows the mode
+        Show the message, and on the board its missing value and what it points at, until the next status, clearing
+        any lines a longer message wrapped onto; without the command panel, a blank status line shows the mode
         """
-        self.__take_back_missing()
+        self.__take_back_from_board()
         self.__display.show_on_status_line(self.__status_text(message))
-        self.__show_missing(message)
+        self.__show_on_board(message)
 
     def inform(self, message) -> None:
-        """Show the message, and its missing value in its cell, until a key is hit"""
-        self.__show_missing(message)
+        """Show the message, and on the board its missing value and what it points at, until a key is hit"""
+        self.__show_on_board(message)
         room = self.__display.term.width - len(Display.HIT_ANY_KEY)
         self.__display.show_on_status_line(self.__styled(message, room), wait=True)
-        self.__take_back_missing()
+        self.__take_back_from_board()
 
     def confirm(self, question) -> bool:
         return self.__display.confirm(question)
@@ -103,6 +107,24 @@ class TerminalUI:
         if picked is None:
             return options
         return [option.with_choice(choice.chosen) for option, choice in zip(options, choices)]
+
+    def walk_through(self, steps) -> None:
+        """
+        Show one step at a time on the status line with the cursor on its cell; the up and down keys go to the step
+        before or after, stopping at the first and last, and the walk's own keys (or CTRL-C) end it
+        """
+        keys = (*self.EARLIER_STEP_KEYS, *self.LATER_STEP_KEYS, *self.STEPS_DONE_KEYS)
+        index = 0
+        while True:
+            self.status(steps[index].message)
+            self.__display.move_to_cell(steps[index].cell.row, steps[index].cell.col)
+            key = self.__input.get_key_of(keys)
+            if key in self.LATER_STEP_KEYS:
+                index = min(index + 1, len(steps) - 1)
+            elif key in self.EARLIER_STEP_KEYS:
+                index = max(index - 1, 0)
+            else:
+                return
 
     def guess_depth_changed(self, depth) -> None:
         """Warn when guesses go from within the shades of gray to deeper than the last one"""
@@ -141,18 +163,38 @@ class TerminalUI:
 
     # Private functions
 
-    def __take_back_missing(self) -> None:
-        """Draw the cell showing a missing value as it is again, if there is one"""
+    def __take_back_from_board(self) -> None:
+        """Draw as it is again any cell showing a missing value, and anything a message pointed at"""
         if self.__showing_missing:
             self.__draw_middle(self.__showing_missing)
             self.__showing_missing = None
+        if self.__showing_highlight:
+            self.__draw_box_edges(self.__showing_highlight.box, highlighted=False)
+            for cell in (*self.__showing_highlight.cells, *self.__showing_highlight.gone):
+                self.__draw_middle(cell)
+            self.__showing_highlight = None
 
-    def __show_missing(self, message) -> None:
-        """Draw the message's missing value in its cell, if it has one"""
+    def __draw_box_edges(self, box, highlighted) -> None:
+        for cell in box.cells:
+            self.__display.draw_box_edges(cell.row, cell.col, cell.borders, highlighted)
+
+    def __show_on_board(self, message) -> None:
+        """Draw the message's missing value in its cell and what it points at, if it has them"""
         if message and message.missing:
             cell, value = message.missing
             self.__display.draw_cell_missing_value(cell.row, cell.col, value)
             self.__showing_missing = cell
+        if message and message.highlight:
+            self.__show_highlight(message.highlight)
+
+    def __show_highlight(self, highlight) -> None:
+        """Draw the edges of the box in yellow, the value in yellow where it can still go and in red where it can't"""
+        self.__draw_box_edges(highlight.box, highlighted=True)
+        for cell in highlight.cells:
+            self.__display.draw_cell_highlighted_value(cell.row, cell.col, highlight.value)
+        for cell in highlight.gone:
+            self.__display.draw_cell_ruled_out_value(cell.row, cell.col, highlight.value)
+        self.__showing_highlight = highlight
 
     def __menu_items(self, options, choices) -> list:
         """Return the choices, with a heading before the first of each group, and its notes under each that has them"""

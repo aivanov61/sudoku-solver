@@ -16,11 +16,15 @@
 # -----------------------------------------------------------------------------
 
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
 
 from game.cell import Cell
 from game.cell_attrs import CellAttrs
 from game.house import House
 from game.marks_setting import MarksSetting
+
+if TYPE_CHECKING:
+    from game.rectangular_block import RectangularBlock
 
 
 class Board(ABC):
@@ -80,8 +84,8 @@ class Board(ABC):
     def houses(self) -> list:
         """Return every house: each block's box, then every row and every column"""
         boxes = [block.box() for block in self._blocks()]
-        rows = [House(House.ROW, list(self.cells_in_row(row))) for row in range(self.v_cells)]
-        columns = [House(House.COLUMN, list(self.cells_in_col(col))) for col in range(self.h_cells)]
+        rows = [House(House.ROW, list(self.cells_in_row(row)), row + 1) for row in range(self.v_cells)]
+        columns = [House(House.COLUMN, list(self.cells_in_col(col)), col + 1) for col in range(self.h_cells)]
         return boxes + rows + columns
 
     def givens(self) -> list:
@@ -111,6 +115,10 @@ class Board(ABC):
         """Yield the cells in the given column, top to bottom, as identified by each block"""
         for block in self._blocks():
             yield from block.cells_in_col(col)
+
+    def box_number(self, block: "RectangularBlock") -> int:
+        """Return the number of the block's box, counted from 1 in the order of the layout's blocks"""
+        return list(self._blocks()).index(block) + 1
 
     def cell_changed(self, cell) -> None:
         self.__listener(cell)

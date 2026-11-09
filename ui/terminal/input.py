@@ -30,15 +30,32 @@ class Input:
 
     def get_cmd(self, offered, timeout=None) -> tuple:
         """Return (command, digit) for the next bound key, given the actions the mode offers; None after a timeout"""
-        term = self.__display.term
         while True:
             try:
-                with term.cbreak():
-                    keystroke = term.inkey(timeout=timeout)
+                key = self.__read_key(timeout)
             except (KeyboardInterrupt, Exception):  # CTRL-C, or anything wrong with the terminal, quits without asking
                 return Action.FORCE_QUIT, None
-            if keystroke == "":
+            if key == "":
                 return None
-            command = Commands.command_for(keystroke.name if keystroke.is_sequence else str(keystroke), offered)
+            command = Commands.command_for(key, offered)
             if command:
                 return command
+
+    def get_key_of(self, keys) -> str:
+        """Return the next key that is one of the keys; None after CTRL-C or anything wrong with the terminal"""
+        while True:
+            try:
+                key = self.__read_key()
+            except (KeyboardInterrupt, Exception):
+                return None
+            if key in keys:
+                return key
+
+    # Private functions
+
+    def __read_key(self, timeout=None) -> str:
+        """Return the key pressed: its name (e.g. KEY_ENTER) for special keys, else the character; "" after a timeout"""
+        term = self.__display.term
+        with term.cbreak():
+            keystroke = term.inkey(timeout=timeout)
+        return keystroke.name if keystroke.is_sequence else str(keystroke)

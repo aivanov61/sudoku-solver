@@ -33,7 +33,13 @@ class TestBoxLineRule(TestCase):
         ruled_out = BoxLineRule().eliminations(self.puzzle)
         fours = {(cell.row, cell.col) for cell, value in ruled_out if value == 4}
         self.assertEqual(fours, {(row, col) for row in (1, 2) for col in range(3)})
-        self.assertEqual(ruled_out[(self.board.cell(2, 1), 4)], "in one row, 4 can only go in one box")
+        self.assertEqual(ruled_out[(self.board.cell(2, 1), 4)].why, "in row 1, 4 can only go in box 1")
+
+    def test_an_elimination_points_at_the_box_and_the_places_the_value_has_left_in_the_line(self):
+        self.__fill((0, 3, 1), (0, 4, 2), (0, 5, 3), (0, 6, 5), (0, 7, 6), (0, 8, 7))  # 4 in row 0 only in box 0
+        highlight = BoxLineRule().eliminations(self.puzzle)[(self.board.cell(2, 1), 4)].highlight
+        self.assertEqual((highlight.box.name(), highlight.value), ("box 1", 4))
+        self.assertEqual(highlight.cells, tuple(self.board.cell(0, col) for col in range(3)))
 
     def test_only_a_line_confines_a_value_to_a_box(self):
         self.__fill((1, 0, 1), (1, 1, 2), (1, 2, 3), (2, 0, 5), (2, 1, 6), (5, 2, 4))  # 4 in box 0 only in row 0

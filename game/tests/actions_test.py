@@ -33,12 +33,12 @@ class TestActions(TestCase):
     def test_setup_offers_play_but_no_guesses_or_solving(self):
         setup = OFFERED_ACTIONS[Mode.SETUP]
         self.assertIn(Action.PLAY, setup)
-        for action in (Action.INIT, Action.GUESS, Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT):
+        for action in (Action.INIT, Action.GUESS, Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT, Action.WHY):
             self.assertNotIn(action, setup)
 
     def test_play_offers_guesses_and_solving(self):
         play = OFFERED_ACTIONS[Mode.PLAY]
-        for action in (Action.INIT, Action.GUESS, Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT):
+        for action in (Action.INIT, Action.GUESS, Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT, Action.WHY):
             self.assertIn(action, play)
         self.assertNotIn(Action.PLAY, play)
 

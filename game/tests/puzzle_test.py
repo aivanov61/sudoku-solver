@@ -644,6 +644,39 @@ class TestPuzzle(TestCase):
         self.__remove_intersections()
         self.assertEqual(self.puzzle._Puzzle__solver.find_move(), before)
 
+    # Why values were removed
+
+    def test_why_walks_through_the_selected_cells_removals_and_what_they_rely_on(self):
+        self.__leave_4_to_cascade_into_row_0()
+        self.puzzle.play_()
+        self.__remove_intersections()
+        self.puzzle.selected_cell = (0, 5)
+        self.puzzle.handle(Action.WHY)
+        steps = self.ui.walked[-1]
+        self.assertEqual([(step.cell.row, step.cell.col) for step in steps], [(2, 2)] * 3 + [(0, 5)] * 3)
+        self.assertEqual(steps[3].message.text, "(4/6) 4 is ruled out here: in box 1, 4 can only go in row 1 (see step 1) [pointing pair] ")
+
+    def test_why_leaves_the_selected_cell_where_it_is(self):
+        self.__leave_4_to_cascade_into_row_0()
+        self.puzzle.play_()
+        self.__remove_intersections()
+        self.puzzle.selected_cell = (0, 5)
+        self.puzzle.handle(Action.WHY)
+        self.assertEqual(self.puzzle.selected_cell, (0, 5))
+
+    def test_why_on_a_cell_with_nothing_removed_just_says_so(self):
+        self.__leave_4_to_cascade_into_row_0()
+        self.puzzle.play_()
+        self.puzzle.selected_cell = (2, 2)
+        self.puzzle.handle(Action.WHY)
+        self.assertEqual(self.ui.walked, [])
+        self.assertEqual(self.ui.last_status(), "No values have been taken off this cell. ")
+
+    def test_why_is_refused_in_setup(self):
+        self.puzzle.handle(Action.WHY)
+        self.assertEqual(self.ui.walked, [])
+        self.assertIn("only while playing", self.ui.last_informed())
+
     # Tags
 
     def test_tag_tags_the_selected_cell_in_setup_and_untags_it_again(self):

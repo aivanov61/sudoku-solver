@@ -26,6 +26,3 @@ class BoxLineRule(IntersectionRule):
 
     def _is_source(self, house: House) -> bool:
         return house.kind != House.BOX
-
-    def _reason(self, value, source: House, target: House) -> str:
-        return f"in one {source.kind}, {value} can only go in one box"

@@ -20,16 +20,21 @@ class House:
     """
     A group of cells that must hold every value exactly once: a box, a row or a column.
 
-    Blocks give a cell its houses (houses_of); the kind names the house in hints.
+    Blocks give a cell its houses (houses_of); the kind names the house in hints, and with its number says which.
     """
 
     BOX = "box"
     ROW = "row"
     COLUMN = "column"
 
-    def __init__(self, kind: str, cells: list):
+    def __init__(self, kind: str, cells: list, number: int = None):
         self.kind = kind
         self.cells = cells
+        self.number = number  # counted from 1: rows down, columns across and boxes across, then down
+
+    def name(self) -> str:
+        """Return what the player calls this house, such as: box 2"""
+        return f"{self.kind} {self.number}"
 
     def places(self, value, ruled_out=frozenset()) -> list:
         """Return the cells, in order, that can still hold the value, leaving out each (cell, value) ruled out"""

@@ -140,6 +140,13 @@ class Commands:
             "long": 'Use "m" to tag (mark) a cell, or untag it - tagged cells show their "must be" marks; see "c" for the options',
         },
         {
+            "command": Action.WHY,
+            "keys": "wW",
+            "label": "w",
+            "name": "why",
+            "long": 'Use "w" to step through why values were taken off this cell',
+        },
+        {
             "command": Action.CONFIGURE,
             "keys": "cC",
             "label": "c",
@@ -180,7 +187,11 @@ class Commands:
 
     def label_for(command) -> str:
         """Return the label naming the command's keys, e.g. "m" for tagging a cell"""
-        return next(binding["label"] for binding in Commands.BINDINGS if binding["command"] == command)
+        return Commands.__binding_of(command)["label"]
+
+    def keys_for(command) -> tuple:
+        """Return every key bound to the command, e.g. ("w", "W") for walking through why values were taken off"""
+        return tuple(Commands.__binding_of(command)["keys"])
 
     def panel(offered) -> list:
         """The offered commands' lines for the command panel: (keys, name)"""
@@ -193,6 +204,9 @@ class Commands:
         return "\n".join(f'{binding["label"].ljust(width)} - {binding["long"]}' for binding in bindings)
 
     # Private functions
+
+    def __binding_of(command) -> dict:
+        return next(binding for binding in Commands.BINDINGS if binding["command"] == command)
 
     def __is_offered(command, offered) -> bool:
         return command == Commands.HELP or command in offered

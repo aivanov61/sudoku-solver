@@ -20,7 +20,7 @@ from unittest.mock import MagicMock
 
 from game.eliminations_setting import EliminationsSetting
 from game.puzzle_solver import PuzzleSolver
-from game.rules.rule import Move, Outcome, Rule
+from game.rules.rule import Elimination, Move, Outcome, Rule
 from game.user_interface import MessageKind
 
 
@@ -85,6 +85,47 @@ class TestPuzzleSolver(TestCase):
         rule = self.__eliminating(None, lambda ruled_out: {(MagicMock(), 4): "why"})
         self.assertEqual(PuzzleSolver(self.puzzle, [rule]).removed(EliminationsSetting("intersections")), {})
 
+    def test_removal_steps_are_the_cells_removals_and_what_they_rely_on_oldest_first(self):
+        first, other, second = MagicMock(), MagicMock(), MagicMock()
+        steps = self.__steps_for(second, {(first, 4): "a", (other, 6): "c"}, {(second, 5): ("b", ((first, 4),))})
+        self.assertEqual([step.cell for step in steps], [first, second])
+        self.assertEqual(
+            [step.message.text for step in steps],
+            ["(1/2) 4 is ruled out here: a [rule] ", "(2/2) 5 is ruled out here: b (see step 1) [rule] "],
+        )
+
+    def test_removal_steps_follow_a_chain_back_through_every_step(self):
+        first, second, third = MagicMock(), MagicMock(), MagicMock()
+        steps = self.__steps_for(third, {(first, 4): "a"}, {(second, 4): ("b", ((first, 4),))}, {(third, 4): ("c", ((second, 4),))})
+        self.assertEqual([step.cell for step in steps], [first, second, third])
+
+    def test_a_removal_step_names_every_step_it_relies_on(self):
+        first, second, third = MagicMock(), MagicMock(), MagicMock()
+        steps = self.__steps_for(third, {(first, 4): "a", (second, 4): "b"}, {(third, 4): ("c", ((first, 4), (second, 4)))})
+        self.assertEqual(steps[-1].message.text, "(3/3) 4 is ruled out here: c (see steps 1, 2) [rule] ")
+
+    def test_a_removal_step_carries_what_its_elimination_points_at(self):
+        cell, highlight = MagicMock(), MagicMock()
+        rule = self.__eliminating("intersections", lambda ruled_out: {(cell, 4): Elimination("a", "rule", highlight=highlight)})
+        steps = PuzzleSolver(self.puzzle, [rule]).removal_steps(cell, EliminationsSetting("intersections"))
+        self.assertIs(steps[0].message.highlight, highlight)
+
+    def test_the_pending_hint_is_a_hint_carrying_what_the_move_points_at(self):
+        highlight = MagicMock()
+        solver = self.__solver_with([Move(Outcome.MOVED, "why", MagicMock(), 3, highlight=highlight)])
+        solver.next()
+        self.assertIs(solver.pending_hint().kind, MessageKind.HINT)
+        self.assertIs(solver.pending_hint().highlight, highlight)
+
+    def test_a_removal_step_is_information_with_a_short_text(self):
+        cell = MagicMock()
+        message = self.__steps_for(cell, {(cell, 4): "a"})[0].message
+        self.assertIs(message.kind, MessageKind.INFO)
+        self.assertEqual(message.short, "(1/1) 4 ruled out: a")
+
+    def test_a_cell_with_nothing_removed_has_no_removal_steps(self):
+        self.assertEqual(self.__steps_for(MagicMock(), {(MagicMock(), 4): "a"}), [])
+
     def test_making_a_move_enters_its_value(self):
         cell = MagicMock()
         PuzzleSolver(self.puzzle, []).make_move(Move(Outcome.MOVED, "hint", cell, 3))
@@ -96,7 +137,7 @@ class TestPuzzleSolver(TestCase):
         self.assertIsNone(solver.next())
         self.puzzle.select.assert_called_once_with(cell)
         self.puzzle.enter_solved_value.assert_not_called()
-        self.assertEqual(solver.pending_hint(), "why")
+        self.assertEqual(solver.pending_hint().text, "why")
 
     def test_second_next_makes_the_move_pointed_out(self):
         cell = MagicMock()
@@ -114,7 +155,7 @@ class TestPuzzleSolver(TestCase):
         self.assertIsNone(solver.pending_hint())
         solver.next()
         self.puzzle.enter_solved_value.assert_not_called()
-        self.assertEqual(solver.pending_hint(), "why")
+        self.assertEqual(solver.pending_hint().text, "why")
 
     def test_next_warns_about_a_move_that_stops_solving_and_selects_its_cell(self):
         cell = MagicMock()
@@ -174,6 +215,32 @@ class TestPuzzleSolver(TestCase):
                 return ruling(ruled_out)
 
         return EliminatingRule
+
+    def __steps_for(self, cell, *found_by_each_pass):
+        """
+        The removal steps of the cell, with a rule for each pass that adds what it found once the pass before has been
+        found: each found is {(cell, value): why} or {(cell, value): (why, relied_on)}
+        """
+        return PuzzleSolver(self.puzzle, [self.__passing(found_by_each_pass)]).removal_steps(cell, EliminationsSetting("intersections"))
+
+    def __passing(self, found_by_each_pass):
+        """An eliminating rule that finds more on each pass: what each pass found, and the passes before it"""
+        eliminations = [{found: self.__elimination(why) for found, why in found.items()} for found in found_by_each_pass]
+
+        def ruling(ruled_out):
+            found = {}
+            for pass_found in eliminations:
+                found.update(pass_found)
+                if not all(key in ruled_out for key in pass_found):
+                    break
+            return found
+
+        return self.__eliminating("intersections", ruling)
+
+    def __elimination(self, why) -> Elimination:
+        """The elimination for a why, or for a (why, relied_on)"""
+        why, *relied_on = why if type(why) is tuple else (why,)
+        return Elimination(why, "rule", *relied_on)
 
     def __solver_with(self, moves):
         """A solver whose only rule returns the given moves one at a time, then None"""
