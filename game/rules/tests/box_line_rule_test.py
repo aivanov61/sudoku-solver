@@ -38,8 +38,8 @@ class TestBoxLineRule(TestCase):
     def test_an_elimination_points_at_the_box_and_the_places_the_value_has_left_in_the_line(self):
         self.__fill((0, 3, 1), (0, 4, 2), (0, 5, 3), (0, 6, 5), (0, 7, 6), (0, 8, 7))  # 4 in row 0 only in box 0
         highlight = BoxLineRule().eliminations(self.puzzle)[(self.board.cell(2, 1), 4)].highlight
-        self.assertEqual((highlight.box.name(), highlight.value), ("box 1", 4))
-        self.assertEqual(highlight.cells, tuple(self.board.cell(0, col) for col in range(3)))
+        self.assertEqual(highlight.house.name(), "box 1")
+        self.assertEqual(highlight.cells, {self.board.cell(0, col): (4,) for col in range(3)})
 
     def test_only_a_line_confines_a_value_to_a_box(self):
         self.__fill((1, 0, 1), (1, 1, 2), (1, 2, 3), (2, 0, 5), (2, 1, 6), (5, 2, 4))  # 4 in box 0 only in row 0

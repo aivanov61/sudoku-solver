@@ -33,6 +33,9 @@ class TestHouse(TestCase):
     def test_a_house_is_named_by_its_kind_and_number(self):
         self.assertEqual(House(House.ROW, [], 3).name(), "row 3")
 
+    def test_the_values_left_are_those_some_cell_can_still_hold_in_order(self):
+        self.assertEqual(House(House.BOX, [self.__cell({7, 2}), self.__cell(set()), self.__cell({2, 5})]).values_left(), [2, 5, 7])
+
     def test_places_are_the_cells_that_can_still_hold_the_value_in_order(self):
         cells = [self.__cell({4, 5}), self.__cell({5}), self.__cell(set()), self.__cell({4})]
         self.assertEqual(House(House.BOX, cells).places(4), [cells[0], cells[3]])
@@ -53,11 +56,31 @@ class TestHouse(TestCase):
         cells = [self.__cell({5}), self.__cell(set(), value=4)]
         self.assertFalse(House(House.ROW, cells).has_no_place_for(4))
 
+    def test_the_edges_of_a_cell_in_a_row_are_along_it_and_at_its_ends(self):
+        row = House(House.ROW, [MagicMock(row=2, col=col) for col in range(3)])
+        self.assertEqual(self.__sides(row.edges_of(row.cells[0])), {"top", "bottom", "left"})
+        self.assertEqual(self.__sides(row.edges_of(row.cells[1])), {"top", "bottom"})
+        self.assertEqual(self.__sides(row.edges_of(row.cells[2])), {"top", "bottom", "right"})
+
+    def test_the_edges_of_a_cell_in_a_column_are_along_it_and_at_its_ends(self):
+        column = House(House.COLUMN, [MagicMock(row=row, col=4) for row in range(2)])
+        self.assertEqual(self.__sides(column.edges_of(column.cells[0])), {"top", "left", "right"})
+        self.assertEqual(self.__sides(column.edges_of(column.cells[1])), {"bottom", "left", "right"})
+
+    def test_a_cell_in_the_middle_of_a_box_has_no_edges(self):
+        box = House(House.BOX, [MagicMock(row=row, col=col) for row in range(3) for col in range(3)])
+        self.assertEqual(self.__sides(box.edges_of(box.cells[4])), set())
+
     def test_a_house_with_a_place_left_for_the_value_has_one(self):
         cells = [self.__cell({4, 5}), self.__cell(set(), value=3)]
         self.assertFalse(House(House.ROW, cells).has_no_place_for(4))
 
     # Private functions
+
+    def __sides(self, border) -> set:
+        """Return the names of the sides the border has"""
+        sides = {"top": border.is_top(), "left": border.is_left(), "right": border.is_right(), "bottom": border.is_bottom()}
+        return {side for side, is_edge in sides.items() if is_edge}
 
     def __cell(self, possible_values, value=None):
         cell = MagicMock()

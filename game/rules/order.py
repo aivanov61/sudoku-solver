@@ -18,7 +18,9 @@
 from game.rules.box_line_rule import BoxLineRule
 from game.rules.conflicts_rule import ConflictsRule
 from game.rules.dead_end_rule import DeadEndRule
+from game.rules.hidden_pair_rule import HiddenPairRule
 from game.rules.hidden_single_rule import HiddenSingleRule
+from game.rules.naked_pair_rule import NakedPairRule
 from game.rules.pointing_pair_rule import PointingPairRule
 from game.rules.single_value_rule import SingleValueRule
 
@@ -30,4 +32,6 @@ RULES = (
     HiddenSingleRule,
     PointingPairRule,
     BoxLineRule,
+    NakedPairRule,
+    HiddenPairRule,
 )

@@ -31,12 +31,11 @@ class MessageKind(Enum):
 
 @dataclass(frozen=True)
 class Highlight:
-    """What a message points at on the board: a box, the places a value can still go, and the cells it can't"""
+    """What a message points at on the board: a house, the digits to show where they can still go, and where they can't"""
 
-    box: object  # the House
-    value: int
-    cells: tuple  # where the value can still go, as far as it explains the message
-    gone: tuple = ()  # the cells the message rules the value out of, and the empty cells of its house it can't go in
+    house: object  # the House
+    cells: dict  # {cell: digits} where the digits can still go, as far as it explains the message
+    gone: dict  # {cell: digits} where the message rules them out, and the empty cells of its house they can't go in
 
 
 @dataclass(frozen=True)

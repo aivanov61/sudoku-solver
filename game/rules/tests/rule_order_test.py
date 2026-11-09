@@ -24,7 +24,9 @@ from game import rules
 from game.rules.box_line_rule import BoxLineRule
 from game.rules.conflicts_rule import ConflictsRule
 from game.rules.dead_end_rule import DeadEndRule
+from game.rules.hidden_pair_rule import HiddenPairRule
 from game.rules.hidden_single_rule import HiddenSingleRule
+from game.rules.naked_pair_rule import NakedPairRule
 from game.rules.order import RULES
 from game.rules.pointing_pair_rule import PointingPairRule
 from game.rules.rule import Rule
@@ -34,7 +36,17 @@ from game.rules.single_value_rule import SingleValueRule
 class TestRuleOrder(TestCase):
     def test_rules_are_applied_conflicts_first_then_dead_ends_then_moves(self):
         self.assertEqual(
-            RULES, (ConflictsRule, DeadEndRule, SingleValueRule, HiddenSingleRule, PointingPairRule, BoxLineRule)
+            RULES,
+            (
+                ConflictsRule,
+                DeadEndRule,
+                SingleValueRule,
+                HiddenSingleRule,
+                PointingPairRule,
+                BoxLineRule,
+                NakedPairRule,
+                HiddenPairRule,
+            ),
         )
 
     def test_every_rule_in_the_rules_folder_is_in_the_order(self):

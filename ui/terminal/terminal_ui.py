@@ -169,14 +169,9 @@ class TerminalUI:
             self.__draw_middle(self.__showing_missing)
             self.__showing_missing = None
         if self.__showing_highlight:
-            self.__draw_box_edges(self.__showing_highlight.box, highlighted=False)
-            for cell in (*self.__showing_highlight.cells, *self.__showing_highlight.gone):
-                self.__draw_middle(cell)
-            self.__showing_highlight = None
-
-    def __draw_box_edges(self, box, highlighted) -> None:
-        for cell in box.cells:
-            self.__display.draw_box_edges(cell.row, cell.col, cell.borders, highlighted)
+            highlight, self.__showing_highlight = self.__showing_highlight, None
+            for cell in dict.fromkeys((*highlight.house.cells, *highlight.cells, *highlight.gone)):
+                self.__draw_whole_cell(cell)
 
     def __show_on_board(self, message) -> None:
         """Draw the message's missing value in its cell and what it points at, if it has them"""
@@ -188,13 +183,17 @@ class TerminalUI:
             self.__show_highlight(message.highlight)
 
     def __show_highlight(self, highlight) -> None:
-        """Draw the edges of the box in yellow, the value in yellow where it can still go and in red where it can't"""
-        self.__draw_box_edges(highlight.box, highlighted=True)
-        for cell in highlight.cells:
-            self.__display.draw_cell_highlighted_value(cell.row, cell.col, highlight.value)
-        for cell in highlight.gone:
-            self.__display.draw_cell_ruled_out_value(cell.row, cell.col, highlight.value)
+        """Draw the outline of the house in yellow, the digits in yellow where they can still go and in red where they can't"""
+        for cell in highlight.house.cells:
+            self.__display.draw_highlighted_edges(cell.row, cell.col, highlight.house.edges_of(cell), cell.borders)
+        for cell, digits in highlight.cells.items():
+            self.__display.draw_cell_highlighted_value(cell.row, cell.col, self.__joined(digits))
+        for cell, digits in highlight.gone.items():
+            self.__display.draw_cell_ruled_out_value(cell.row, cell.col, self.__joined(digits))
         self.__showing_highlight = highlight
+
+    def __joined(self, digits) -> str:
+        return " ".join(map(str, digits))
 
     def __menu_items(self, options, choices) -> list:
         """Return the choices, with a heading before the first of each group, and its notes under each that has them"""

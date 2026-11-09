@@ -54,7 +54,7 @@ class TestPointingPairRule(TestCase):
         move = PointingPairRule().find(self.puzzle)
         self.assertEqual((move.outcome, move.cell, move.value), (Outcome.MOVED, self.board.cell(0, 8), 9))
         self.assertEqual(move.hint, f"Only 9 fits here: {self.REASON}, which rules 4 out here. [pointing pair] ")
-        self.assertEqual(move.highlight.value, 4)
+        self.assertEqual(set(move.highlight.cells.values()), {(4,)})
 
     def test_a_hidden_single_left_once_the_value_is_ruled_out_is_the_move(self):
         self.__leave_4_in_box_0_only_in_row_0()
@@ -64,7 +64,7 @@ class TestPointingPairRule(TestCase):
         move = PointingPairRule().find(self.puzzle)
         self.assertEqual((move.cell, move.value), (self.board.cell(2, 8), 4))
         self.assertEqual(move.hint, f"4 fits nowhere else in its column: {self.REASON}. [pointing pair] ")
-        self.assertEqual(move.highlight.value, 4)
+        self.assertEqual(set(move.highlight.cells.values()), {(4,)})
 
     def test_a_value_ruled_out_of_a_box_can_leave_it_confined_to_one_line(self):
         self.__leave_4_in_box_0_in_rows_0_and_2()
@@ -75,18 +75,18 @@ class TestPointingPairRule(TestCase):
     def test_an_elimination_points_at_the_box_and_the_places_the_value_has_left_there(self):
         self.__leave_4_in_box_0_only_in_row_0()
         highlight = PointingPairRule().eliminations(self.puzzle)[(self.board.cell(0, 5), 4)].highlight
-        self.assertEqual((highlight.box.name(), highlight.value), ("box 1", 4))
-        self.assertEqual(highlight.cells, (self.board.cell(0, 0), self.board.cell(0, 1)))
+        self.assertEqual(highlight.house.name(), "box 1")
+        self.assertEqual(highlight.cells, {self.board.cell(0, 0): (4,), self.board.cell(0, 1): (4,)})
 
     def test_an_elimination_shows_as_gone_every_cell_its_reason_rules_the_value_out_of(self):
         self.__leave_4_in_box_0_only_in_row_0()
         highlight = PointingPairRule().eliminations(self.puzzle)[(self.board.cell(0, 5), 4)].highlight
-        self.assertEqual(highlight.gone[:6], tuple(self.board.cell(0, col) for col in range(3, 9)))
+        self.assertEqual(tuple(highlight.gone)[:6], tuple(self.board.cell(0, col) for col in range(3, 9)))
 
     def test_an_elimination_shows_as_gone_the_empty_cells_of_its_source_the_value_cannot_go_in(self):
         self.__leave_4_in_box_0_only_in_row_0()  # the 4 in column 2 keeps it out of (0, 2) and (2, 2)
         highlight = PointingPairRule().eliminations(self.puzzle)[(self.board.cell(0, 5), 4)].highlight
-        self.assertEqual(highlight.gone[6:], (self.board.cell(0, 2), self.board.cell(2, 2)))
+        self.assertEqual(tuple(highlight.gone)[6:], (self.board.cell(0, 2), self.board.cell(2, 2)))
 
     def test_an_elimination_shows_as_gone_what_it_relied_on_too(self):
         self.__leave_4_in_box_0_in_rows_0_and_2()
@@ -99,7 +99,7 @@ class TestPointingPairRule(TestCase):
         self.__leave_4_in_box_0_only_in_row_0()
         self.__fill((1, 4, 5), (1, 5, 6), (2, 3, 1), (2, 4, 2), (2, 5, 3))  # box 1's 4 can go in row 0 or at (1, 3)
         highlight = PointingPairRule().eliminations(self.puzzle)[(self.board.cell(0, 5), 4)].highlight
-        self.assertEqual(highlight.cells, (self.board.cell(0, 0), self.board.cell(0, 1), self.board.cell(1, 3)))
+        self.assertEqual(tuple(highlight.cells), (self.board.cell(0, 0), self.board.cell(0, 1), self.board.cell(1, 3)))
 
     def test_a_value_ruled_out_with_nothing_gone_first_relies_on_nothing(self):
         self.__leave_4_in_box_0_only_in_row_0()

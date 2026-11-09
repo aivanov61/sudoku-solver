@@ -47,7 +47,7 @@ class Display:
     - draw_cell_missing_value(row, col, value) - draw a value with no place left in the middle of the cell, in red
     - draw_cell_highlighted_value(row, col, value) - draw a value a message points at in the middle of the cell, in yellow
     - draw_cell_ruled_out_value(row, col, value) - draw a value a message rules out in the middle of the cell, in red
-    - draw_box_edges(row, col, border, highlighted) - draw just the cell's sides on its block's edge, yellow if highlighted
+    - draw_highlighted_edges(row, col, edges, border) - draw just the given sides of the cell, in yellow, thick or thin as usual
     - draw_cell_possible_values(row, col, values) - draw all the possible cell values at the bottom of the cell
     - draw_command_panel(title, entries) - draw the mode's title and its commands to the right of the puzzle
 
@@ -115,12 +115,12 @@ class Display:
     def draw_cell(self, row=0, col=0, border=Border(), attrs=tuple()):
         x, y = self.x(col), self.y(row)
         echo(self.term.move_xy(x, y))
-        self.__draw_edge_line(border.is_top(), border, attrs)
+        self.__draw_edge_line(0, border, attrs)
         for line_no in range(1, self.CELL_HEIGHT):
             echo(self.term.move_xy(x, y + line_no))
-            self.__draw_inner_line(border, attrs)
+            self.__draw_inner_line(line_no, border, attrs)
         echo(self.term.move_xy(x, y + self.CELL_HEIGHT))
-        self.__draw_edge_line(border.is_bottom(), border, attrs)
+        self.__draw_edge_line(self.CELL_HEIGHT, border, attrs)
 
     # Cell location helpers
     def x(self, cell_col):
@@ -148,16 +148,16 @@ class Display:
         """Draw a value a message rules out in the middle of the cell, in the ruled out value's colors"""
         self.__draw_in_middle(row, col, value, Attrs.RULED_OUT_VALUE)
 
-    def draw_box_edges(self, row=0, col=0, border=Border(), highlighted=False):
-        """Draw just the sides of the cell that lie on its block's edge, leaving the rest of the cell alone"""
+    def draw_highlighted_edges(self, row=0, col=0, edges=Border(), border=Border()):
+        """Draw just the given sides of the cell, in the highlighted border's color, each as thick or thin as it always is"""
         x, y = self.x(col), self.y(row)
         right, bottom = x + self.CELL_WIDTH, y + self.CELL_HEIGHT
         across, down = range(x, right + 1), range(y, bottom + 1)
-        spots = [(spot, y) for spot in across if border.is_top()] + [(spot, bottom) for spot in across if border.is_bottom()]
-        spots += [(x, spot) for spot in down if border.is_left()] + [(right, spot) for spot in down if border.is_right()]
-        style = getattr(self.term, Attrs.HIGHLIGHTED_BORDER if highlighted else "normal")
+        spots = [(spot, y) for spot in across if edges.is_top()] + [(spot, bottom) for spot in across if edges.is_bottom()]
+        spots += [(x, spot) for spot in down if edges.is_left()] + [(right, spot) for spot in down if edges.is_right()]
+        style = getattr(self.term, Attrs.HIGHLIGHTED_BORDER)
         for spot_x, spot_y in spots:
-            echo(self.term.move_xy(spot_x, spot_y) + style + self.fullblock + self.term.normal)
+            echo(self.term.move_xy(spot_x, spot_y) + style + self.__frame_char(spot_x - x, spot_y - y, border, ()) + self.term.normal)
 
     def move_to_cell(self, row=0, col=0):
         """Move to the middle of the cell"""
@@ -252,26 +252,33 @@ class Display:
             pass
 
     def __draw_in_middle(self, row, col, value, style) -> None:
-        self.move_to_cell(row, col)
-        echo(getattr(self.term, style)(str(value)))
+        text = str(value)
+        x = self.x(col) + self.CELL_WIDTH // 2 - len(text) // 2
+        echo(self.term.move_xy(x, self.y(row) + self.CELL_VALUE_ROW))
+        echo(getattr(self.term, style)(text))
 
     def __panel_x(self) -> int:
         """The screen column where the command panel starts: past the puzzle's right edge and a gap"""
         return self.x(self.geom["h_cells"]) + 1 + self.PANEL_GAP
 
-    def __draw_edge_line(self, is_edge, border, attrs):
-        """Draw the top or bottom line of a cell; is_edge tells whether it lies on the block's outer edge"""
-        left = self.__border_char(is_edge or border.is_left(), self.bigplus, attrs)
-        line = self.__border_char(is_edge, self.hline, attrs)
-        right = self.__border_char(is_edge or border.is_right(), self.bigplus, attrs)
-        echo(left + line * self.CELL_HORIZONTAL_SIZE + right)
+    def __draw_edge_line(self, down, border, attrs):
+        """Draw the top or bottom line of a cell, the given number of lines down from its top"""
+        echo("".join(self.__frame_char(across, down, border, attrs) for across in range(self.CELL_WIDTH + 1)))
+
+    def __frame_char(self, across, down, border, attrs) -> str:
+        """Return the character of the cell's frame this far across and down from its corner: thick on its block's edge"""
+        top_or_bottom = {0: border.is_top(), self.CELL_HEIGHT: border.is_bottom()}
+        sides = {0: border.is_left(), self.CELL_WIDTH: border.is_right()}
+        is_on_line, is_on_side = down in top_or_bottom, across in sides
+        inner_char = self.bigplus if is_on_line and is_on_side else self.hline if is_on_line else self.vline
+        return self.__border_char(top_or_bottom.get(down, False) or sides.get(across, False), inner_char, attrs)
 
     def __border_char(self, is_outer, inner_char, attrs) -> str:
         return Attrs.outer_border(self.fullblock, attrs) if is_outer else Attrs.inner_border(inner_char, attrs)
 
-    def __draw_inner_line(self, border, attrs):
-        left = self.__border_char(border.is_left(), self.vline, attrs)
-        right = self.__border_char(border.is_right(), self.vline, attrs)
+    def __draw_inner_line(self, down, border, attrs):
+        left = self.__frame_char(0, down, border, attrs)
+        right = self.__frame_char(self.CELL_WIDTH, down, border, attrs)
         rendered_str = self.__rendered_bg_attrs(attrs) + " " * self.CELL_HORIZONTAL_SIZE + self.term.normal
         echo(left + rendered_str + right)
 

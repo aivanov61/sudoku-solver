@@ -180,24 +180,33 @@ class TestTerminalUI(TestCase):
         self.display.draw_cell_value.assert_not_called()
 
     def test_status_shows_what_the_message_points_at(self):
-        box, places, gone = self.__status_pointing_at_a_box()
-        self.assertEqual(self.display.draw_box_edges.call_args_list, [call(c.row, c.col, c.borders, True) for c in box])
-        self.assertEqual(self.display.draw_cell_highlighted_value.call_args_list, [call(c.row, c.col, 4) for c in places])
-        self.assertEqual(self.display.draw_cell_ruled_out_value.call_args_list, [call(c.row, c.col, 4) for c in gone])
+        house, places, gone = self.__status_pointing_at_a_house()
+        edges = house.edges_of.return_value
+        self.assertEqual(self.display.draw_highlighted_edges.call_args_list, [call(c.row, c.col, edges, c.borders) for c in house.cells])
+        self.assertEqual(self.display.draw_cell_highlighted_value.call_args_list, [call(c.row, c.col, "4") for c in places])
+        self.assertEqual(self.display.draw_cell_ruled_out_value.call_args_list, [call(c.row, c.col, "4") for c in gone])
+
+    def test_status_shows_the_digits_of_each_cell_spaced_out(self):
+        pair, loser = self.__cell(1, 0), self.__cell(1, 5)
+        highlight = Highlight(MagicMock(cells=[pair, loser]), {pair: (4, 7)}, {loser: (7,)})
+        self.__status(Message("why", MessageKind.INFO, highlight=highlight))
+        self.display.draw_cell_highlighted_value.assert_called_once_with(1, 0, "4 7")
+        self.display.draw_cell_ruled_out_value.assert_called_once_with(1, 5, "7")
 
     def test_the_next_status_takes_back_what_the_message_pointed_at(self):
-        box, places, gone = self.__status_pointing_at_a_box()
+        house, _places, gone = self.__status_pointing_at_a_house()
         self.display.reset_mock()
         self.__status(None)
-        self.assertEqual(self.display.draw_box_edges.call_args_list, [call(c.row, c.col, c.borders, False) for c in box])
-        self.assertEqual(self.display.draw_cell_marks.call_count, len(places) + len(gone))
+        drawn = [c.args[:2] for c in self.display.draw_cell.call_args_list]
+        self.assertEqual(drawn, [(c.row, c.col) for c in (*house.cells, *gone)])
+        self.assertEqual(self.display.draw_cell_marks.call_count, len(drawn))
 
     def test_what_a_message_pointed_at_is_taken_back_only_once(self):
-        self.__status_pointing_at_a_box()
+        self.__status_pointing_at_a_house()
         self.__status(None)
         self.display.reset_mock()
         self.__status(None)
-        self.display.draw_box_edges.assert_not_called()
+        self.display.draw_cell.assert_not_called()
 
     def test_inform_shows_a_missing_value_until_the_player_has_seen_the_message(self):
         self.ui.inform(Message("stuck", MessageKind.WARNING, (self.__cell(2, 5, value=None), 4)))
@@ -395,12 +404,13 @@ class TestTerminalUI(TestCase):
 
     # Private functions
 
-    def __status_pointing_at_a_box(self) -> tuple:
-        """Show a message pointing at a box of three cells, the first two the places for 4, and two cells it is gone from; return those"""
-        box, gone = [self.__cell(1, col) for col in range(3)], [self.__cell(5, col) for col in range(2)]
-        highlight = Highlight(MagicMock(cells=box), 4, tuple(box[:2]), tuple(gone))
+    def __status_pointing_at_a_house(self) -> tuple:
+        """Show a message pointing at a house of three cells, the first two the places for 4, and two cells it is gone from; return those"""
+        house, gone = MagicMock(cells=[self.__cell(1, col) for col in range(3)]), [self.__cell(5, col) for col in range(2)]
+        places = house.cells[:2]
+        highlight = Highlight(house, dict.fromkeys(places, (4,)), dict.fromkeys(gone, (4,)))
         self.__status(Message("why", MessageKind.INFO, highlight=highlight))
-        return box, box[:2], gone
+        return house, places, gone
 
     def __walk(self, keys):
         """Walk through three steps, on cells (n, n + 1), with the keys pressed; return the stand-in for reading keys"""

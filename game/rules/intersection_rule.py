@@ -18,35 +18,26 @@
 from abc import abstractmethod
 
 from game.house import House
-from game.rules.rule import Elimination, Move, Outcome, Rule
+from game.rules.eliminating_rule import EliminatingRule
+from game.rules.rule import Elimination
 from game.user_interface import Highlight
 
 
-class IntersectionRule(Rule):
+class IntersectionRule(EliminatingRule):
     """
     Where a box crosses a row or column: a value that can only go in the crossing, within one of the two houses
     (the source), can go nowhere else in the other one, so it is ruled out of the rest of it.
 
-    Each subclass says which houses are its sources.  find() returns a single value or hidden single that only
-    these eliminations leave, with a hint explaining both.
+    Each subclass says which houses are its sources.
     """
 
     LEVEL = "intersections"
-
-    def find(self, puzzle) -> Move:
-        ruled_out = self.eliminations(puzzle)
-        if not ruled_out:
-            return None
-        cell = puzzle.first_cell_where(lambda cell: cell.forced_value(ruled_out) and not cell.forced_value())
-        if cell is None:
-            return None
-        return self.__move_into(cell, ruled_out)
 
     def eliminations(self, puzzle, ruled_out=frozenset()) -> dict:
         found = {}
         for source in puzzle.houses():
             if self._is_source(source):
-                for value in self.__values_left_in(source):
+                for value in source.values_left():
                     self.__rule_out(value, source, ruled_out, found)
         return found
 
@@ -57,23 +48,6 @@ class IntersectionRule(Rule):
         """Return True if the rule looks for values confined to a crossing within this house"""
 
     # Private functions
-
-    def __move_into(self, cell, ruled_out) -> Move:
-        """Return the move filling in the value the eliminations force into the cell, explaining why"""
-        candidates = cell.candidates(ruled_out)
-        if len(candidates) == 1:
-            value = next(iter(candidates))
-            ruled = next(other for other in sorted(cell.possible_values()) if (cell, other) in ruled_out)
-            elimination = ruled_out[(cell, ruled)]
-            hint = f"Only {value} fits here: {elimination.why}, which rules {ruled} out here."
-        else:
-            value, house = cell.hidden_single(ruled_out)
-            elimination = next(ruled_out[(other, value)] for other in house.cells if (other, value) in ruled_out)
-            hint = f"{value} fits nowhere else in its {house.kind}: {elimination.why}."
-        return self._move(Outcome.MOVED, hint, cell, value, highlight=elimination.highlight)
-
-    def __values_left_in(self, house) -> list:
-        return sorted({value for cell in house.cells for value in cell.possible_values()})
 
     def __rule_out(self, value, source, ruled_out, found) -> None:
         """Find the value ruled out of the rest of a house of another kind that holds every place it has left in the source"""
@@ -96,9 +70,9 @@ class IntersectionRule(Rule):
         why = f"in {source.name()}, {value} can only go in {target.name()}"
         gone = tuple(cell for cell in source.cells if (cell, value) in ruled_out and cell not in target.cells)
         box = source if source.kind == House.BOX else target
-        still_can = tuple(dict.fromkeys([*places, *self.__only_places_left(value, removed, ruled_out)]))
+        still_can = dict.fromkeys([*places, *self.__only_places_left(value, removed, ruled_out)], (value,))
         blocked = (cell for cell in source.cells if not cell.value() and cell not in places)
-        highlight = Highlight(box, value, still_can, (*removed, *blocked))
+        highlight = Highlight(box, still_can, dict.fromkeys((*removed, *blocked), (value,)))
         return Elimination(why, self.NAME, tuple((cell, value) for cell in gone), highlight)
 
     def __only_places_left(self, value, removed, ruled_out) -> list:
