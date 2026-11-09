@@ -20,6 +20,7 @@ from game.board import Board
 from game.cell import Cell
 from game.cell_attrs import CellAttrs
 from game.completion_report import CompletionReport
+from game.eliminations_setting import EliminationsSetting
 from game.game_file import GameFile
 from game.marks_setting import MarksSetting
 from game.moves import Moves
@@ -247,11 +248,15 @@ class Puzzle:
         return Message(hint, MessageKind.HINT) if hint else None
 
     def __refresh_marks(self) -> None:
-        """Have the cells show their marks while playing, tagged ones leaving out what the rules rule out; none in setup"""
+        """
+        Have the cells show their marks while playing, tagged ones leaving out what the rules rule out, and take off
+        the possible values the player chose to have removed; neither in setup
+        """
         if self._initializing:
             self.__board.refresh_marks(None)
         else:
-            self.__board.refresh_marks(self.__settings.of(MarksSetting), self.__solver.ruled_out())
+            removed = self.__solver.removed(self.__settings.of(EliminationsSetting))
+            self.__board.refresh_marks(self.__settings.of(MarksSetting), {**self.__solver.ruled_out(), **removed}, removed)
 
     def __action_received(self, action) -> None:
         """Any action ends the notice and the completion report; any action but "n" cancels the move a previous "n" pointed out"""

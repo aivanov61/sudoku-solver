@@ -97,7 +97,7 @@ It finds these kinds of move, and ends each explanation with the name of the rul
 - **A pointing pair** `[pointing pair]`: when, within one box, a value can only go in one row (or column), the value in that row must be in this box, so it can't go anywhere else in the row. When that leaves a cell a single value, or a value only one place, `n` explains both steps, e.g. "Only 9 fits here: in one box, 4 can only go in one row, which rules 4 out here."
 - **A box/line reduction** `[box/line reduction]`: the other way round. When, within one row (or column), a value can only go in one box, it can't go anywhere else in that box.
 
-`n` tries them in this order, so if a cell qualifies more than one way, it explains the simplest. Values ruled out by pointing pairs and box/line reductions aren't taken off the cells' bottom lines; `n` only shows them when they lead to a value to fill in, and tagged cells leave them out of what they must be (see Tags).
+`n` tries them in this order, so if a cell qualifies more than one way, it explains the simplest. Values ruled out by pointing pairs and box/line reductions aren't taken off the cells' bottom lines unless you ask for that (see "Configuration" below); `n` only shows them when they lead to a value to fill in, and tagged cells leave them out of what they must be (see Tags).
 
 You don't have to press `n` the second time: with the cursor already on the cell, you can type the value yourself. You can even enter it as a guess, with a shifted digit, although it isn't really a guess. That turns it into a checkpoint. `r` rewinds to the most recent guess, and everything entered after it is shaded, so making guesses at the points you consider key decisions lets you solve the puzzle in stages and step back to any of them.
 
@@ -130,7 +130,7 @@ So in a row that needs 4, 8 and 9, where the 4 can only go in one of the three c
 
 ## Configuration
 
-Press `c`, in either mode, to open the configure menu. It lists the settings, grouped under headings. Each line shows its setting, its current choice and where that choice is among them, e.g. `Threshold .......... 2 or fewer places (1 of 4)`. A gray line under a setting explains the choice made, such as which cells show marks.
+Press `c`, in either mode, to open the configure menu. It lists the settings, grouped under headings. Each line shows its setting, its current choice and where that choice is among them, e.g. `Threshold .......... 2 or fewer places (1 of 4)`. A gray line under a setting explains the choice made, such as which cells show marks. The menu opens on the line you last left it on.
 
 | Key | Action |
 |---|---|
@@ -148,6 +148,18 @@ These settings choose which "must be" marks are shown (see "Must be" marks above
 - **Kind of house:** `box` (the default) marks values with few places left in their box; `box, row or column` marks a value with few enough places in any of the three.
 - **Threshold:** how few places a value must have left to be marked, from `2 or fewer places` (the default) to `5 or fewer places`.
 - **Whole puzzle:** `off` (the default) shows no Snyder marks; `on` shows them in every empty cell that isn't tagged. Kind of house and threshold apply only here.
+
+### Ruled-out values
+
+A cell's bottom line normally shows every value its row, column and box allow, and working out what else can be ruled out is up to you. The **Remove from cells** setting takes those values off for you, as far as you want to see, so you can go on to harder techniques as you learn them:
+- `none` (the default) takes nothing off.
+- `intersections` takes off what pointing pairs and box/line reductions rule out (see "Next: an obvious move" above).
+
+Each level also includes the ones before it. Removals cascade: once a value is gone, that can rule out another value, and so on until nothing more can be ruled out. A cascade only takes values off; it never treats a cell left with one value as filled in.
+
+The bottom line of a cell that has lost any values turns yellow, so you can see where values were taken off, even in a tagged cell. A cell with more than five values left still shows its `.....` in the usual color, until it is down to five or fewer.
+
+This changes only what you see. `n`, `a` and the dead end warnings work the same at every level, and you can still enter a value that was taken off. A removed value comes back when its reason goes, such as after an undo. During setup nothing is taken off. Snyder marks count only the values still shown, and a tagged cell leaves out what is taken off as well as what it leaves out at `none`.
 
 ## Finishing the puzzle
 
@@ -170,6 +182,7 @@ A puzzle can only be restored into the layout it was saved from. A file saved by
 | Green on gray | A guess; gray backgrounds also mark values entered after a guess |
 | Light sky blue | A value filled in by `n` or `a`; "solved" on the status line |
 | Light sky blue small digits | A cell you tagged with `m` |
+| Yellow bottom line | Values were taken off this cell (see "Configuration") |
 | Bold red on bright yellow | The value you just entered is already in the same row, column or box |
 | Usual color on yellow | Holds a value that a newer entry clashes with |
 | Yellow text on the status line | A warning. If it waits, press any key to continue. |

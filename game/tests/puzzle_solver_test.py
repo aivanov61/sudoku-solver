@@ -18,6 +18,7 @@
 from unittest import main, TestCase
 from unittest.mock import MagicMock
 
+from game.eliminations_setting import EliminationsSetting
 from game.puzzle_solver import PuzzleSolver
 from game.rules.rule import Move, Outcome, Rule
 from game.user_interface import MessageKind
@@ -60,6 +61,29 @@ class TestPuzzleSolver(TestCase):
 
         rules = [ruling_out({(first, 4): "why"}), ruling_out({(second, 5): "why not"})]
         self.assertEqual(PuzzleSolver(self.puzzle, rules).ruled_out(), {(first, 4): "why", (second, 5): "why not"})
+
+    def test_nothing_is_removed_at_no_level(self):
+        rule = self.__eliminating("intersections", lambda ruled_out: {(MagicMock(), 4): "why"})
+        self.assertEqual(PuzzleSolver(self.puzzle, [rule]).removed(EliminationsSetting()), {})
+
+    def test_removed_cascades_in_the_order_found_until_nothing_more_is_ruled_out(self):
+        first, second = MagicMock(), MagicMock()
+        after_first = self.__eliminating("intersections", lambda ruled_out: {(second, 5): "b"} if (first, 4) in ruled_out else {})
+        always = self.__eliminating("intersections", lambda ruled_out: {(first, 4): "a"})
+        removed = PuzzleSolver(self.puzzle, [after_first, always]).removed(EliminationsSetting("intersections"))
+        self.assertEqual(list(removed.items()), [((first, 4), "a"), ((second, 5), "b")])
+
+    def test_removed_keeps_the_first_reason_for_a_value(self):
+        cell = MagicMock()
+        rules = [
+            self.__eliminating("intersections", lambda ruled_out: {(cell, 4): "first"}),
+            self.__eliminating("intersections", lambda ruled_out: {(cell, 4): "second"}),
+        ]
+        self.assertEqual(PuzzleSolver(self.puzzle, rules).removed(EliminationsSetting("intersections")), {(cell, 4): "first"})
+
+    def test_removed_leaves_out_rules_the_level_does_not_include(self):
+        rule = self.__eliminating(None, lambda ruled_out: {(MagicMock(), 4): "why"})
+        self.assertEqual(PuzzleSolver(self.puzzle, [rule]).removed(EliminationsSetting("intersections")), {})
 
     def test_making_a_move_enters_its_value(self):
         cell = MagicMock()
@@ -136,6 +160,20 @@ class TestPuzzleSolver(TestCase):
                 return move
 
         return FakeRule
+
+    def __eliminating(self, level, ruling):
+        """A rule class at the level, ruling out what ruling(ruled_out) returns"""
+
+        class EliminatingRule(Rule):
+            LEVEL = level
+
+            def find(self, puzzle):
+                return None
+
+            def eliminations(self, puzzle, ruled_out=frozenset()):
+                return ruling(ruled_out)
+
+        return EliminatingRule
 
     def __solver_with(self, moves):
         """A solver whose only rule returns the given moves one at a time, then None"""

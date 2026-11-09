@@ -33,6 +33,7 @@ class DisplayAttrs:
         - CONFLICTED - FG=[primary], BG=Yellow
     - Guess depth - the shade of gray: GRAY_STEP lighter for each guess, up to the last shade, MAX_GRAY_LEVEL
     - Tagged - the small digits (marks and possible values) in TAGGED_COLOR, on the cell's background
+    - Removed - the possible values of a cell that has lost some as ruled out, in REMOVED_VALUES, on the cell's background, even if tagged
     """
 
     DEFAULT_COLOR = "darkorange3"
@@ -40,6 +41,7 @@ class DisplayAttrs:
     GRAY_STEP = 10
     MAX_GRAY_LEVEL = 100  # There are no gray levels greater than 100
     TAGGED_COLOR = "lightskyblue"  # the small digits of a cell the player tagged
+    REMOVED_VALUES = "yellow"  # the possible values of a cell that has lost some as ruled out
 
     @dataclass
     class FgBgAttr:
@@ -77,10 +79,11 @@ class DisplayAttrs:
         _fg, bg = DisplayAttrs.__get_fg_bg(_attrs)
         return DisplayAttrs.__style(None, bg)
 
-    def render_small_digits(_attrs, tagged) -> str:
-        """Render the term.[attr] string for the small digits: the background attributes, in TAGGED_COLOR if tagged"""
+    def render_small_digits(_attrs, tagged, removed=False) -> str:
+        """Render the term.[attr] string for the small digits: the background attributes, in REMOVED_VALUES if removed, else TAGGED_COLOR if tagged"""
         _fg, bg = DisplayAttrs.__get_fg_bg(_attrs)
-        return DisplayAttrs.__style(DisplayAttrs.TAGGED_COLOR if tagged else None, bg)
+        tagged_color = DisplayAttrs.TAGGED_COLOR if tagged else None
+        return DisplayAttrs.__style(DisplayAttrs.REMOVED_VALUES if removed else tagged_color, bg)
 
     def is_beyond_last_shade(depth) -> bool:
         """Return True if the guess depth needs a lighter shade of gray than the last one"""

@@ -17,6 +17,7 @@
 
 from dataclasses import dataclass, field
 
+from game.eliminations_setting import EliminationsSetting
 from game.marks_setting import MarksSetting
 
 
@@ -31,7 +32,7 @@ class Settings:
     needs no new save file version.
     """
 
-    KINDS = (MarksSetting,)  # every kind of setting, in the order the player is offered them
+    KINDS = (MarksSetting, EliminationsSetting)  # every kind of setting, in the order the player is offered them
 
     by_name: dict = field(default_factory=lambda: {kind.NAME: kind() for kind in Settings.KINDS})
 

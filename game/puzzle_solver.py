@@ -17,6 +17,7 @@
 
 from typing import TYPE_CHECKING
 
+from game.eliminations_setting import EliminationsSetting
 from game.rules.order import RULES
 from game.rules.rule import Move, Outcome
 from game.user_interface import Message, MessageKind
@@ -74,6 +75,20 @@ class PuzzleSolver:
         for rule in self.__rules:
             ruled_out.update(rule.eliminations(self.__puzzle))
         return ruled_out
+
+    def removed(self, setting: EliminationsSetting) -> dict:
+        """
+        Return {(cell, value): why}, in the order found, for the values the setting takes off the cells: what its
+        rules rule out, then what they rule out once those are gone, until they rule out nothing more
+        """
+        rules = [rule for rule in self.__rules if setting.includes(rule)]
+        removed, count = {}, None
+        while count != len(removed):
+            count = len(removed)
+            for rule in rules:
+                for found, why in rule.eliminations(self.__puzzle, removed).items():
+                    removed.setdefault(found, why)
+        return removed
 
     def make_move(self, move) -> None:
         """Fill in the value of a move that fills a cell"""

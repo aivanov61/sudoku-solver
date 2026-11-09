@@ -21,7 +21,7 @@ from ui.terminal.display import Display, echo
 class Menu:
     """
     A menu on a cleared screen: a title, the items (MenuItem), as many as fit, then a message line and a line
-    of key help.
+    of key help.  It opens on the item at start, or the next one after it that can be selected.
 
     The selected item is shown in reverse video; up and down move to the next item that can be selected,
     scrolling a line at a time, and scroll a line instead when there is none, even past the selected item.
@@ -37,13 +37,13 @@ class Menu:
     HINT = "ENTER brings the highlighted line back into view"
     LEAVE_KEYS = ("KEY_ESCAPE", "q", "Q")
 
-    def __init__(self, title, items: list, keys_help, display: Display, quit_question=None):
+    def __init__(self, title, items: list, keys_help, display: Display, quit_question=None, start=0):
         self.__title = title
         self.__items = items
         self.__keys_help = keys_help
         self.__display = display
         self.__quit_question = quit_question  # asked before leaving, when there is one; only "y" or "Y" confirms
-        self.__selected = self.__next_selectable(-1, 1)  # index of the selected item, None when none can be
+        self.__selected = self.__next_selectable(start - 1, 1)  # index of the selected item, None when none can be
         self.__top = 0  # index of the first item shown
         self.__message = ""
         if self.__selected is not None:
@@ -69,6 +69,10 @@ class Menu:
                     self.__items[self.__selected].handle(key)
         except KeyboardInterrupt:
             return None
+
+    def selected_index(self) -> int:
+        """Return the index of the selected item, to open on it another time; None when none can be selected"""
+        return self.__selected
 
     # Private functions
 

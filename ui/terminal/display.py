@@ -155,13 +155,14 @@ class Display:
         echo(self.term.move_xy(x, y))
         echo(self.__small_digits_style(attrs, tagged) + self.__marks_text(marks) + self.term.normal)
 
-    def draw_cell_possible_values(self, row=0, col=0, values=(), attrs=(), tagged=False):
-        """Draw the possible values at the bottom of the cell"""
-        values = sorted(values) if len(values) <= self.CELL_HORIZONTAL_SIZE else "....."
+    def draw_cell_possible_values(self, row=0, col=0, values=(), attrs=(), tagged=False, removed=False):
+        """Draw the possible values at the bottom of the cell, marked out if some were removed as ruled out and they all fit"""
+        all_fit = len(values) <= self.CELL_HORIZONTAL_SIZE
+        values = sorted(values) if all_fit else "....."
         x = self.x(col) + 1
         y = self.y(row) + self.CELL_VALUES_ROW
         echo(self.term.move_xy(x, y))
-        rendered_attrs = self.__small_digits_style(attrs, tagged)
+        rendered_attrs = self.__small_digits_style(attrs, tagged, removed and all_fit)
         echo(rendered_attrs + " " * (self.CELL_HORIZONTAL_SIZE - len(values)) + self.term.normal)
         echo(rendered_attrs + "".join(str(v).translate(self.small_nums) for v in values) + self.term.normal)
 
@@ -260,8 +261,8 @@ class Display:
     def __rendered_bg_attrs(self, attrs) -> str:
         return getattr(self.term, Attrs.render_bg(attrs))
 
-    def __small_digits_style(self, attrs, tagged) -> str:
-        return getattr(self.term, Attrs.render_small_digits(attrs, tagged))
+    def __small_digits_style(self, attrs, tagged, removed=False) -> str:
+        return getattr(self.term, Attrs.render_small_digits(attrs, tagged, removed))
 
     @contextmanager
     def __status_line_message(self, text):

@@ -400,10 +400,56 @@ class TestCell(TestCase):
         self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
         self.assertEqual(self.cell.marks(), ())
 
+    def test_cell_marks_leave_out_what_is_removed(self):
+        self.__counted_house(House.BOX, {4: 2, 6: 2})
+        removed = {(self.cell, 4): "why"}
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True), removed=removed)
+        self.assertEqual(self.cell.marks(), (6,))
+        self.parent.houses_of.return_value[0].places.assert_any_call(6, removed)
+
     def test_cell_reports_a_change_only_when_its_marks_change(self):
         self.__counted_house(House.BOX, {4: 2})
         self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
         self.cell.refresh_marks(MarksSetting(3, MarksSetting.BOX_ONLY, True))
+        self.parent.cell_changed.assert_called_once_with(self.cell)
+
+    # Removed values
+
+    def test_a_cell_shows_all_its_possible_values_until_some_are_removed(self):
+        self.__leave_possible({3, 5})
+        self.assertEqual(self.cell.shown_possible(), {3, 5})
+
+    def test_a_removed_value_is_no_longer_shown_but_is_still_possible(self):
+        self.__leave_possible({3, 5})
+        self.cell.refresh_marks(None, removed={(self.cell, 3): "why"})
+        self.assertEqual(self.cell.shown_possible(), {5})
+        self.assertEqual(self.cell.possible_values(), {3, 5})
+
+    def test_a_removed_value_comes_back_once_it_is_no_longer_ruled_out(self):
+        self.__leave_possible({3, 5})
+        self.cell.refresh_marks(None, removed={(self.cell, 3): "why"})
+        self.cell.refresh_marks(None)
+        self.assertEqual(self.cell.shown_possible(), {3, 5})
+
+    def test_only_this_cells_removed_values_are_taken_off(self):
+        self.__leave_possible({3, 5})
+        self.cell.refresh_marks(None, removed={(MagicMock(), 3): "elsewhere"})
+        self.assertEqual(self.cell.shown_possible(), {3, 5})
+
+    def test_a_cell_has_removed_values_only_while_some_are_taken_off(self):
+        self.__leave_possible({3, 5})
+        self.assertFalse(self.cell.has_removed())
+        self.cell.refresh_marks(None, removed={(self.cell, 3): "why"})
+        self.assertTrue(self.cell.has_removed())
+        self.cell.refresh_marks(None)
+        self.assertFalse(self.cell.has_removed())
+
+    def test_cell_reports_a_change_only_when_its_removed_values_change(self):
+        self.__leave_possible({3, 5})
+        self.parent.cell_changed.reset_mock()
+        removed = {(self.cell, 3): "why"}
+        self.cell.refresh_marks(None, removed=removed)
+        self.cell.refresh_marks(None, removed=removed)
         self.parent.cell_changed.assert_called_once_with(self.cell)
 
     # Private functions

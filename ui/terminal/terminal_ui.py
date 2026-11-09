@@ -49,6 +49,7 @@ class TerminalUI:
         self.__offered = ()  # the actions the mode offers
         self.__drawn = {}  # (row, col): (attributes, value, possible values, marks) of each cell as last drawn
         self.__showing_missing = None  # the cell showing a message's missing value, until the message goes
+        self.__configure_line = 0  # the line the configure menu opens on: the one it was last left on
 
     # Interface required for Main
 
@@ -91,12 +92,15 @@ class TerminalUI:
 
     def configure(self, options) -> list:
         """
-        Show the options in a menu, each group under a heading; return them as chosen once ENTER applies them, or as
-        they were if ESC cancels
+        Show the options in a menu, each group under a heading, opening where the player last left it; return them
+        as chosen once ENTER applies them, or as they were if ESC cancels
         """
         choices = [MenuChoice(option.name, option.labels(), option.chosen_index()) for option in options]
-        menu = Menu("Configure", self.__menu_items(options, choices), self.CONFIGURE_KEYS_HELP, self.__display)
-        if menu.choose() is None:
+        items = self.__menu_items(options, choices)
+        menu = Menu("Configure", items, self.CONFIGURE_KEYS_HELP, self.__display, start=self.__configure_line)
+        picked = menu.choose()
+        self.__configure_line = menu.selected_index()
+        if picked is None:
             return options
         return [option.with_choice(choice.chosen) for option, choice in zip(options, choices)]
 
@@ -119,14 +123,14 @@ class TerminalUI:
         Redraw only what differs from what was last drawn: the whole cell when its attributes changed, and the
         small digits (marks and possible values) when its tag changed
         """
-        attrs, value, possible_values, marks, tagged = self.__drawn.get((cell.row, cell.col), (None,) * 5)
+        attrs, value, possible_values, marks, tagged, removed = self.__drawn.get((cell.row, cell.col), (None,) * 6)
         if attrs != cell.attr():
             self.__draw_whole_cell(cell)
             return
         is_retagged = tagged != cell.is_tagged()
         if is_retagged or value != cell.value() or marks != cell.marks():
             self.__draw_middle(cell)
-        if is_retagged or possible_values != cell.possible_values():
+        if is_retagged or possible_values != cell.shown_possible() or removed != cell.has_removed():
             self.__draw_possible_values(cell)
         self.__remember(cell)
 
@@ -244,9 +248,9 @@ class TerminalUI:
 
     def __draw_possible_values(self, cell) -> None:
         display = self.__display
-        display.draw_cell_possible_values(cell.row, cell.col, cell.possible_values(), cell.attr(), cell.is_tagged())
+        display.draw_cell_possible_values(cell.row, cell.col, cell.shown_possible(), cell.attr(), cell.is_tagged(), cell.has_removed())
 
     def __remember(self, cell) -> None:
-        """Keep what the cell looks like now, copying its possible values, which change in place"""
-        drawn = (cell.attr(), cell.value(), set(cell.possible_values()), cell.marks(), cell.is_tagged())
+        """Keep what the cell looks like now"""
+        drawn = (cell.attr(), cell.value(), cell.shown_possible(), cell.marks(), cell.is_tagged(), cell.has_removed())
         self.__drawn[(cell.row, cell.col)] = drawn

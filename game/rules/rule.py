@@ -51,13 +51,17 @@ class Rule(ABC):
     """
 
     NAME = None  # shown in brackets after each hint, e.g. "[single value]"
+    LEVEL = None  # the level of a rule that rules values out, which the player can choose to see removed
 
     @abstractmethod
     def find(self, puzzle) -> Move:
         """Return this rule's move in the puzzle, or None if it has none"""
 
-    def eliminations(self, puzzle) -> dict:
-        """Return {(cell, value): why} for each value this rule rules out of a cell now; most rules rule out none"""
+    def eliminations(self, puzzle, ruled_out=frozenset()) -> dict:
+        """
+        Return {(cell, value): why} for each value this rule rules out of a cell now, once each (cell, value) in
+        ruled_out is left out; most rules rule out none
+        """
         return {}
 
     # Interface required for subclasses

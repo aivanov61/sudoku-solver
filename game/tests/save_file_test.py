@@ -22,6 +22,7 @@ import tempfile
 from unittest import main, TestCase
 from unittest.mock import patch
 
+from game.eliminations_setting import EliminationsSetting
 from game.marks_setting import MarksSetting
 from game.save_file import SavedPuzzle, SaveFile, SaveFileError
 from game.settings import Settings
@@ -31,7 +32,10 @@ class TestSaveFile(TestCase):
     SAVED = SavedPuzzle(
         layout="Standard 9x9",
         initializing=False,
-        settings=Settings({MarksSetting.NAME: MarksSetting(3, MarksSetting.EVERY_HOUSE, True)}),
+        settings=Settings({
+            MarksSetting.NAME: MarksSetting(3, MarksSetting.EVERY_HOUSE, True),
+            EliminationsSetting.NAME: EliminationsSetting("intersections"),
+        }),
         selected_cell=(4, 7),
         tags=[(1, 2), (6, 0)],
         givens=[(0, 0, 5), (8, 8, 1)],
@@ -69,7 +73,7 @@ class TestSaveFile(TestCase):
     def test_settings_are_saved_by_name(self):
         SaveFile.write(self.path, self.SAVED)
         marks = {"threshold": 3, "kinds": ["box", "row", "column"], "whole_puzzle": True}
-        self.assertEqual(self.__json()["state"]["settings"], {"marks": marks})
+        self.assertEqual(self.__json()["state"]["settings"], {"marks": marks, "eliminations": {"level": "intersections"}})
 
     def test_a_file_saved_without_tags_is_read_with_none(self):
         SaveFile.write(self.path, self.SAVED)

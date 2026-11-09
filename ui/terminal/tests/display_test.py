@@ -112,6 +112,30 @@ class TestDisplayPossibleValues(TestCase):
         display.draw_cell_possible_values(0, 0, [5], tagged=True)
         self.assertTrue(echo.call_args_list[-1].args[0].startswith(display.term.lightskyblue))
 
+    def test_possible_values_with_some_removed_are_yellow(self):
+        self.assertTrue(self.__drawn(removed=True).startswith("<yellow>"))
+
+    def test_possible_values_with_some_removed_are_yellow_even_if_tagged(self):
+        self.assertTrue(self.__drawn(removed=True, tagged=True).startswith("<yellow>"))
+
+    def test_possible_values_with_none_removed_keep_their_usual_style(self):
+        self.assertFalse(self.__drawn().startswith("<yellow>"))
+
+    def test_five_possible_values_with_some_removed_are_yellow(self):
+        self.assertTrue(self.__drawn(values=range(1, 6), removed=True).startswith("<yellow>"))
+
+    def test_dots_for_more_values_than_fit_are_not_yellow_even_with_some_removed(self):
+        self.assertFalse(self.__drawn(values=range(1, 7), removed=True).startswith("<yellow>"))
+
+    # Private functions
+
+    def __drawn(self, values=(5,), **kwargs) -> str:
+        """Return what is drawn last for a possible value, on a terminal that names its styles"""
+        term = MagicMock(yellow="<yellow>", normal="</>", lightskyblue="<tagged>")
+        with patch("ui.terminal.display.echo") as echo:
+            board_display(term).draw_cell_possible_values(0, 0, values, **kwargs)
+        return echo.call_args_list[-1].args[0]
+
 
 class TestDisplayMarks(TestCase):
     def test_marks_are_drawn_across_the_middle_line_of_the_cell(self):

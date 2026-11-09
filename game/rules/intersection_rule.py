@@ -30,6 +30,8 @@ class IntersectionRule(Rule):
     single value or hidden single that only these eliminations leave, with a hint explaining both.
     """
 
+    LEVEL = "intersections"
+
     def find(self, puzzle) -> Move:
         ruled_out = self.eliminations(puzzle)
         if not ruled_out:
@@ -39,13 +41,13 @@ class IntersectionRule(Rule):
             return None
         return self.__move_into(cell, ruled_out)
 
-    def eliminations(self, puzzle) -> dict:
-        ruled_out = {}
+    def eliminations(self, puzzle, ruled_out=frozenset()) -> dict:
+        found = {}
         for source in puzzle.houses():
             if self._is_source(source):
                 for value in self.__values_left_in(source):
-                    self.__rule_out(value, source, ruled_out)
-        return ruled_out
+                    self.__rule_out(value, source, ruled_out, found)
+        return found
 
     # Interface required from subclasses
 
@@ -75,15 +77,15 @@ class IntersectionRule(Rule):
     def __values_left_in(self, house) -> list:
         return sorted({value for cell in house.cells for value in cell.possible_values()})
 
-    def __rule_out(self, value, source, ruled_out) -> None:
-        """Rule the value out of the rest of a house of another kind that holds every place it has left in the source"""
-        places = source.places(value)
+    def __rule_out(self, value, source, ruled_out, found) -> None:
+        """Find the value ruled out of the rest of a house of another kind that holds every place it has left in the source"""
+        places = source.places(value, ruled_out)
         target = self.__house_holding(places, source) if len(places) > 1 else None
         if target is None:
             return
-        for cell in target.places(value):
+        for cell in target.places(value, ruled_out):
             if cell not in source.cells:
-                ruled_out[(cell, value)] = self._reason(value, source, target)
+                found[(cell, value)] = self._reason(value, source, target)
 
     def __house_holding(self, places, source) -> House:
         """Return the house, of another kind than the source, that holds every one of the places; or None"""

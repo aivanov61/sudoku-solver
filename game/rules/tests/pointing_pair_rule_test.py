@@ -63,6 +63,23 @@ class TestPointingPairRule(TestCase):
         self.assertEqual((move.cell, move.value), (self.board.cell(2, 8), 4))
         self.assertEqual(move.hint, f"4 fits nowhere else in its column: {self.REASON}. [pointing pair] ")
 
+    def test_a_value_ruled_out_of_a_box_can_leave_it_confined_to_one_line(self):
+        self.__leave_4_in_box_0_in_rows_0_and_2()
+        self.assertNotIn((self.board.cell(0, 5), 4), PointingPairRule().eliminations(self.puzzle))
+        ruled_out = PointingPairRule().eliminations(self.puzzle, {(self.board.cell(2, 2), 4): "why"})
+        self.assertIn((self.board.cell(0, 5), 4), ruled_out)
+
+    def test_a_value_already_ruled_out_of_a_cell_is_not_ruled_out_again(self):
+        self.__leave_4_in_box_0_only_in_row_0()
+        ruled_out = PointingPairRule().eliminations(self.puzzle, {(self.board.cell(0, 5), 4): "why"})
+        self.assertNotIn((self.board.cell(0, 5), 4), ruled_out)
+        self.assertIn((self.board.cell(0, 6), 4), ruled_out)
+
+    def test_a_value_ruled_out_down_to_one_place_rules_nothing_else_out(self):
+        self.__leave_4_in_box_0_in_rows_0_and_2()
+        already = {(self.board.cell(row, col), 4): "why" for row, col in ((0, 1), (0, 2), (2, 2))}
+        self.assertNotIn((self.board.cell(0, 5), 4), PointingPairRule().eliminations(self.puzzle, already))
+
     # Private functions
 
     def __fill(self, *entries):
@@ -72,6 +89,10 @@ class TestPointingPairRule(TestCase):
     def __leave_4_in_box_0_only_in_row_0(self):
         """Fill box 0 but for row 0 and (2, 2), and put 4 in column 2, so box 0's 4 can only go in (0, 0) or (0, 1)"""
         self.__fill((1, 0, 1), (1, 1, 2), (1, 2, 3), (2, 0, 5), (2, 1, 6), (5, 2, 4))
+
+    def __leave_4_in_box_0_in_rows_0_and_2(self):
+        """Fill box 0 but for row 0 and (2, 2), so box 0's 4 can go in row 0 or at (2, 2)"""
+        self.__fill((1, 0, 1), (1, 1, 2), (1, 2, 3), (2, 0, 5), (2, 1, 6))
 
     def __leave_column_8_only_4_and_9_in_rows_0_and_2(self):
         self.__fill((1, 8, 8), (3, 8, 1), (4, 8, 2), (5, 8, 3), (6, 8, 5), (7, 8, 6), (8, 8, 7))

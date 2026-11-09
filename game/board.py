@@ -68,13 +68,14 @@ class Board(ABC):
     def has_conflicts(self) -> bool:
         return self.first_cell_where(Cell.is_marked_in_conflict) is not None
 
-    def refresh_marks(self, setting: MarksSetting, ruled_out=frozenset()) -> None:
+    def refresh_marks(self, setting: MarksSetting, ruled_out=frozenset(), removed=frozenset()) -> None:
         """
         Have every cell show its marks: what it must be once tagged, leaving out each (cell, value) ruled out, or
-        else the "must be" marks (Snyder notation) the setting asks for; none for a setting of None
+        else the "must be" marks (Snyder notation) the setting asks for; none for a setting of None.  Each
+        (cell, value) removed is no longer shown as possible.
         """
         for cell in self.cells():
-            cell.refresh_marks(setting, ruled_out)
+            cell.refresh_marks(setting, ruled_out, removed)
 
     def houses(self) -> list:
         """Return every house: each block's box, then every row and every column"""

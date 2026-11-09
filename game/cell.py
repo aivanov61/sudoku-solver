@@ -38,6 +38,7 @@ class Cell:
     1. Store and retrieve a value with set()/value()
     1. Keep the player's tag with set_tagged()/is_tagged(), whatever its value
     1. Honor legal values provided by the block
+    1. Show its possible values with shown_possible(), less those the player chose to have removed once ruled out
     1. Report every change to its value, attributes, possible values, marks or tag to its parent, so they can be shown
     1. Trigger recalculation of other puzzle cell values when this cell value changes
     """
@@ -48,6 +49,7 @@ class Cell:
         self._attrs = tuple()
         self._marks = ()  # what the cell must be once tagged, or else its "must be" marks (Snyder notation)
         self._tagged = False  # tagged by the player, to pick the cell out
+        self._removed = set()  # possible values taken off what the cell shows, as ruled out (see EliminationsSetting)
         self._parent = parent
         self.row = row
         self.col = col
@@ -74,6 +76,14 @@ class Cell:
 
     def possible_values(self) -> set:
         return self._solver.possible_values()
+
+    def shown_possible(self) -> set:
+        """Return the possible values the cell shows: all of them but those removed as ruled out"""
+        return self.possible_values() - self._removed
+
+    def has_removed(self) -> bool:
+        """Return True if some of the possible values are not shown, having been removed as ruled out"""
+        return bool(self.possible_values() & self._removed)
 
     def marks(self) -> tuple:
         """
@@ -123,14 +133,16 @@ class Cell:
 
     # Interface required for the board
 
-    def refresh_marks(self, setting: MarksSetting, ruled_out=frozenset()) -> None:
+    def refresh_marks(self, setting: MarksSetting, ruled_out=frozenset(), removed=frozenset()) -> None:
         """
         Show what the cell must be once tagged, leaving out each (cell, value) ruled out, or else the Snyder marks
-        the setting asks for in the whole puzzle; nothing without a setting.  Report any change.
+        the setting asks for in the whole puzzle, counting only what is not removed; nothing without a setting.  Stop
+        showing each possible value removed.  Report any change.
         """
-        marks = self.__marks_for(setting, ruled_out)
-        if marks != self._marks:
-            self._marks = marks
+        marks = self.__marks_for(setting, ruled_out, removed)
+        taken_off = self.possible_values() - self.candidates(removed)
+        if marks != self._marks or taken_off != self._removed:
+            self._marks, self._removed = marks, taken_off
             self.__report_change()
 
     # Interface required for related cells
@@ -226,13 +238,13 @@ class Cell:
     def __report_change(self) -> None:
         self._parent.cell_changed(self)
 
-    def __marks_for(self, setting, ruled_out) -> tuple:
+    def __marks_for(self, setting, ruled_out, removed) -> tuple:
         if setting is None:
             return ()
         if self._tagged:
             return self.__must_be(ruled_out)
         if setting.whole_puzzle:
-            return self.__snyder_marks(setting.threshold, setting.kinds)
+            return self.__snyder_marks(setting.threshold, setting.kinds, removed)
         return ()
 
     def __must_be(self, ruled_out) -> tuple:
@@ -246,11 +258,11 @@ class Cell:
         taken = {cell.forced_value(ruled_out) for cell in self.__related_cells()}
         return tuple(value for value in sorted(self.candidates(ruled_out)) if value not in taken)
 
-    def __snyder_marks(self, threshold, kinds) -> tuple:
-        """Return, in order, the possible values with threshold places or fewer in a house of the kinds"""
+    def __snyder_marks(self, threshold, kinds, removed) -> tuple:
+        """Return, in order, the values not removed with threshold places or fewer, not counting those removed, in a house of the kinds"""
         houses = [house for house in self.houses() if house.kind in kinds]
-        few_places = lambda value: any(len(house.places(value)) <= threshold for house in houses)
-        return tuple(value for value in sorted(self.possible_values()) if few_places(value))
+        few_places = lambda value: any(len(house.places(value, removed)) <= threshold for house in houses)
+        return tuple(value for value in sorted(self.candidates(removed)) if few_places(value))
 
     def __first_in_houses(self, values, applies) -> tuple:
         """

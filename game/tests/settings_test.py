@@ -18,6 +18,7 @@
 from unittest import main, TestCase
 from unittest.mock import patch
 
+from game.eliminations_setting import EliminationsSetting
 from game.marks_setting import MarksSetting
 from game.settings import Settings
 
@@ -27,6 +28,7 @@ class TestSettings(TestCase):
 
     def test_every_setting_starts_as_its_default(self):
         self.assertEqual(Settings().of(MarksSetting), MarksSetting())
+        self.assertEqual(Settings().of(EliminationsSetting), EliminationsSetting())
 
     def test_options_are_every_settings_options_in_turn(self):
         with patch.object(Settings, "KINDS", (MarksSetting, OtherSetting)):
@@ -41,9 +43,12 @@ class TestSettings(TestCase):
             self.assertEqual(chosen.of(OtherSetting), OtherSetting())
 
     def test_settings_are_saved_by_name_and_read_back(self):
-        settings = Settings({MarksSetting.NAME: self.MARKS})
+        settings = Settings({MarksSetting.NAME: self.MARKS, EliminationsSetting.NAME: EliminationsSetting("intersections")})
         saved = settings.saved()
-        self.assertEqual(saved, {"marks": {"threshold": 3, "kinds": ["box", "row", "column"], "whole_puzzle": False}})
+        self.assertEqual(saved, {
+            "marks": {"threshold": 3, "kinds": ["box", "row", "column"], "whole_puzzle": False},
+            "eliminations": {"level": "intersections"},
+        })
         self.assertEqual(Settings.from_saved(saved), settings)
 
     def test_a_setting_missing_from_what_was_saved_is_its_default(self):

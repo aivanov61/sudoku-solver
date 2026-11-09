@@ -281,6 +281,15 @@ A "must be" mark shows, in an empty cell, a value that has only a few places lef
 - **The board** gives the tagged cells' positions with `tags()`, for the save file, and `clear()` untags every cell as well as emptying it, so a restore starts with no tags.
 - **The terminal** draws a tagged cell's small digits, its marks and its possible values, in `DisplayAttrs.TAGGED_COLOR` (light sky blue) on the cell's background, with `DisplayAttrs.render_small_digits(attrs, tagged)`. A filled cell has no small digits, so its tag doesn't show until the value goes. `TerminalUI` remembers the tag with the rest of what it last drew.
 
+### 5.11 Ruled-out values
+
+The player can choose how much of what the solving rules rule out comes off the cells' bottom lines, so harder techniques can be worked out or seen.
+
+- **Levels:** a rule that rules values out names its `LEVEL` (`IntersectionRule` names `intersections`). `EliminationsSetting.levels()` is `none`, then each level once, in the order of `RULES`, so a rule at a new level adds that level to the menu with no other change. A level includes those before it (`includes(rule)`), and is saved by name, so adding a level can't change what an old save means.
+- **The cascade:** `PuzzleSolver.removed(setting)` asks each included rule for `eliminations(puzzle, removed)` over and over, each seeing what is already gone, until none finds more. The result is in the order found. A cascade only removes: a value left with one place, or a cell left with one value, rules out nothing further.
+- **Nothing is stored:** it is worked out again after every key, from the board, with the rest of the marks. Undo, rewind and the save file need nothing, beyond the setting itself.
+- **What it changes:** only what is shown. `Cell.possible_values()` stays the truth, used by every rule, `n`, `a` and the dead end checks; `Cell.shown_possible()` leaves out what `refresh_marks()` was told is removed, and `TerminalUI` draws that, in `DisplayAttrs.REMOVED_VALUES` (yellow, on the cell's background) when `Cell.has_removed()` and the values fit, so the player can see which bottom lines have lost values; the dots for more than fit keep their usual color. Snyder marks count only the values not removed. Tagged cells leave out one pass of every rule, plus the cascade.
+
 ## 6. Display
 
 - **Cell layout:** each cell is 6 columns by 3 lines. The top line is the border (shared with the cell above), the middle line shows the value (or an empty cell's "must be" marks, see 5.9), and the bottom line shows the possible values. Box edges use full blocks (`█`); inner lines use `│`, `─` and `┼`.

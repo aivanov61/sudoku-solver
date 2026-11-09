@@ -20,6 +20,7 @@ from unittest.mock import patch
 
 from game.actions import Action, Mode, OFFERED_ACTIONS
 from game.cell_attrs import CellAttrs
+from game.eliminations_setting import EliminationsSetting
 from game.marks_setting import MarksSetting
 from game.puzzle import Puzzle
 from game.puzzles.board_3x3 import Board3x3
@@ -583,6 +584,66 @@ class TestPuzzle(TestCase):
         self.puzzle.handle(Action.PLAY)
         self.assertEqual(self.__cell(0, 0).marks(), (4,))
 
+    # Ruled-out values
+
+    def test_ruled_out_values_stay_on_the_cells_at_first(self):
+        self.__leave_4_to_cascade_into_row_0()
+        self.puzzle.handle(Action.PLAY)
+        self.assertIn(4, self.__cell(2, 2).shown_possible())
+
+    def test_ruled_out_values_come_off_the_cells_at_a_level_but_stay_possible(self):
+        self.__leave_4_to_cascade_into_row_0()
+        self.puzzle.play_()
+        self.__remove_intersections()
+        self.assertNotIn(4, self.__cell(2, 2).shown_possible())
+        self.assertIn(4, self.__cell(2, 2).possible_values())
+
+    def test_ruled_out_values_cascade(self):
+        self.__leave_4_to_cascade_into_row_0()
+        self.puzzle.play_()
+        self.__remove_intersections()
+        self.assertNotIn(4, self.__cell(0, 5).shown_possible())
+
+    def test_removed_values_are_shown_again_in_setup(self):
+        self.__leave_4_to_cascade_into_row_0()
+        self.puzzle.play_()
+        self.__remove_intersections()
+        self.puzzle.handle(Action.INIT)
+        self.assertIn(4, self.__cell(2, 2).shown_possible())
+
+    def test_removed_values_come_back_when_an_undo_takes_away_their_reason(self):
+        self.__leave_4_to_cascade_into_row_0(last_given=False)
+        self.puzzle.play_()
+        self.__remove_intersections()
+        self.__enter(5, 1, 7)
+        self.assertNotIn(4, self.__cell(2, 2).shown_possible())
+        self.puzzle.handle(Action.UNDO)
+        self.assertIn(4, self.__cell(2, 2).shown_possible())
+
+    def test_a_tagged_cell_leaves_out_what_the_cascade_removes(self):
+        self.__leave_4_to_cascade_into_row_0()
+        self.puzzle.play_()
+        self.puzzle.selected_cell = (0, 5)
+        self.puzzle.handle(Action.TAG)
+        self.assertIn(4, self.__cell(0, 5).marks())
+        self.__remove_intersections()
+        self.assertNotIn(4, self.__cell(0, 5).marks())
+
+    def test_snyder_marks_count_only_the_values_still_shown(self):
+        self.__leave_4_to_cascade_into_row_0()
+        self.puzzle.play_()
+        self.ui.choices = [0, 0, 1, 1]
+        self.puzzle.handle(Action.CONFIGURE)
+        self.assertIn(4, self.__cell(0, 0).marks())
+        self.assertEqual(self.__cell(2, 2).marks(), ())
+
+    def test_removing_values_leaves_the_next_move_alone(self):
+        self.__leave_4_only_column_6_in_row_0()
+        self.puzzle.play_()
+        before = self.puzzle._Puzzle__solver.find_move()
+        self.__remove_intersections()
+        self.assertEqual(self.puzzle._Puzzle__solver.find_move(), before)
+
     # Tags
 
     def test_tag_tags_the_selected_cell_in_setup_and_untags_it_again(self):
@@ -868,10 +929,16 @@ class TestPuzzle(TestCase):
 
     def test_restore_brings_back_the_marks_setting(self):
         self.puzzle.play_()
-        self.ui.choices = [0, 1, 0]
+        self.ui.choices = [0, 1, 0, 0]
         self.puzzle.handle(Action.CONFIGURE)
         restored = self.__restored_puzzle()
         self.assertEqual(restored.saved_state().settings.of(MarksSetting), MarksSetting(3, MarksSetting.BOX_ONLY))
+
+    def test_restore_brings_back_the_level_of_ruled_out_values(self):
+        self.puzzle.play_()
+        self.__remove_intersections()
+        restored = self.__restored_puzzle()
+        self.assertEqual(restored.saved_state().settings.of(EliminationsSetting), EliminationsSetting("intersections"))
 
     def test_restore_brings_back_the_tags(self):
         self.__play_a_few_moves()
@@ -988,8 +1055,21 @@ class TestPuzzle(TestCase):
 
     def __turn_on_box_marks(self):
         """Configure marks, in the whole puzzle, for values with 2 or fewer places in their box"""
-        self.ui.choices = [0, 0, 1]
+        self.ui.choices = [0, 0, 1, 0]
         self.puzzle.handle(Action.CONFIGURE)
+
+    def __remove_intersections(self):
+        self.ui.choices = [0, 0, 0, 1]
+        self.puzzle.handle(Action.CONFIGURE)
+
+    def __leave_4_to_cascade_into_row_0(self, last_given=True):
+        """
+        Box 3's 4 can only go in column 2, which rules it out of (0, 2) and (2, 2); that leaves box 0's 4 only in
+        row 0, which rules it out of the rest of the row.  Without the last given (5, 1), box 3's 4 has another place.
+        """
+        givens = ((1, 0, 1), (1, 1, 2), (1, 2, 3), (2, 0, 5), (2, 1, 6), (3, 0, 2), (4, 0, 3), (5, 0, 6), (3, 1, 1), (4, 1, 5))
+        for row, col, value in givens + (((5, 1, 7),) if last_given else ()):
+            self.__enter(row, col, value)
 
     def __leave_4_no_place_in_row_0(self):
         """Fill row 0 but for 4 and 9, and put 4 in column 7, so a 4 in column 8 leaves row 0 no place for one"""

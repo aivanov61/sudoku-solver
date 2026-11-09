@@ -208,7 +208,7 @@ class TestTerminalUI(TestCase):
         self.display.clear_screen.assert_called_once()
         self.assertEqual(self.display.draw_cell.call_count, 2)
         self.display.draw_cell_value.assert_any_call(0, 0, 5, ())
-        self.display.draw_cell_possible_values.assert_any_call(0, 1, {1, 2}, (), False)
+        self.display.draw_cell_possible_values.assert_any_call(0, 1, {1, 2}, (), False, False)
 
     def test_a_new_mode_draws_its_panel(self):
         self.ui.mode_changed(Mode.PLAY, OFFERED_ACTIONS[Mode.PLAY])
@@ -241,13 +241,13 @@ class TestTerminalUI(TestCase):
     def test_a_tagged_cell_draws_its_marks_and_possible_values_as_tagged(self):
         display = self.__drawn_after_change(None, self.__cell(2, 3, possible={1, 5}, marks=(5,), tagged=True))
         display.draw_cell_marks.assert_called_once_with(2, 3, (5,), (), True)
-        display.draw_cell_possible_values.assert_called_once_with(2, 3, {1, 5}, (), True)
+        display.draw_cell_possible_values.assert_called_once_with(2, 3, {1, 5}, (), True, False)
 
     def test_a_changed_tag_redraws_the_marks_and_possible_values(self):
         display = self.__drawn_after_change(self.__cell(possible={1}), self.__cell(possible={1}, tagged=True))
         display.draw_cell.assert_not_called()
         display.draw_cell_marks.assert_called_once_with(0, 0, (), (), True)
-        display.draw_cell_possible_values.assert_called_once_with(0, 0, {1}, (), True)
+        display.draw_cell_possible_values.assert_called_once_with(0, 0, {1}, (), True, False)
 
     def test_a_changed_value_redraws_only_the_middle_line_blank_with_the_value_on_it(self):
         display = self.__drawn_after_change(self.__cell(value=4), self.__cell(value=6))
@@ -272,7 +272,16 @@ class TestTerminalUI(TestCase):
         display = self.__drawn_after_change(self.__cell(possible={1, 2}), self.__cell(possible={2}))
         display.draw_cell.assert_not_called()
         display.draw_cell_marks.assert_not_called()
-        display.draw_cell_possible_values.assert_called_once_with(0, 0, {2}, (), False)
+        display.draw_cell_possible_values.assert_called_once_with(0, 0, {2}, (), False, False)
+
+    def test_a_cell_with_removed_values_draws_its_possible_values_as_removed(self):
+        display = self.__drawn_after_change(None, self.__cell(2, 3, possible={1, 5}, removed=True))
+        display.draw_cell_possible_values.assert_called_once_with(2, 3, {1, 5}, (), False, True)
+
+    def test_a_change_in_removed_values_alone_redraws_the_possible_values(self):
+        display = self.__drawn_after_change(self.__cell(possible={1}, removed=True), self.__cell(possible={1}))
+        display.draw_cell.assert_not_called()
+        display.draw_cell_possible_values.assert_called_once_with(0, 0, {1}, (), False, False)
 
     def test_an_unchanged_cell_is_not_redrawn(self):
         display = self.__drawn_after_change(self.__cell(value=4), self.__cell(value=4))
@@ -321,12 +330,21 @@ class TestTerminalUI(TestCase):
         with patch("ui.terminal.terminal_ui.Menu", side_effect=self.__menu_pressing_tab_on_line(1, picked=None)):
             self.assertEqual(self.ui.configure(options), options)
 
+    def test_configure_opens_on_the_line_it_was_left_on_whether_applied_or_cancelled(self):
+        options = [ConfigOption("Marks", "Kind", (("a", 1), ("b", 2)), 1)]
+        with patch("ui.terminal.terminal_ui.Menu") as menu:
+            menu.return_value.choose.side_effect = [None, 0, None]
+            menu.return_value.selected_index.side_effect = [3, 1, 2]
+            for _ in range(3):
+                self.ui.configure(options)
+        self.assertEqual([call.kwargs["start"] for call in menu.call_args_list], [0, 3, 1])
+
     # Private functions
 
     def __menu_pressing_tab_on_line(self, line, picked=0):
         """A stand-in for Menu that keeps the items it is shown, presses TAB on one of them, then returns picked"""
 
-        def menu(title, items, keys_help, display):
+        def menu(title, items, keys_help, display, start):
             self.shown_texts = [item.text() for item in items]
             self.shown_items = [(type(item).__name__, text.split(" ")[0]) for item, text in zip(items, self.shown_texts)]
             items[line].handle("KEY_TAB")
@@ -358,14 +376,15 @@ class TestTerminalUI(TestCase):
                 self.ui.play(game)
         return printed, record
 
-    def __cell(self, row=0, col=0, value=None, attrs=(), possible=frozenset(), marks=(), tagged=False):
+    def __cell(self, row=0, col=0, value=None, attrs=(), possible=frozenset(), marks=(), tagged=False, removed=False):
         """A stand-in for a cell as it is at one moment"""
         cell = MagicMock(row=row, col=col)
         cell.value.return_value = value
         cell.attr.return_value = attrs
-        cell.possible_values.return_value = set(possible)
+        cell.shown_possible.return_value = set(possible)
         cell.marks.return_value = tuple(marks)
         cell.is_tagged.return_value = tagged
+        cell.has_removed.return_value = removed
         return cell
 
     def __drawn_after_change(self, before, after):

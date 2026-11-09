@@ -154,6 +154,7 @@ some guidance.  Each folder of code also has a `tests/` folder beside it (see Te
   - settings.py - every setting the player can configure, saved by name; `Settings` class
   - config_option.py - a setting the player can configure; `ConfigOption` class
   - marks_setting.py - which "must be" marks (Snyder notation) cells show; `MarksSetting` class
+  - eliminations_setting.py - how much of what the solving rules rule out is taken off the cells; `EliminationsSetting` class
   - puzzle_solver.py - finds and makes the next obvious move (n) or all of them (a) by applying the solving rules; `PuzzleSolver` class
   - rules/ - the solving rules, one per file
     - order.py - sets the order the rules are applied in

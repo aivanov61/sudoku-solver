@@ -80,6 +80,13 @@ class TestDisplayRenderAttrs(TestCase):
         self.assertEqual(DisplayAttrs.render_small_digits((), True), "lightskyblue")
         self.assertEqual(DisplayAttrs.render_small_digits((dict(depth=2),), True), "lightskyblue_on_gray20")
 
+    def test_small_digits_with_values_removed_are_yellow_on_the_cells_background(self):
+        self.assertEqual(DisplayAttrs.render_small_digits((), False, True), "yellow")
+        self.assertEqual(DisplayAttrs.render_small_digits((dict(depth=2),), False, True), "yellow_on_gray20")
+
+    def test_small_digits_with_values_removed_are_yellow_even_if_tagged(self):
+        self.assertEqual(DisplayAttrs.render_small_digits((), True, True), "yellow")
+
     def test_only_a_depth_beyond_the_last_shade_runs_out_of_shades(self):
         self.assertFalse(DisplayAttrs.is_beyond_last_shade(0))
         self.assertFalse(DisplayAttrs.is_beyond_last_shade(10))

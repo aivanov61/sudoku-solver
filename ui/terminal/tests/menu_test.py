@@ -55,6 +55,24 @@ class TestMenu(TestCase):
     def test_down_on_the_last_entry_does_nothing(self):
         self.assertEqual(self.__choose(*[self.DOWN] * 6, self.ENTER), 6)
 
+    def test_a_menu_can_open_on_a_given_entry(self):
+        self.assertEqual(self.__choose(self.ENTER, start=2), 3)
+        self.assertIn("  [Layout 3]", self.__last_screen())
+
+    def test_opening_on_an_entry_that_cannot_be_picked_selects_the_next_that_can(self):
+        self.entries[2] = MenuEntry("Broken", 3, can_pick=False)
+        self.assertEqual(self.__choose(self.ENTER, start=2), 4)
+
+    def test_opening_on_an_entry_too_far_down_to_show_scrolls_it_into_view(self):
+        self.__choose(self.ENTER, height=9, start=5)
+        self.assertEqual(self.__item_lines(), [Menu.MORE, "  Layout 4", "  Layout 5", "  [Layout 6]"])
+
+    def test_a_menu_tells_which_entry_it_was_left_on(self):
+        self.__choose(self.DOWN, self.DOWN, self.ENTER)
+        self.assertEqual(self.menu.selected_index(), 2)
+        self.__choose(self.DOWN, self.ESCAPE, "y")
+        self.assertEqual(self.menu.selected_index(), 1)
+
     def test_other_keys_are_ignored(self):
         self.assertEqual(self.__choose("x", "5", self.ENTER), 1)
 
@@ -205,7 +223,7 @@ class TestMenu(TestCase):
 
     # Private functions
 
-    def __choose(self, *keys, height=24, quit_question=QUIT_QUESTION):
+    def __choose(self, *keys, height=24, quit_question=QUIT_QUESTION, start=0):
         display = MagicMock()
         display.term.height = height
         display.term.yellow.side_effect = lambda text: text
@@ -213,7 +231,8 @@ class TestMenu(TestCase):
         display.term.gray50.side_effect = lambda text: f"<{text}>"
         display.term.inkey.side_effect = [Keystroke(key) if type(key) is str else key for key in keys]
         with patch("ui.terminal.menu.echo") as self.echo:
-            return Menu("Pick one:", self.entries, "ENTER picks", display, quit_question).choose()
+            self.menu = Menu("Pick one:", self.entries, "ENTER picks", display, quit_question, start)
+            return self.menu.choose()
 
     def __last_screen(self) -> list:
         return str(self.echo.call_args_list[-1].args[0]).split("\n")
