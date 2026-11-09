@@ -41,6 +41,12 @@ class EliminatingRule(Rule):
 
     # Interface required for subclasses
 
+    def _keep_simplest(self, found, ruled_out_value, elimination) -> None:
+        """Note the elimination as why the (cell, value) is ruled out, unless the reason already noted relies on no more"""
+        kept = found.get(ruled_out_value)
+        if kept is None or len(elimination.relied_on) < len(kept.relied_on):
+            found[ruled_out_value] = elimination
+
     def _listed(self, items) -> str:
         """Return the items as the player reads them, such as: 4 and 7"""
         *rest, last = map(str, items)

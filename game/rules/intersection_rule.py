@@ -58,7 +58,8 @@ class IntersectionRule(EliminatingRule):
         removed = [cell for cell in target.places(value, ruled_out) if cell not in source.cells]
         if removed:
             elimination = self.__elimination(value, source, target, places, removed, ruled_out)
-            found.update({(cell, value): elimination for cell in removed})
+            for cell in removed:
+                self._keep_simplest(found, (cell, value), elimination)
 
     def __house_holding(self, places, source) -> House:
         """Return the house, of another kind than the source, that holds every one of the places; or None"""

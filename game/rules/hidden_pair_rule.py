@@ -50,7 +50,7 @@ class HiddenPairRule(EliminatingRule):
         if removed:
             elimination = self.__elimination(values, cells, house, ruled_out)
             for found_value in removed:
-                found.setdefault(found_value, elimination)
+                self._keep_simplest(found, found_value, elimination)
 
     def __elimination(self, values, cells, house: House, ruled_out) -> Elimination:
         """Return why the other values are out of the cells, relying on what left the values only there"""

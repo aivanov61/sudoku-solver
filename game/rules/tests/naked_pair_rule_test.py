@@ -79,6 +79,21 @@ class TestNakedPairRule(TestCase):
         ruled_out = NakedPairRule().eliminations(self.puzzle, {(self.second, 9): "why"})
         self.assertEqual(ruled_out[(self.board.cell(0, 8), 4)].relied_on, ((self.second, 9),))
 
+    def test_a_value_ruled_out_for_two_reasons_keeps_the_one_relying_on_fewest(self):
+        relied_on = self.__leave_box_pair_at_2_and_5_with(4)
+        self.__leave(4, 3, 5, 9)
+        self.__leave(5, 3, 5, 9)
+        elimination = NakedPairRule().eliminations(self.puzzle, relied_on)[(self.board.cell(1, 3), 5)]
+        self.assertEqual(elimination.why, "in column 4, (5,4) and (6,4) can only hold 5 and 9")
+        self.assertEqual(elimination.relied_on, ())
+
+    def test_a_value_ruled_out_for_two_equally_simple_reasons_keeps_the_first(self):
+        self.__leave_box_pair_at_2_and_5_with()
+        self.__leave(4, 3, 5, 9)
+        self.__leave(5, 3, 5, 9)
+        elimination = NakedPairRule().eliminations(self.puzzle)[(self.board.cell(1, 3), 5)]
+        self.assertEqual(elimination.why, "in box 2, (2,5) and (3,5) can only hold 2 and 5")
+
     def test_a_pair_with_nothing_ruled_out_first_relies_on_nothing(self):
         self.__make_pair()
         self.assertEqual(NakedPairRule().eliminations(self.puzzle)[(self.board.cell(0, 8), 4)].relied_on, ())
@@ -119,6 +134,12 @@ class TestNakedPairRule(TestCase):
     def __make_pair(self):
         self.__leave(0, 1, 4, 7)
         self.__leave(0, 4, 4, 7)
+
+    def __leave_box_pair_at_2_and_5_with(self, *extra) -> dict:
+        """Leave (1,4) and (2,4) only 2 and 5, and any extra values, ruled out here; return what rules those out"""
+        self.__leave(1, 4, 2, 5, *extra)
+        self.__leave(2, 4, 2, 5, *extra)
+        return {(self.board.cell(row, 4), value): "why" for row in (1, 2) for value in extra}
 
     def __leave(self, row, col, *values):
         """Take every other value off the cell"""

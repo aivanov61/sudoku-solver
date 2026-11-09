@@ -51,7 +51,7 @@ class NakedPairRule(EliminatingRule):
         elimination = self.__elimination(values, cells, house, gone, ruled_out)
         for cell, digits in gone.items():
             for value in digits:
-                found.setdefault((cell, value), elimination)
+                self._keep_simplest(found, (cell, value), elimination)
 
     def __elimination(self, values, cells, house: House, gone, ruled_out) -> Elimination:
         """Return why the values are out of the rest of the house, relying on what left the cells with only those values"""

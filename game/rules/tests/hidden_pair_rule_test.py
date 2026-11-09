@@ -72,6 +72,18 @@ class TestHiddenPairRule(TestCase):
         ruled_out = HiddenPairRule().eliminations(self.puzzle, {(third, 4): "why"})
         self.assertEqual(ruled_out[(self.first, 9)].relied_on, ((third, 4),))
 
+    def test_a_value_ruled_out_for_two_reasons_keeps_the_one_relying_on_fewest(self):
+        self.__keep_only_in(4, 0, 0, 1)
+        self.__keep_only_in(7, 0, 0, 1)
+        for row in (1, 2):
+            self.__keep_only_in(4, row)
+            self.__keep_only_in(7, row)
+        relied_on = self.board.cell(1, 0)
+        relied_on.add_possible(4)
+        elimination = HiddenPairRule().eliminations(self.puzzle, {(relied_on, 4): "why"})[(self.board.cell(0, 0), 9)]
+        self.assertEqual(elimination.why, "in row 1, 4 and 7 can only go in (1,1) and (1,2)")
+        self.assertEqual(elimination.relied_on, ())
+
     def test_a_pair_with_nothing_ruled_out_first_relies_on_nothing(self):
         self.__hide_pair()
         self.assertEqual(HiddenPairRule().eliminations(self.puzzle)[(self.first, 9)].relied_on, ())
