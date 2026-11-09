@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 from game.eliminations_setting import EliminationsSetting
 from game.rules.order import RULES
-from game.rules.rule import Move, Outcome
+from game.rules.rule import Elimination, Move, Outcome
 from game.user_interface import Message, MessageKind, Step
 
 if TYPE_CHECKING:
@@ -82,21 +82,22 @@ class PuzzleSolver:
         Return {(cell, value): Elimination}, in the order found, for the values the setting takes off the cells: what its
         rules rule out, then what they rule out once those are gone, until they rule out nothing more
         """
-        rules = [rule for rule in self.__rules if setting.includes(rule)]
-        removed, count = {}, None
-        while count != len(removed):
-            count = len(removed)
-            for rule in rules:
-                for found, why in rule.eliminations(self.__puzzle, removed).items():
-                    removed.setdefault(found, why)
-        return removed
+        return self.__cascade([rule for rule in self.__rules if setting.includes(rule)])
+
+    def everything_ruled_out(self) -> dict:
+        """Return {(cell, value): Elimination}, in the order found, for what all the rules rule out together, whatever the level"""
+        return self.__cascade(self.__rules)
 
     def removal_steps(self, cell, setting: EliminationsSetting) -> list:
-        """Return the Steps explaining what the setting takes off the cell: every removal needed for it, oldest first"""
+        """
+        Return the Steps explaining the move pointed out, if it comes with removals of its own, or else what the
+        setting takes off the cell: every removal needed for it, oldest first
+        """
+        pending = self.__pending_move
+        if pending and pending.reasons:
+            return self.__steps(pending.reasons)
         removed = self.removed(setting)
-        chain = self.__chain_of(cell, removed)
-        numbers = {found: number for number, found in enumerate(chain, 1)}
-        return [self.__step(found, removed[found], numbers) for found in chain]
+        return self.__steps(Elimination.needed_for([found for found in removed if found[0] is cell], removed))
 
     def make_move(self, move) -> None:
         """Fill in the value of a move that fills a cell"""
@@ -125,15 +126,20 @@ class PuzzleSolver:
             self.__puzzle.select(move.cell)
         return Message(move.hint, MessageKind.WARNING, move.missing())
 
-    def __chain_of(self, cell, removed) -> list:
-        """Return, in the order found, each (cell, value) removed from the cell and each one those rely on"""
-        needed, to_follow = set(), [found for found in removed if found[0] is cell]
-        while to_follow:
-            found = to_follow.pop()
-            if found not in needed:
-                needed.add(found)
-                to_follow.extend(removed[found].relied_on)
-        return [found for found in removed if found in needed]
+    def __cascade(self, rules) -> dict:
+        """Return {(cell, value): Elimination}, in the order found: what the rules rule out, then what they rule out once those are gone, and so on"""
+        removed, count = {}, None
+        while count != len(removed):
+            count = len(removed)
+            for rule in rules:
+                for found, why in rule.eliminations(self.__puzzle, removed).items():
+                    removed.setdefault(found, why)
+        return removed
+
+    def __steps(self, reasons) -> list:
+        """Return the Step for each of the {(cell, value): Elimination}, numbered in order"""
+        numbers = {found: number for number, found in enumerate(reasons, 1)}
+        return [self.__step(found, why, numbers) for found, why in reasons.items()]
 
     def __step(self, found, elimination, numbers) -> Step:
         """Return the step for one removal, numbered among the others, its short text for a line too narrow for it all"""

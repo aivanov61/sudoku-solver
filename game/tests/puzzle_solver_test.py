@@ -85,6 +85,13 @@ class TestPuzzleSolver(TestCase):
         rule = self.__eliminating(None, lambda ruled_out: {(MagicMock(), 4): "why"})
         self.assertEqual(PuzzleSolver(self.puzzle, [rule]).removed(EliminationsSetting("intersections")), {})
 
+    def test_everything_ruled_out_cascades_through_the_rules_of_every_level(self):
+        first, second = MagicMock(), MagicMock()
+        after_first = self.__eliminating(None, lambda ruled_out: {(second, 5): "b"} if (first, 4) in ruled_out else {})
+        always = self.__eliminating("pairs", lambda ruled_out: {(first, 4): "a"})
+        solver = PuzzleSolver(self.puzzle, [after_first, always])
+        self.assertEqual(list(solver.everything_ruled_out().items()), [((first, 4), "a"), ((second, 5), "b")])
+
     def test_removal_steps_are_the_cells_removals_and_what_they_rely_on_oldest_first(self):
         first, other, second = MagicMock(), MagicMock(), MagicMock()
         steps = self.__steps_for(second, {(first, 4): "a", (other, 6): "c"}, {(second, 5): ("b", ((first, 4),))})
@@ -122,6 +129,21 @@ class TestPuzzleSolver(TestCase):
         message = self.__steps_for(cell, {(cell, 4): "a"})[0].message
         self.assertIs(message.kind, MessageKind.INFO)
         self.assertEqual(message.short, "(1/1) 4 ruled out: a")
+
+    def test_removal_steps_are_the_removals_the_pointed_out_move_needs_whatever_the_level(self):
+        cell, other = MagicMock(), MagicMock()
+        reasons = {(other, 4): Elimination("a", "rule"), (cell, 5): Elimination("b", "rule", ((other, 4),))}
+        solver = self.__solver_with([Move(Outcome.MOVED, "why", cell, 3, reasons=reasons)])
+        solver.next()
+        steps = solver.removal_steps(cell, EliminationsSetting())
+        self.assertEqual([step.cell for step in steps], [other, cell])
+        self.assertEqual(steps[1].message.text, "(2/2) 5 is ruled out here: b (see step 1) [rule] ")
+
+    def test_a_pointed_out_move_with_no_removals_of_its_own_leaves_the_removal_steps_to_the_level(self):
+        cell = MagicMock()
+        solver = self.__solver_with([Move(Outcome.MOVED, "why", cell, 3)])
+        solver.next()
+        self.assertEqual(solver.removal_steps(cell, EliminationsSetting()), [])
 
     def test_a_cell_with_nothing_removed_has_no_removal_steps(self):
         self.assertEqual(self.__steps_for(MagicMock(), {(MagicMock(), 4): "a"}), [])

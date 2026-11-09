@@ -672,6 +672,14 @@ class TestPuzzle(TestCase):
         self.assertEqual(self.ui.walked, [])
         self.assertEqual(self.ui.last_status(), "No values have been taken off this cell. ")
 
+    def test_why_leaves_the_move_next_pointed_out_for_the_following_next(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        self.puzzle.handle(Action.NEXT)
+        self.puzzle.handle(Action.WHY)
+        self.puzzle.handle(Action.NEXT)
+        self.assertEqual(self.__cell(0, 8).value(), 9)
+
     def test_why_is_refused_in_setup(self):
         self.puzzle.handle(Action.WHY)
         self.assertEqual(self.ui.walked, [])
@@ -819,6 +827,11 @@ class TestPuzzle(TestCase):
         self.puzzle.next_()
         self.assertIn("try either undoing or rewinding", self.ui.last_informed())
         self.assertEqual(self.puzzle.selected_cell, (0, 8))
+
+    def test_everything_ruled_out_does_not_depend_on_the_level_chosen(self):
+        self.__leave_4_to_cascade_into_row_0()
+        self.puzzle.play_()
+        self.assertIn((self.__cell(2, 2), 4), self.puzzle.everything_ruled_out())
 
     def test_next_with_no_obvious_move_says_to_guess(self):
         self.puzzle.play_()

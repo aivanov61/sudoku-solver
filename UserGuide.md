@@ -99,6 +99,7 @@ It finds these kinds of move, and ends each explanation with the name of the rul
 - **A box/line reduction** `[box/line reduction]`: the other way round. When, within one row (or column), a value can only go in one box, it can't go anywhere else in that box.
 - **A naked pair** `[naked pair]`: when two cells of a box, row or column can only hold the same two values, those values go in those two cells, so they can't go anywhere else in that box, row or column. For example: "in row 3, (3,1) and (3,5) can only hold 4 and 7". Cells are named (row,column), counted from the top left.
 - **A hidden pair** `[hidden pair]`: the other way round. When two values can only go in the same two cells of a box, row or column, those cells must hold those values, so every other value is ruled out of them. For example: "in box 2, 4 and 7 can only go in (1,4) and (2,6)".
+- **Combined rules** `[combined rules]`: the last resort. When none of the above finds a move, `n` and `a` use everything all of them rule out together, each building on the others, whatever you chose to have removed (see "Configuration" below). When that leaves a cell one value, or a value one place, `n` says so, e.g. "Only 7 fits here once 3 and 5 are ruled out (press w for why)." Press `w` to go through the removals that move needs, and `n` to fill it in. If several cells qualify, you get the one needing the fewest removals.
 
 `n` tries them in this order, so if a cell qualifies more than one way, it explains the simplest. Values ruled out by pointing pairs, box/line reductions, naked pairs and hidden pairs aren't taken off the cells' bottom lines unless you ask for that (see "Configuration" below); `n` only shows them when they lead to a value to fill in, and tagged cells leave them out of what they must be (see Tags).
 
@@ -169,7 +170,7 @@ To see why, select a cell and press `w` while playing. The bottom line explains 
 
 `(2/3) 4 is ruled out here: in box 1, 4 can only go in row 1 (see step 1) [pointing pair]`
 
-"(see step 1)" means this removal needed step 1 to happen first. The steps include every removal this cell's depend on, so some are about other cells. Use `j` or `↓` for the next step and `k` or `↑` for the one before; they stop at the last and the first. `w`, `ENTER` or `ESC` finishes and puts the cursor back on your cell, and no other key does anything until then. If nothing was taken off the cell, `w` just says so.
+"(see step 1)" means this removal needed step 1 to happen first. The steps include every removal this cell's depend on, so some are about other cells. Use `j` or `↓` for the next step and `k` or `↑` for the one before; they stop at the last and the first. `w`, `ENTER` or `ESC` finishes and puts the cursor back on your cell, and no other key does anything until then. If nothing was taken off the cell, `w` just says so. Right after `n` points out a `[combined rules]` move, `w` goes through the removals that move needs instead, whatever you chose to have removed, and the next `n` still fills it in.
 
 ## Finishing the puzzle
 

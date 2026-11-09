@@ -22,6 +22,7 @@ from unittest import main, TestCase
 
 from game import rules
 from game.rules.box_line_rule import BoxLineRule
+from game.rules.combined_rule import CombinedRule
 from game.rules.conflicts_rule import ConflictsRule
 from game.rules.dead_end_rule import DeadEndRule
 from game.rules.hidden_pair_rule import HiddenPairRule
@@ -46,6 +47,7 @@ class TestRuleOrder(TestCase):
                 BoxLineRule,
                 NakedPairRule,
                 HiddenPairRule,
+                CombinedRule,
             ),
         )
 

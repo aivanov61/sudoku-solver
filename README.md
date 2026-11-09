@@ -166,6 +166,7 @@ some guidance.  Each folder of code also has a `tests/` folder beside it (see Te
     - intersection_rule.py - the base of the next two rules; `IntersectionRule` class
     - pointing_pair_rule.py - finds pointing pairs; `PointingPairRule` class
     - box_line_rule.py - finds box/line reductions; `BoxLineRule` class
+    - combined_rule.py - the last resort, using what all the rules rule out together; `CombinedRule` class
 - ui/ - the ways of showing the game
   - error_log.py - keeps the details of errors the program survives, in sudoku.log; `ErrorLog` class
   - terminal/ - shows the game in a terminal, using Blessed

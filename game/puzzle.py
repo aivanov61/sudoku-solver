@@ -195,6 +195,10 @@ class Puzzle:
         """Return every house of the board: each box, then every row and every column"""
         return self.__board.houses()
 
+    def everything_ruled_out(self) -> dict:
+        """Return {(cell, value): Elimination} for what all the rules rule out together, whatever the player chose to see removed"""
+        return self.__solver.everything_ruled_out()
+
     def select(self, cell) -> None:
         self.selected_cell = (cell.row, cell.col)
 
@@ -264,10 +268,10 @@ class Puzzle:
             self.__board.refresh_marks(self.__settings.of(MarksSetting), {**self.__solver.ruled_out(), **removed}, removed)
 
     def __action_received(self, action) -> None:
-        """Any action ends the notice and the completion report; any action but "n" cancels the move a previous "n" pointed out"""
+        """Any action ends the notice and the completion report; any action but "n" and "w" cancels the move a previous "n" pointed out"""
         self.__notice = None
         self.__report.seen()
-        if action is not Action.NEXT:
+        if action not in (Action.NEXT, Action.WHY):
             self.__solver.cancel_pending_move()
 
     def __enter(self, val, prim_attr) -> None:

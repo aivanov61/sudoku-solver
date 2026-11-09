@@ -37,6 +37,7 @@ class Move:
     value: int = None  # the value to fill in (MOVED), or the value that has no place left (STOPPED)
     house: object = None  # the house the value has no place left in (STOPPED)
     highlight: Highlight = None  # what the hint points at on the board, if anything
+    reasons: dict = None  # {(cell, value): Elimination} for each removal the move needs, oldest first, if it comes with its own
 
     def missing(self) -> tuple:
         """Return (cell, value) for a warning about a value with no place left, to show it in the cell; or None"""
@@ -52,12 +53,22 @@ class Elimination:
     relied_on: tuple = ()  # each (cell, value) that had to be ruled out first
     highlight: Highlight = None  # what the reason points at on the board, if anything
 
+    def needed_for(removals, ruled_out) -> dict:
+        """Return {(cell, value): Elimination}, in the order found, for each of the removals and each one those rely on"""
+        needed, to_follow = set(), list(removals)
+        while to_follow:
+            found = to_follow.pop()
+            if found not in needed:
+                needed.add(found)
+                to_follow.extend(ruled_out[found].relied_on)
+        return {found: why for found, why in ruled_out.items() if found in needed}
+
 
 class Rule(ABC):
     """
     A solving rule: it looks at the puzzle and returns at most one move, without making it.
 
-    Rules use only the puzzle's interface for the solver (first_cell_where() and houses()); the solver and
+    Rules use only the puzzle's interface for the solver (first_cell_where(), houses() and everything_ruled_out()); the solver and
     the puzzle make the move. Each rule has a NAME, which ends the hint of every move it finds, so the
     player learns which rule found it.  A rule can also rule values out of cells (eliminations()), which
     the puzzle never stores: tagged cells leave them out of what they must be.
@@ -79,6 +90,15 @@ class Rule(ABC):
 
     # Interface required for subclasses
 
-    def _move(self, outcome, hint, cell=None, value=None, house=None, highlight=None) -> Move:
+    def _move(self, outcome, hint, cell=None, value=None, house=None, highlight=None, reasons=None) -> Move:
         """Return a move whose hint ends with this rule's name"""
-        return Move(outcome, f"{hint} [{self.NAME}] ", cell, value, house, highlight)
+        return Move(outcome, f"{hint} [{self.NAME}] ", cell, value, house, highlight, reasons)
+
+    def _listed(self, items) -> str:
+        """Return the items as the player reads them, such as: 4 and 7"""
+        *rest, last = map(str, items)
+        return f"{', '.join(rest)} and {last}" if rest else last
+
+    def _named(self, cells) -> str:
+        """Return where the cells are, counted from 1, such as: (1,2) and (1,5)"""
+        return self._listed(f"({cell.row + 1},{cell.col + 1})" for cell in cells)

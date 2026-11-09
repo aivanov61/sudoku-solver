@@ -47,15 +47,6 @@ class EliminatingRule(Rule):
         if kept is None or len(elimination.relied_on) < len(kept.relied_on):
             found[ruled_out_value] = elimination
 
-    def _listed(self, items) -> str:
-        """Return the items as the player reads them, such as: 4 and 7"""
-        *rest, last = map(str, items)
-        return f"{', '.join(rest)} and {last}"
-
-    def _named(self, cells) -> str:
-        """Return where the cells are, counted from 1, such as: (1,2) and (1,5)"""
-        return self._listed(f"({cell.row + 1},{cell.col + 1})" for cell in cells)
-
     # Private functions
 
     def __move_into(self, cell, ruled_out) -> Move:
