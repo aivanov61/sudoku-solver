@@ -43,7 +43,7 @@ class DisplayAttrs:
     MAX_GRAY_LEVEL = 100  # There are no gray levels greater than 100
     TAGGED_COLOR = "lightskyblue"  # the small digits of a cell the player tagged
     REMOVED_VALUES = "yellow"  # the possible values of a cell that has lost some as ruled out
-    RULED_OUT_DIGITS = "bright_red"  # the values a cell has lost as ruled out, shown before those it has left
+    RULED_OUT_DIGITS = "red"  # the values a cell has lost as ruled out, shown before those it has left
     HIGHLIGHTED_BORDER = "yellow"  # the outline of a house a message points at, while it is shown
     HIGHLIGHTED_VALUE = "yellow_on_black"  # a value shown where it can still go, in the cells a message points at
     RULED_OUT_VALUE = "white_on_red"  # a value shown where it can't go, in the cells a message points at

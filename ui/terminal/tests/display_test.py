@@ -158,7 +158,7 @@ class TestDisplayPossibleValues(TestCase):
 
     def __echoed(self, values, **kwargs) -> list:
         """Return each thing drawn for the possible values, on a terminal that names its styles"""
-        term = MagicMock(yellow="<yellow>", normal="</>", lightskyblue="<tagged>", bright_red="<red>")
+        term = MagicMock(yellow="<yellow>", normal="</>", lightskyblue="<tagged>", red="<red>")
         with patch("ui.terminal.display.echo") as echo:
             board_display(term).draw_cell_possible_values(0, 0, values, **kwargs)
         return [draw.args[0] for draw in echo.call_args_list]

@@ -88,8 +88,8 @@ class TestDisplayRenderAttrs(TestCase):
         self.assertEqual(DisplayAttrs.render_small_digits((), True, True), "yellow")
 
     def test_ruled_out_digits_are_red_on_the_cells_background(self):
-        self.assertEqual(DisplayAttrs.render_ruled_out_digits(()), "bright_red")
-        self.assertEqual(DisplayAttrs.render_ruled_out_digits((dict(depth=2),)), "bright_red_on_gray20")
+        self.assertEqual(DisplayAttrs.render_ruled_out_digits(()), "red")
+        self.assertEqual(DisplayAttrs.render_ruled_out_digits((dict(depth=2),)), "red_on_gray20")
 
     def test_only_a_depth_beyond_the_last_shade_runs_out_of_shades(self):
         self.assertFalse(DisplayAttrs.is_beyond_last_shade(0))
