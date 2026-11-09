@@ -152,7 +152,7 @@ class TerminalUI:
         is_retagged = tagged != cell.is_tagged()
         if is_retagged or value != cell.value() or marks != cell.marks():
             self.__draw_middle(cell)
-        if is_retagged or possible_values != cell.shown_possible() or removed != cell.has_removed():
+        if is_retagged or possible_values != cell.shown_possible() or removed != cell.removed_possible():
             self.__draw_possible_values(cell)
         self.__remember(cell)
 
@@ -289,9 +289,9 @@ class TerminalUI:
 
     def __draw_possible_values(self, cell) -> None:
         display = self.__display
-        display.draw_cell_possible_values(cell.row, cell.col, cell.shown_possible(), cell.attr(), cell.is_tagged(), cell.has_removed())
+        display.draw_cell_possible_values(cell.row, cell.col, cell.shown_possible(), cell.attr(), cell.is_tagged(), cell.removed_possible())
 
     def __remember(self, cell) -> None:
         """Keep what the cell looks like now"""
-        drawn = (cell.attr(), cell.value(), cell.shown_possible(), cell.marks(), cell.is_tagged(), cell.has_removed())
+        drawn = (cell.attr(), cell.value(), cell.shown_possible(), cell.marks(), cell.is_tagged(), cell.removed_possible())
         self.__drawn[(cell.row, cell.col)] = drawn

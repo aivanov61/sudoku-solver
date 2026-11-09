@@ -438,11 +438,11 @@ class TestCell(TestCase):
 
     def test_a_cell_has_removed_values_only_while_some_are_taken_off(self):
         self.__leave_possible({3, 5})
-        self.assertFalse(self.cell.has_removed())
+        self.assertEqual(self.cell.removed_possible(), set())
         self.cell.refresh_marks(None, removed={(self.cell, 3): "why"})
-        self.assertTrue(self.cell.has_removed())
+        self.assertEqual(self.cell.removed_possible(), {3})
         self.cell.refresh_marks(None)
-        self.assertFalse(self.cell.has_removed())
+        self.assertEqual(self.cell.removed_possible(), set())
 
     def test_cell_reports_a_change_only_when_its_removed_values_change(self):
         self.__leave_possible({3, 5})

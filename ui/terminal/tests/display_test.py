@@ -113,28 +113,58 @@ class TestDisplayPossibleValues(TestCase):
         self.assertTrue(echo.call_args_list[-1].args[0].startswith(display.term.lightskyblue))
 
     def test_possible_values_with_some_removed_are_yellow(self):
-        self.assertTrue(self.__drawn(removed=True).startswith("<yellow>"))
+        self.assertTrue(self.__drawn(removed={3}).startswith("<yellow>"))
 
     def test_possible_values_with_some_removed_are_yellow_even_if_tagged(self):
-        self.assertTrue(self.__drawn(removed=True, tagged=True).startswith("<yellow>"))
+        self.assertTrue(self.__drawn(removed={3}, tagged=True).startswith("<yellow>"))
 
     def test_possible_values_with_none_removed_keep_their_usual_style(self):
         self.assertFalse(self.__drawn().startswith("<yellow>"))
 
     def test_five_possible_values_with_some_removed_are_yellow(self):
-        self.assertTrue(self.__drawn(values=range(1, 6), removed=True).startswith("<yellow>"))
+        self.assertTrue(self.__drawn(values=range(1, 6), removed={3}).startswith("<yellow>"))
+
+    def test_removed_values_come_first_in_red_then_the_remaining_in_yellow_each_in_order(self):
+        self.assertEqual(self.__bottom_line({7, 1}, {8, 4}), ["<yellow> ", f"<red>{self.__small('48')}", f"<yellow>{self.__small('17')}"])
+
+    def test_removed_values_that_exactly_fill_the_line_need_no_dot(self):
+        self.assertEqual(self.__bottom_line({1, 2, 3, 7}, {5}), [f"<red>{self.__small('5')}", f"<yellow>{self.__small('1237')}"])
+
+    def test_a_red_dot_after_the_lowest_removed_values_that_fit_stands_for_the_rest(self):
+        self.assertEqual(self.__bottom_line({1, 7}, {2, 3, 4, 5, 8}), [f"<red>{self.__small('23')}.", f"<yellow>{self.__small('17')}"])
+
+    def test_the_dot_alone_shows_when_it_fills_the_only_column_left(self):
+        self.assertEqual(self.__bottom_line({1, 2, 3, 7}, {5, 8}), ["<red>.", f"<yellow>{self.__small('1237')}"])
+
+    def test_five_remaining_values_leave_no_room_for_red_or_a_dot(self):
+        self.assertEqual(self.__bottom_line({1, 2, 3, 7, 9}, {5}), [f"<yellow>{self.__small('12379')}"])
+
+    def test_more_values_than_fit_show_just_their_dots(self):
+        self.assertEqual(self.__bottom_line(set(range(1, 7)), {7}), ["....."])
 
     def test_dots_for_more_values_than_fit_are_not_yellow_even_with_some_removed(self):
-        self.assertFalse(self.__drawn(values=range(1, 7), removed=True).startswith("<yellow>"))
+        self.assertFalse(self.__drawn(values=range(1, 7), removed={3}).startswith("<yellow>"))
 
     # Private functions
 
     def __drawn(self, values=(5,), **kwargs) -> str:
         """Return what is drawn last for a possible value, on a terminal that names its styles"""
-        term = MagicMock(yellow="<yellow>", normal="</>", lightskyblue="<tagged>")
+        return self.__echoed(values, **kwargs)[-1]
+
+    def __bottom_line(self, values, removed) -> list:
+        """Return each styled run of the bottom line, without its closing style or any run with no text"""
+        runs = (run.replace("</>", "") for run in self.__echoed(values, removed=removed)[1:])
+        return [run for run in runs if run not in ("", "<yellow>", "<red>")]
+
+    def __echoed(self, values, **kwargs) -> list:
+        """Return each thing drawn for the possible values, on a terminal that names its styles"""
+        term = MagicMock(yellow="<yellow>", normal="</>", lightskyblue="<tagged>", bright_red="<red>")
         with patch("ui.terminal.display.echo") as echo:
             board_display(term).draw_cell_possible_values(0, 0, values, **kwargs)
-        return echo.call_args_list[-1].args[0]
+        return [draw.args[0] for draw in echo.call_args_list]
+
+    def __small(self, digits) -> str:
+        return digits.translate(Display.small_nums)
 
 
 class TestDisplayMarks(TestCase):

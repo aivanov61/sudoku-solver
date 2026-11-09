@@ -81,9 +81,9 @@ class Cell:
         """Return the possible values the cell shows: all of them but those removed as ruled out"""
         return self.possible_values() - self._removed
 
-    def has_removed(self) -> bool:
-        """Return True if some of the possible values are not shown, having been removed as ruled out"""
-        return bool(self.possible_values() & self._removed)
+    def removed_possible(self) -> set:
+        """Return the possible values not among those shown, having been removed as ruled out"""
+        return self.possible_values() & self._removed
 
     def marks(self) -> tuple:
         """

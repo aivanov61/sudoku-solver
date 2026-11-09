@@ -34,6 +34,7 @@ class DisplayAttrs:
     - Guess depth - the shade of gray: GRAY_STEP lighter for each guess, up to the last shade, MAX_GRAY_LEVEL
     - Tagged - the small digits (marks and possible values) in TAGGED_COLOR, on the cell's background
     - Removed - the possible values of a cell that has lost some as ruled out, in REMOVED_VALUES, on the cell's background, even if tagged
+    - Ruled out - the values such a cell has lost, in RULED_OUT_DIGITS, on the cell's background
     """
 
     DEFAULT_COLOR = "darkorange3"
@@ -42,6 +43,7 @@ class DisplayAttrs:
     MAX_GRAY_LEVEL = 100  # There are no gray levels greater than 100
     TAGGED_COLOR = "lightskyblue"  # the small digits of a cell the player tagged
     REMOVED_VALUES = "yellow"  # the possible values of a cell that has lost some as ruled out
+    RULED_OUT_DIGITS = "bright_red"  # the values a cell has lost as ruled out, shown before those it has left
     HIGHLIGHTED_BORDER = "yellow"  # the outline of a house a message points at, while it is shown
     HIGHLIGHTED_VALUE = "yellow_on_black"  # a value shown where it can still go, in the cells a message points at
     RULED_OUT_VALUE = "white_on_red"  # a value shown where it can't go, in the cells a message points at
@@ -87,6 +89,11 @@ class DisplayAttrs:
         _fg, bg = DisplayAttrs.__get_fg_bg(_attrs)
         tagged_color = DisplayAttrs.TAGGED_COLOR if tagged else None
         return DisplayAttrs.__style(DisplayAttrs.REMOVED_VALUES if removed else tagged_color, bg)
+
+    def render_ruled_out_digits(_attrs) -> str:
+        """Render the term.[attr] string for the small digits of values ruled out: RULED_OUT_DIGITS on the background attributes"""
+        _fg, bg = DisplayAttrs.__get_fg_bg(_attrs)
+        return DisplayAttrs.__style(DisplayAttrs.RULED_OUT_DIGITS, bg)
 
     def is_beyond_last_shade(depth) -> bool:
         """Return True if the guess depth needs a lighter shade of gray than the last one"""

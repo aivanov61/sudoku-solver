@@ -237,7 +237,7 @@ class TestTerminalUI(TestCase):
         self.display.clear_screen.assert_called_once()
         self.assertEqual(self.display.draw_cell.call_count, 2)
         self.display.draw_cell_value.assert_any_call(0, 0, 5, ())
-        self.display.draw_cell_possible_values.assert_any_call(0, 1, {1, 2}, (), False, False)
+        self.display.draw_cell_possible_values.assert_any_call(0, 1, {1, 2}, (), False, set())
 
     def test_a_new_mode_draws_its_panel(self):
         self.ui.mode_changed(Mode.PLAY, OFFERED_ACTIONS[Mode.PLAY])
@@ -270,13 +270,13 @@ class TestTerminalUI(TestCase):
     def test_a_tagged_cell_draws_its_marks_and_possible_values_as_tagged(self):
         display = self.__drawn_after_change(None, self.__cell(2, 3, possible={1, 5}, marks=(5,), tagged=True))
         display.draw_cell_marks.assert_called_once_with(2, 3, (5,), (), True)
-        display.draw_cell_possible_values.assert_called_once_with(2, 3, {1, 5}, (), True, False)
+        display.draw_cell_possible_values.assert_called_once_with(2, 3, {1, 5}, (), True, set())
 
     def test_a_changed_tag_redraws_the_marks_and_possible_values(self):
         display = self.__drawn_after_change(self.__cell(possible={1}), self.__cell(possible={1}, tagged=True))
         display.draw_cell.assert_not_called()
         display.draw_cell_marks.assert_called_once_with(0, 0, (), (), True)
-        display.draw_cell_possible_values.assert_called_once_with(0, 0, {1}, (), True, False)
+        display.draw_cell_possible_values.assert_called_once_with(0, 0, {1}, (), True, set())
 
     def test_a_changed_value_redraws_only_the_middle_line_blank_with_the_value_on_it(self):
         display = self.__drawn_after_change(self.__cell(value=4), self.__cell(value=6))
@@ -301,16 +301,16 @@ class TestTerminalUI(TestCase):
         display = self.__drawn_after_change(self.__cell(possible={1, 2}), self.__cell(possible={2}))
         display.draw_cell.assert_not_called()
         display.draw_cell_marks.assert_not_called()
-        display.draw_cell_possible_values.assert_called_once_with(0, 0, {2}, (), False, False)
+        display.draw_cell_possible_values.assert_called_once_with(0, 0, {2}, (), False, set())
 
     def test_a_cell_with_removed_values_draws_its_possible_values_as_removed(self):
-        display = self.__drawn_after_change(None, self.__cell(2, 3, possible={1, 5}, removed=True))
-        display.draw_cell_possible_values.assert_called_once_with(2, 3, {1, 5}, (), False, True)
+        display = self.__drawn_after_change(None, self.__cell(2, 3, possible={1, 5}, removed={4}))
+        display.draw_cell_possible_values.assert_called_once_with(2, 3, {1, 5}, (), False, {4})
 
     def test_a_change_in_removed_values_alone_redraws_the_possible_values(self):
-        display = self.__drawn_after_change(self.__cell(possible={1}, removed=True), self.__cell(possible={1}))
+        display = self.__drawn_after_change(self.__cell(possible={1}, removed={4}), self.__cell(possible={1}))
         display.draw_cell.assert_not_called()
-        display.draw_cell_possible_values.assert_called_once_with(0, 0, {1}, (), False, False)
+        display.draw_cell_possible_values.assert_called_once_with(0, 0, {1}, (), False, set())
 
     def test_an_unchanged_cell_is_not_redrawn(self):
         display = self.__drawn_after_change(self.__cell(value=4), self.__cell(value=4))
@@ -457,7 +457,7 @@ class TestTerminalUI(TestCase):
                 self.ui.play(game)
         return printed, record
 
-    def __cell(self, row=0, col=0, value=None, attrs=(), possible=frozenset(), marks=(), tagged=False, removed=False):
+    def __cell(self, row=0, col=0, value=None, attrs=(), possible=frozenset(), marks=(), tagged=False, removed=frozenset()):
         """A stand-in for a cell as it is at one moment"""
         cell = MagicMock(row=row, col=col)
         cell.value.return_value = value
@@ -465,7 +465,7 @@ class TestTerminalUI(TestCase):
         cell.shown_possible.return_value = set(possible)
         cell.marks.return_value = tuple(marks)
         cell.is_tagged.return_value = tagged
-        cell.has_removed.return_value = removed
+        cell.removed_possible.return_value = set(removed)
         return cell
 
     def __drawn_after_change(self, before, after):

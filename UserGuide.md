@@ -161,7 +161,7 @@ A cell's bottom line normally shows every value its row, column and box allow, a
 
 Each level also includes the ones before it. Removals cascade: once a value is gone, that can rule out another value, and so on until nothing more can be ruled out. A cascade only takes values off; it never treats a cell left with one value as filled in.
 
-The bottom line of a cell that has lost any values turns yellow, so you can see where values were taken off, even in a tagged cell. A cell with more than five values left still shows its `.....` in the usual color, until it is down to five or fewer.
+The bottom line of a cell that has lost any values turns yellow, so you can see where values were taken off, even in a tagged cell. The values it lost are shown before them in small red digits, in order, as many as fit in the five columns. A red dot between the two means there are more lost values than fit. The values still left get their columns first: a cell with five left shows only those, and a cell with more than five left still shows its `.....` in the usual color, until it is down to five or fewer.
 
 This changes only what you see. `n`, `a` and the dead end warnings work the same at every level, and you can still enter a value that was taken off. A removed value comes back when its reason goes, such as after an undo. During setup nothing is taken off. Snyder marks count only the values still shown, and a tagged cell leaves out what is taken off as well as what it leaves out at `none`.
 
@@ -193,6 +193,7 @@ A puzzle can only be restored into the layout it was saved from. A file saved by
 | Light sky blue | A value filled in by `n` or `a`; "solved" on the status line |
 | Light sky blue small digits | A cell you tagged with `m` |
 | Yellow bottom line | Values were taken off this cell (see "Configuration") |
+| Small red digits or a red dot on the bottom line | The values taken off this cell, and a dot if there are more than fit |
 | Yellow outline and yellow digits | The box, row or column a hint or `w` step points at, and where the value can still go, or the two cells of a pair with both its digits |
 | White on red digits with a yellow outline | Where that hint or `w` step rules the value out, and the empty cells of the house it starts from where the value can't go; for a naked pair, the pair digits each cell loses, and for a hidden pair, both digits in the house's other empty cells |
 | Bold red on bright yellow | The value you just entered is already in the same row, column or box |

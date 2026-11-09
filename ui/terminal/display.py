@@ -176,16 +176,19 @@ class Display:
         echo(self.term.move_xy(x, y))
         echo(self.__small_digits_style(attrs, tagged) + self.__marks_text(marks) + self.term.normal)
 
-    def draw_cell_possible_values(self, row=0, col=0, values=(), attrs=(), tagged=False, removed=False):
-        """Draw the possible values at the bottom of the cell, marked out if some were removed as ruled out and they all fit"""
+    def draw_cell_possible_values(self, row=0, col=0, values=(), attrs=(), tagged=False, removed=()):
+        """Draw at the bottom of the cell the values removed as ruled out that fit, in red, then the possible values, marked out if they all fit"""
         all_fit = len(values) <= self.CELL_HORIZONTAL_SIZE
         values = sorted(values) if all_fit else "....."
+        ruled_out = self.__ruled_out_text(len(values), removed)
         x = self.x(col) + 1
         y = self.y(row) + self.CELL_VALUES_ROW
         echo(self.term.move_xy(x, y))
-        rendered_attrs = self.__small_digits_style(attrs, tagged, removed and all_fit)
-        echo(rendered_attrs + " " * (self.CELL_HORIZONTAL_SIZE - len(values)) + self.term.normal)
-        echo(rendered_attrs + "".join(str(v).translate(self.small_nums) for v in values) + self.term.normal)
+        rendered_attrs = self.__small_digits_style(attrs, tagged, bool(removed) and all_fit)
+        echo(rendered_attrs + " " * (self.CELL_HORIZONTAL_SIZE - len(ruled_out) - len(values)) + self.term.normal)
+        if ruled_out:
+            echo(getattr(self.term, Attrs.render_ruled_out_digits(attrs)) + ruled_out + self.term.normal)
+        echo(rendered_attrs + self.__small(values) + self.term.normal)
 
     def draw_command_panel(self, title, entries):
         """Draw the title, then one command per line (its keys in red, then its name), clearing the rest beside the puzzle"""
@@ -250,6 +253,17 @@ class Display:
                 self.term.inkey()
         except KeyboardInterrupt:
             pass
+
+    def __ruled_out_text(self, used, removed) -> str:
+        """Return the removed values in the columns the rest leave: the lowest that fit, then a dot if some don't, in a column of its own"""
+        room = self.CELL_HORIZONTAL_SIZE - used
+        digits = sorted(removed)
+        if len(digits) <= room:
+            return self.__small(digits)
+        return self.__small(digits[: room - 1]) + "." if room else ""
+
+    def __small(self, digits) -> str:
+        return "".join(str(digit).translate(self.small_nums) for digit in digits)
 
     def __draw_in_middle(self, row, col, value, style) -> None:
         text = str(value)
