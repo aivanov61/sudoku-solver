@@ -27,7 +27,9 @@ from game.rules.conflicts_rule import ConflictsRule
 from game.rules.dead_end_rule import DeadEndRule
 from game.rules.hidden_pair_rule import HiddenPairRule
 from game.rules.hidden_single_rule import HiddenSingleRule
+from game.rules.hidden_triple_rule import HiddenTripleRule
 from game.rules.naked_pair_rule import NakedPairRule
+from game.rules.naked_triple_rule import NakedTripleRule
 from game.rules.order import RULES
 from game.rules.pointing_pair_rule import PointingPairRule
 from game.rules.rule import Rule
@@ -47,6 +49,8 @@ class TestRuleOrder(TestCase):
                 BoxLineRule,
                 NakedPairRule,
                 HiddenPairRule,
+                NakedTripleRule,
+                HiddenTripleRule,
                 CombinedRule,
             ),
         )
@@ -58,7 +62,7 @@ class TestRuleOrder(TestCase):
             defined |= {
                 obj
                 for obj in vars(module).values()
-                if inspect.isclass(obj) and issubclass(obj, Rule) and not inspect.isabstract(obj)
+                if inspect.isclass(obj) and issubclass(obj, Rule) and obj.NAME
             }
         self.assertEqual(defined, set(RULES))
 

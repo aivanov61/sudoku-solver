@@ -15,48 +15,12 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-from itertools import combinations
-
-from game.house import House
-from game.rules.eliminating_rule import EliminatingRule
-from game.rules.rule import Elimination
-from game.user_interface import Highlight
+from game.rules.hidden_set_rule import HiddenSetRule
 
 
-class HiddenPairRule(EliminatingRule):
+class HiddenPairRule(HiddenSetRule):
     """Two values that can only go in the same two cells of a house take every other value from those cells"""
 
     NAME = "hidden pair"
     LEVEL = "pairs"
     SIZE = 2  # how many values share that many cells
-
-    def eliminations(self, puzzle, ruled_out=frozenset()) -> dict:
-        found = {}
-        for house in puzzle.houses():
-            for values in combinations(self.__values_with_few_places(house, ruled_out), self.SIZE):
-                cells = [cell for cell in house.cells if cell.candidates(ruled_out).intersection(values)]
-                if len(cells) == self.SIZE:
-                    self.__rule_out(values, cells, house, ruled_out, found)
-        return found
-
-    # Private functions
-
-    def __values_with_few_places(self, house: House, ruled_out) -> list:
-        return [value for value in house.values_left() if 2 <= len(house.places(value, ruled_out)) <= self.SIZE]
-
-    def __rule_out(self, values, cells, house: House, ruled_out, found) -> None:
-        """Find every other value ruled out of the cells"""
-        removed = [(cell, value) for cell in cells for value in sorted(cell.candidates(ruled_out)) if value not in values]
-        if removed:
-            elimination = self.__elimination(values, cells, house, ruled_out)
-            for found_value in removed:
-                self._keep_simplest(found, found_value, elimination)
-
-    def __elimination(self, values, cells, house: House, ruled_out) -> Elimination:
-        """Return why the other values are out of the cells, relying on what left the values only there"""
-        why = f"in {house.name()}, {self._listed(values)} can only go in {self._named(cells)}"
-        outside = [cell for cell in house.cells if cell not in cells]
-        relied_on = tuple((cell, value) for cell in outside for value in values if (cell, value) in ruled_out)
-        kept = {cell: tuple(value for value in values if value in cell.candidates(ruled_out)) for cell in cells}
-        gone = dict.fromkeys((cell for cell in outside if not cell.value()), values)
-        return Elimination(why, self.NAME, relied_on, Highlight(house, kept, gone))

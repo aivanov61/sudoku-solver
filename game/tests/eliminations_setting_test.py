@@ -30,7 +30,7 @@ class TestEliminationsSetting(TestCase):
         self.assertEqual(EliminationsSetting().level, EliminationsSetting.NONE)
 
     def test_levels_are_none_then_each_rules_level_once_in_rule_order(self):
-        self.assertEqual(EliminationsSetting.levels(), ("none", "intersections", "pairs"))
+        self.assertEqual(EliminationsSetting.levels(), ("none", "intersections", "pairs", "triples"))
 
     def test_a_rule_with_a_new_level_adds_that_level(self):
         with patch("game.eliminations_setting.RULES", (PointingPairRule, HiddenSingleRule, PairsRule)):
@@ -55,7 +55,7 @@ class TestEliminationsSetting(TestCase):
     def test_the_option_offers_every_level_as_set(self):
         option, = EliminationsSetting("intersections").options()
         self.assertEqual((option.group, option.name), ("Ruled-out values", "Remove from cells"))
-        self.assertEqual(option.labels(), ["none", "intersections", "pairs"])
+        self.assertEqual(option.labels(), ["none", "intersections", "pairs", "triples"])
         self.assertEqual(option.value, "intersections")
 
     def test_every_level_has_a_note(self):
@@ -64,6 +64,7 @@ class TestEliminationsSetting(TestCase):
             "Cells keep every value their row, column and box allow",
             "Cells lose values ruled out by intersections or simpler, cascading",
             "Cells lose values ruled out by pairs or simpler, cascading",
+            "Cells lose values ruled out by triples or simpler, cascading",
         ))
 
     def test_a_setting_is_made_from_its_option_as_chosen(self):
