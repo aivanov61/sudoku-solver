@@ -60,6 +60,19 @@ class TestErrorLog(TestCase):
         where = ErrorLog.where(self.__error("oops"))
         self.assertRegex(where, r"error_log_test\.py:\d+ in __fail$")
 
+    def test_a_broken_command_is_recorded_and_said_what_broke_why_where_and_where_the_details_are(self):
+        with patch.object(ErrorLog, "FILE", self.path):
+            report = ErrorLog.report_broken("up", self.__error("oops"))
+        self.assertRegex(report, r'^This puzzle\'s "up" command is broken: ValueError: oops - at \S*error_log_test\.py:\d+ in __fail ')
+        self.assertTrue(report.endswith(f"(details in {self.path})"))
+        self.assertIn("ValueError: oops", self.__logged())
+
+    def test_a_broken_command_says_so_when_the_details_could_not_be_recorded(self):
+        self.path = os.path.join(self.temp_dir.name, "missing", "sudoku.log")
+        with patch.object(ErrorLog, "FILE", self.path):
+            report = ErrorLog.report_broken("up", self.__error("oops"))
+        self.assertTrue(report.endswith("(the details could not be logged)"))
+
     # Private functions
 
     def __error(self, text) -> Exception:

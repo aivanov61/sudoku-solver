@@ -242,10 +242,7 @@ class TerminalUI:
         Log the error, say what broke, why and where until a key is hit, then show the whole game again,
         as the message may have scrolled the screen; a broken quit stops the game instead
         """
-        log = ErrorLog.record(error)
-        details = f"details in {log}" if log else "the details could not be logged"
-        what = f'This puzzle\'s "{command.value}" command is broken: {type(error).__name__}: {error}'
-        self.__display.warn(f"{what} - at {ErrorLog.where(error)} ({details})", wait=True)
+        self.__display.warn(ErrorLog.report_broken(command.value, error), wait=True)
         if command in (Action.QUIT, Action.FORCE_QUIT):
             self.__force_quit(game)
         else:

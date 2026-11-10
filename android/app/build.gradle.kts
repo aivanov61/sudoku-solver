@@ -49,17 +49,22 @@ android {
     }
 }
 
-// The game is the repository's own Python package, game/ (two levels up), copied in without its tests,
-// so the app always plays the same code the terminal does.
-val gamePython = layout.buildDirectory.dir("game-python")
-val syncGamePython = tasks.register<Sync>("syncGamePython") {
+// The app's Python is the repository's own (two levels up), copied in without its tests, so the app always
+// plays the same code the terminal does: the game/ package, and of ui/ only what the Android user interface uses.
+val appPython = layout.buildDirectory.dir("app-python")
+val syncAppPython = tasks.register<Sync>("syncAppPython") {
+    into(appPython)
+    exclude("**/tests/**", "**/__pycache__/**")
     from(rootDir.resolve("../game")) {
-        exclude("**/tests/**", "**/__pycache__/**")
+        into("game")
     }
-    into(gamePython.map { it.dir("game") })
+    from(rootDir.resolve("../ui")) {
+        into("ui")
+        include("__init__.py", "error_log.py", "android/**")
+    }
 }
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("PythonSources") }.configureEach {
-    dependsOn(syncGamePython)
+    dependsOn(syncAppPython)
 }
 
 chaquopy {
@@ -68,7 +73,7 @@ chaquopy {
     }
     sourceSets {
         getByName("main") {
-            srcDir(gamePython)
+            srcDir(appPython)
         }
     }
 }
@@ -81,5 +86,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    testImplementation(libs.junit)
 }

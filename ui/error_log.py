@@ -31,6 +31,14 @@ class ErrorLog:
     FILE = "sudoku.log"
 
     @staticmethod
+    def report_broken(command: str, error: BaseException) -> str:
+        """Record the error, returning what to tell the player: which command broke, why and where, and where the details are"""
+        log = ErrorLog.record(error)
+        details = f"details in {log}" if log else "the details could not be logged"
+        what = f'This puzzle\'s "{command}" command is broken: {type(error).__name__}: {error}'
+        return f"{what} - at {ErrorLog.where(error)} ({details})"
+
+    @staticmethod
     def record(error: BaseException) -> str | None:
         """Append the time and the error's traceback to the log; return the log's file name, or None if it can't be written"""
         try:

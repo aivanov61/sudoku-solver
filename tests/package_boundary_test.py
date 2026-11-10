@@ -21,14 +21,24 @@ from unittest import main, TestCase
 
 
 class TestPackageBoundary(TestCase):
-    """The game knows nothing about how it is shown: nothing in game/ imports a user interface or a terminal library"""
+    """
+    The game knows nothing about how it is shown: nothing in game/ imports a user interface or a terminal library.
+    The Android app ships without the terminal, so nothing in ui/android/ imports it or its terminal library.
+    """
 
     SHOWING = ("ui", "blessed")
+    TERMINAL = ("ui.terminal", "blessed")
 
     def test_no_game_module_imports_a_user_interface(self):
         modules = sorted(Path("game").rglob("*.py"))
         self.assertGreater(len(modules), 0)
         offenders = [f"{path}: {name}" for path in modules for name in self.__imports(path) if self.__is_showing(name)]
+        self.assertEqual(offenders, [])
+
+    def test_no_android_module_imports_the_terminal(self):
+        modules = sorted(path for path in Path("ui/android").rglob("*.py") if "tests" not in path.parts)
+        self.assertGreater(len(modules), 0)
+        offenders = [f"{path}: {name}" for path in modules for name in self.__imports(path) if self.__is_terminal(name)]
         self.assertEqual(offenders, [])
 
     # Private functions
@@ -41,6 +51,9 @@ class TestPackageBoundary(TestCase):
 
     def __is_showing(self, name) -> bool:
         return name.split(".")[0] in self.SHOWING
+
+    def __is_terminal(self, name) -> bool:
+        return any(name == module or name.startswith(f"{module}.") for module in self.TERMINAL)
 
 
 if __name__ == "__main__":
