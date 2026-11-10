@@ -46,7 +46,7 @@ class TestSettings(TestCase):
         settings = Settings({MarksSetting.NAME: self.MARKS, EliminationsSetting.NAME: EliminationsSetting("intersections")})
         saved = settings.saved()
         self.assertEqual(saved, {
-            "marks": {"threshold": 3, "kinds": ["box", "row", "column"], "whole_puzzle": False},
+            "marks": {"threshold": 3, "kinds": ["box", "row", "column"], "whole_puzzle": "off"},
             "eliminations": {"level": "intersections"},
         })
         self.assertEqual(Settings.from_saved(saved), settings)

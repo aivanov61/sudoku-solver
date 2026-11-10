@@ -149,7 +149,7 @@ class TerminalUI:
         if attrs != cell.attr():
             self.__draw_whole_cell(cell)
             return
-        is_retagged = tagged != cell.is_tagged()
+        is_retagged = tagged != cell.looks_tagged()
         if is_retagged or value != cell.value() or marks != cell.marks():
             self.__draw_middle(cell)
         if is_retagged or possible_values != cell.shown_possible() or removed != cell.removed_possible():
@@ -283,15 +283,15 @@ class TerminalUI:
 
     def __draw_middle(self, cell) -> None:
         """Draw the middle line: the marks (none on a filled cell), then the value on top of them, if any"""
-        self.__display.draw_cell_marks(cell.row, cell.col, cell.marks(), cell.attr(), cell.is_tagged())
+        self.__display.draw_cell_marks(cell.row, cell.col, cell.marks(), cell.attr(), cell.looks_tagged())
         if cell.value():
             self.__display.draw_cell_value(cell.row, cell.col, cell.value(), cell.attr())
 
     def __draw_possible_values(self, cell) -> None:
         display = self.__display
-        display.draw_cell_possible_values(cell.row, cell.col, cell.shown_possible(), cell.attr(), cell.is_tagged(), cell.removed_possible())
+        display.draw_cell_possible_values(cell.row, cell.col, cell.shown_possible(), cell.attr(), cell.looks_tagged(), cell.removed_possible())
 
     def __remember(self, cell) -> None:
         """Keep what the cell looks like now"""
-        drawn = (cell.attr(), cell.value(), cell.shown_possible(), cell.marks(), cell.is_tagged(), cell.removed_possible())
+        drawn = (cell.attr(), cell.value(), cell.shown_possible(), cell.marks(), cell.looks_tagged(), cell.removed_possible())
         self.__drawn[(cell.row, cell.col)] = drawn

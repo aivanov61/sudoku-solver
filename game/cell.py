@@ -49,6 +49,7 @@ class Cell:
         self._attrs = tuple()
         self._marks = ()  # what the cell must be once tagged, or else its "must be" marks (Snyder notation)
         self._tagged = False  # tagged by the player, to pick the cell out
+        self._treated_as_tagged = False  # the player's settings have every cell act as if tagged
         self._removed = set()  # possible values taken off what the cell shows, as ruled out (see EliminationsSetting)
         self._parent = parent
         self.row = row
@@ -87,13 +88,17 @@ class Cell:
 
     def marks(self) -> tuple:
         """
-        Return the marks the cell shows: once tagged, what it must be; otherwise its "must be" marks (Snyder
+        Return the marks the cell shows: once tagged or treated as tagged, what it must be; otherwise its "must be" marks (Snyder
         notation), the possible values with few places left in the cell's houses
         """
         return self._marks
 
     def is_tagged(self) -> bool:
         return self._tagged
+
+    def looks_tagged(self) -> bool:
+        """Return True if the cell is to be shown as tagged: the player tagged it, or the settings treat it as tagged"""
+        return self._tagged or self._treated_as_tagged
 
     def set_tagged(self, tagged) -> None:
         """Tag the cell for the player, or untag it, reporting any change; the tag stays whatever the cell's value"""
@@ -135,14 +140,15 @@ class Cell:
 
     def refresh_marks(self, setting: MarksSetting, ruled_out=frozenset(), removed=frozenset()) -> None:
         """
-        Show what the cell must be once tagged, leaving out each (cell, value) ruled out, or else the Snyder marks
-        the setting asks for in the whole puzzle, counting only what is not removed; nothing without a setting.  Stop
-        showing each possible value removed.  Report any change.
+        Show what the cell must be once tagged or treated as tagged, leaving out each (cell, value) ruled out, or else
+        the Snyder marks the setting asks for in the whole puzzle, counting only what is not removed; nothing without a
+        setting.  Stop showing each possible value removed.  Report any change.
         """
         marks = self.__marks_for(setting, ruled_out, removed)
         taken_off = self.possible_values() - self.candidates(removed)
-        if marks != self._marks or taken_off != self._removed:
-            self._marks, self._removed = marks, taken_off
+        treated_as_tagged = setting is not None and setting.treats_every_cell_as_tagged()
+        if marks != self._marks or taken_off != self._removed or treated_as_tagged != self._treated_as_tagged:
+            self._marks, self._removed, self._treated_as_tagged = marks, taken_off, treated_as_tagged
             self.__report_change()
 
     # Interface required for related cells
@@ -241,9 +247,9 @@ class Cell:
     def __marks_for(self, setting, ruled_out, removed) -> tuple:
         if setting is None:
             return ()
-        if self._tagged:
+        if self._tagged or setting.treats_every_cell_as_tagged():
             return self.__must_be(ruled_out)
-        if setting.whole_puzzle:
+        if setting.shows_snyder_marks():
             return self.__snyder_marks(setting.threshold, setting.kinds, removed)
         return ()
 

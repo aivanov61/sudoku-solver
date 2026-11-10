@@ -55,9 +55,10 @@ class SaveFile:
     """
 
     FORMAT = "sudoku-save"
-    VERSION = 2
+    VERSION = 3
     UPGRADES = {  # version: function returning that version's state converted to the next version
-        1: lambda state: SaveFile.__marks_with_whole_puzzle(state),  # version 2 turns marks off with whole_puzzle
+        1: lambda state: SaveFile.__upgrading_marks(state, SaveFile.__marks_with_whole_puzzle),  # version 2 turns marks off with whole_puzzle
+        2: lambda state: SaveFile.__upgrading_marks(state, SaveFile.__marks_with_named_choice),  # version 3 names the whole_puzzle choice
     }
     FOLDER = "saved_games"
     EXTENSION = ".json"
@@ -107,17 +108,24 @@ class SaveFile:
     def __damaged(path) -> SaveFileError:
         return SaveFileError(f"Cannot restore {path} - it is not a saved puzzle, or it is damaged. ")
 
-    def __marks_with_whole_puzzle(state) -> dict:
-        """
-        Return the version 1 state as version 2 saves it: marks that were off (no threshold) show in tagged cells
-        only, with a threshold of 2, and marks that were on show in the whole puzzle
-        """
+    def __upgrading_marks(state, upgrade) -> dict:
+        """Return the state with its marks setting, if it has one, converted by the function given"""
         marks = state.get("settings", {}).get("marks")
         if marks is None:
             return state
+        return {**state, "settings": {**state["settings"], "marks": upgrade(marks)}}
+
+    def __marks_with_whole_puzzle(marks) -> dict:
+        """
+        Return the version 1 marks as version 2 saves them: marks that were off (no threshold) show in tagged cells
+        only, with a threshold of 2, and marks that were on show in the whole puzzle
+        """
         threshold = marks["threshold"]
-        upgraded = {"threshold": threshold or 2, "kinds": marks["kinds"], "whole_puzzle": threshold is not None}
-        return {**state, "settings": {**state["settings"], "marks": upgraded}}
+        return {"threshold": threshold or 2, "kinds": marks["kinds"], "whole_puzzle": threshold is not None}
+
+    def __marks_with_named_choice(marks) -> dict:
+        """Return the version 2 marks as version 3 saves them: the whole puzzle switch is now one of three named choices"""
+        return {**marks, "whole_puzzle": "snyder" if marks["whole_puzzle"] else "off"}
 
     def __saved_puzzle(path, data) -> SavedPuzzle:
         """Turn the file's saved state back into a SavedPuzzle, with tuples where JSON stored lists"""

@@ -33,7 +33,7 @@ class TestSaveFile(TestCase):
         layout="Standard 9x9",
         initializing=False,
         settings=Settings({
-            MarksSetting.NAME: MarksSetting(3, MarksSetting.EVERY_HOUSE, True),
+            MarksSetting.NAME: MarksSetting(3, MarksSetting.EVERY_HOUSE, MarksSetting.SNYDER),
             EliminationsSetting.NAME: EliminationsSetting("intersections"),
         }),
         selected_cell=(4, 7),
@@ -72,7 +72,7 @@ class TestSaveFile(TestCase):
 
     def test_settings_are_saved_by_name(self):
         SaveFile.write(self.path, self.SAVED)
-        marks = {"threshold": 3, "kinds": ["box", "row", "column"], "whole_puzzle": True}
+        marks = {"threshold": 3, "kinds": ["box", "row", "column"], "whole_puzzle": "snyder"}
         self.assertEqual(self.__json()["state"]["settings"], {"marks": marks, "eliminations": {"level": "intersections"}})
 
     def test_a_file_saved_without_tags_is_read_with_none(self):
@@ -91,13 +91,21 @@ class TestSaveFile(TestCase):
 
     def test_a_version_1_file_with_marks_off_is_read_with_threshold_2_for_tagged_cells_only(self):
         self.__write_version_1({"threshold": None, "kinds": ["box", "row", "column"]})
-        expected = MarksSetting(2, MarksSetting.EVERY_HOUSE, whole_puzzle=False)
+        expected = MarksSetting(2, MarksSetting.EVERY_HOUSE, MarksSetting.OFF)
         self.assertEqual(SaveFile.read(self.path).settings.of(MarksSetting), expected)
 
     def test_a_version_1_file_with_marks_on_is_read_with_marks_for_the_whole_puzzle(self):
         self.__write_version_1({"threshold": 3, "kinds": ["box"]})
-        expected = MarksSetting(3, MarksSetting.BOX_ONLY, whole_puzzle=True)
+        expected = MarksSetting(3, MarksSetting.BOX_ONLY, MarksSetting.SNYDER)
         self.assertEqual(SaveFile.read(self.path).settings.of(MarksSetting), expected)
+
+    def test_a_version_2_file_with_the_whole_puzzle_on_is_read_with_snyder_marks(self):
+        self.__write_version_2(True)
+        self.assertEqual(SaveFile.read(self.path).settings.of(MarksSetting).whole_puzzle, MarksSetting.SNYDER)
+
+    def test_a_version_2_file_with_the_whole_puzzle_off_is_read_as_off(self):
+        self.__write_version_2(False)
+        self.assertEqual(SaveFile.read(self.path).settings.of(MarksSetting).whole_puzzle, MarksSetting.OFF)
 
     def test_a_version_1_file_without_settings_is_read_with_the_default_settings(self):
         self.__write_version_1(None)
@@ -191,6 +199,13 @@ class TestSaveFile(TestCase):
             del data["state"]["settings"]
         else:
             data["state"]["settings"]["marks"] = marks
+        self.__write_json(data)
+
+    def __write_version_2(self, whole_puzzle) -> None:
+        """Write the puzzle as version 2 saved it, with the whole puzzle switch on or off"""
+        SaveFile.write(self.path, self.SAVED)
+        data = {**self.__json(), "version": 2}
+        data["state"]["settings"]["marks"]["whole_puzzle"] = whole_puzzle
         self.__write_json(data)
 
     def __write_json(self, data) -> None:

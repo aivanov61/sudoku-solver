@@ -27,7 +27,8 @@ class MarksSetting:
     """
     Which "must be" marks (Snyder notation) cells show: each value that has at most threshold places left in one
     of the cell's houses of the given kinds (its box, or its box, row and column), shown in every empty cell of
-    the whole puzzle, or in none.  Tagged cells show what they must be instead, whatever the setting (see Cell).
+    the whole puzzle, or in none.  Tagged cells show what they must be instead, whatever the setting (see Cell), and
+    the whole puzzle can treat every cell as tagged.
 
     The player configures it through its options(): the kind of house, the threshold and the whole puzzle.
     """
@@ -37,14 +38,19 @@ class MarksSetting:
     THRESHOLDS = (2, 3, 4, 5)
     BOX_ONLY = (House.BOX,)
     EVERY_HOUSE = (House.BOX, House.ROW, House.COLUMN)
-    WHOLE_PUZZLE_NOTES = (  # for off, then on; {key} is the key that tags a cell
+    OFF = "off"  # the whole puzzle: only tagged cells show marks
+    SNYDER = "snyder"  # the whole puzzle: Snyder marks in every empty cell that isn't tagged
+    MUST_BE = "must be"  # the whole puzzle: every cell is treated as tagged
+    WHOLE_PUZZLE_CHOICES = (("off", OFF), ("Snyder marks", SNYDER), ("must be", MUST_BE))
+    WHOLE_PUZZLE_NOTES = (  # for each of the choices; {key} is the key that tags a cell
         "Only cells you tag with {key} show marks: what each one must be",
         "All other cells show Snyder marks; {key} still shows what a cell must be",
+        "Every cell shows what it must be, as if you had tagged it with {key}",
     )
 
     threshold: int = 2
     kinds: tuple = BOX_ONLY
-    whole_puzzle: bool = False  # True to show Snyder marks in every empty cell that isn't tagged
+    whole_puzzle: str = OFF  # what the cells of the whole puzzle show, beyond those tagged
 
     def __post_init__(self):
         """Refuse a setting the options don't offer, such as one from a damaged save file"""
@@ -52,8 +58,14 @@ class MarksSetting:
             raise ValueError(f"Unknown threshold for marks: {self.threshold}")
         if self.kinds not in (MarksSetting.BOX_ONLY, MarksSetting.EVERY_HOUSE):
             raise ValueError(f"Unknown kinds of house for marks: {self.kinds}")
-        if not isinstance(self.whole_puzzle, bool):
+        if self.whole_puzzle not in (MarksSetting.OFF, MarksSetting.SNYDER, MarksSetting.MUST_BE):
             raise ValueError(f"Unknown whole puzzle switch for marks: {self.whole_puzzle}")
+
+    def shows_snyder_marks(self) -> bool:
+        return self.whole_puzzle == MarksSetting.SNYDER
+
+    def treats_every_cell_as_tagged(self) -> bool:
+        return self.whole_puzzle == MarksSetting.MUST_BE
 
     def options(self) -> list:
         """Return the options the player can configure, as set now: the kind of house, the threshold, the whole puzzle"""
@@ -63,7 +75,7 @@ class MarksSetting:
             ConfigOption(self.GROUP, "Kind of house", kinds, self.kinds),
             ConfigOption(self.GROUP, "Threshold", thresholds, self.threshold),
             ConfigOption(
-                self.GROUP, "Whole puzzle", (("off", False), ("on", True)), self.whole_puzzle, self.WHOLE_PUZZLE_NOTES,
+                self.GROUP, "Whole puzzle", self.WHOLE_PUZZLE_CHOICES, self.whole_puzzle, self.WHOLE_PUZZLE_NOTES,
                 Action.TAG,
             ),
         ]

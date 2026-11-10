@@ -464,7 +464,7 @@ class TestTerminalUI(TestCase):
         cell.attr.return_value = attrs
         cell.shown_possible.return_value = set(possible)
         cell.marks.return_value = tuple(marks)
-        cell.is_tagged.return_value = tagged
+        cell.looks_tagged.return_value = tagged
         cell.removed_possible.return_value = set(removed)
         return cell
 

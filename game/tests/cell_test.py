@@ -306,7 +306,7 @@ class TestCell(TestCase):
         self.__counted_house(House.BOX, {4: 2})
         self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY))
         self.assertEqual(self.cell.marks(), ())
-        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, MarksSetting.SNYDER))
         self.assertEqual(self.cell.marks(), (4,))
 
     def test_a_tagged_cell_shows_its_single_possible_value(self):
@@ -326,7 +326,39 @@ class TestCell(TestCase):
         self.__leave_possible({3, 5})
         self.__counted_house(House.BOX, {3: 2, 5: 2})
         self.__related_forced(3)
-        self.assertEqual(self.__tagged_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True)), (5,))
+        self.assertEqual(self.__tagged_marks(MarksSetting(2, MarksSetting.BOX_ONLY, MarksSetting.SNYDER)), (5,))
+
+    def test_every_cell_shows_what_it_must_be_when_the_setting_treats_it_as_tagged(self):
+        self.__leave_possible({3, 5})
+        self.__related_forced(3)
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, MarksSetting.MUST_BE))
+        self.assertEqual(self.cell.marks(), (5,))
+
+    def test_a_cell_treated_as_tagged_looks_tagged_without_being_tagged(self):
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, MarksSetting.MUST_BE))
+        self.assertTrue(self.cell.looks_tagged())
+        self.assertFalse(self.cell.is_tagged())
+
+    def test_a_cell_looks_tagged_only_while_the_setting_or_its_tag_says_so(self):
+        self.assertFalse(self.cell.looks_tagged())
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, MarksSetting.MUST_BE))
+        self.cell.refresh_marks(MarksSetting())
+        self.assertFalse(self.cell.looks_tagged())
+        self.cell.set_tagged(True)
+        self.assertTrue(self.cell.looks_tagged())
+
+    def test_a_cell_does_not_look_tagged_without_a_setting(self):
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, MarksSetting.MUST_BE))
+        self.cell.refresh_marks(None)
+        self.assertFalse(self.cell.looks_tagged())
+
+    def test_a_cell_reports_a_change_when_the_setting_starts_treating_it_as_tagged(self):
+        self.cell.refresh_marks(MarksSetting())
+        self.parent.cell_changed.reset_mock()
+        self.cell.set(8)
+        self.parent.cell_changed.reset_mock()
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, MarksSetting.MUST_BE))
+        self.parent.cell_changed.assert_called_once_with(self.cell)
 
     def test_a_tagged_cell_leaves_out_the_values_ruled_out_of_it(self):
         self.__leave_possible({3, 5, 7})
@@ -376,41 +408,41 @@ class TestCell(TestCase):
 
     def test_cell_marks_values_with_few_enough_places_in_its_box(self):
         self.__counted_house(House.BOX, {4: 2, 6: 1, 7: 3})
-        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, MarksSetting.SNYDER))
         self.assertEqual(self.cell.marks(), (4, 6))
 
     def test_cell_marks_from_rows_and_columns_only_when_asked_to(self):
         self.__counted_house(House.BOX, {})
         self.__counted_house(House.ROW, {5: 2})
         self.__counted_house(House.COLUMN, {3: 2, 5: 2})
-        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, MarksSetting.SNYDER))
         self.assertEqual(self.cell.marks(), ())
-        self.cell.refresh_marks(MarksSetting(2, MarksSetting.EVERY_HOUSE, True))
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.EVERY_HOUSE, MarksSetting.SNYDER))
         self.assertEqual(self.cell.marks(), (3, 5))
 
     def test_cell_marks_only_its_possible_values(self):
         self.cell.remove_possible(4)
         self.__counted_house(House.BOX, {4: 1})
-        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, MarksSetting.SNYDER))
         self.assertEqual(self.cell.marks(), ())
 
     def test_cell_with_a_value_has_no_marks(self):
         self.cell.set(8)
         self.__counted_house(House.BOX, {8: 1})
-        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, MarksSetting.SNYDER))
         self.assertEqual(self.cell.marks(), ())
 
     def test_cell_marks_leave_out_what_is_removed(self):
         self.__counted_house(House.BOX, {4: 2, 6: 2})
         removed = {(self.cell, 4): "why"}
-        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True), removed=removed)
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, MarksSetting.SNYDER), removed=removed)
         self.assertEqual(self.cell.marks(), (6,))
         self.parent.houses_of.return_value[0].places.assert_any_call(6, removed)
 
     def test_cell_reports_a_change_only_when_its_marks_change(self):
         self.__counted_house(House.BOX, {4: 2})
-        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, True))
-        self.cell.refresh_marks(MarksSetting(3, MarksSetting.BOX_ONLY, True))
+        self.cell.refresh_marks(MarksSetting(2, MarksSetting.BOX_ONLY, MarksSetting.SNYDER))
+        self.cell.refresh_marks(MarksSetting(3, MarksSetting.BOX_ONLY, MarksSetting.SNYDER))
         self.parent.cell_changed.assert_called_once_with(self.cell)
 
     # Removed values

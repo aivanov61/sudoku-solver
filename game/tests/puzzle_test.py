@@ -646,6 +646,15 @@ class TestPuzzle(TestCase):
 
     # Why values were removed
 
+    def test_every_cell_can_be_treated_as_tagged_without_changing_the_tags(self):
+        self.__fill_row(0, 0, range(1, 9))
+        self.puzzle.play_()
+        self.ui.choices = [0, 0, 2, 0]
+        self.puzzle.handle(Action.CONFIGURE)
+        self.assertEqual(self.__cell(0, 8).marks(), (9,))
+        self.assertTrue(self.__cell(4, 4).looks_tagged())
+        self.assertEqual(self.puzzle.saved_state().tags, [])
+
     def test_why_walks_through_the_selected_cells_removals_and_what_they_rely_on(self):
         self.__leave_4_to_cascade_into_row_0()
         self.puzzle.play_()

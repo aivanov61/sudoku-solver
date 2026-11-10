@@ -118,7 +118,7 @@ Press `a` to fill in, without explanations, every move that `n` would find, one 
 
 A "must be" mark is a small digit in the middle of an empty cell: that value has only a few places left in the cell's box, and this cell is one of them. Solvers call this Snyder notation. A mark in two cells of a box means the value must be in one of those two. A value with a single mark in its box is a hidden single: it can go only there.
 
-Snyder marks are off at first; a cell you tag with `m` shows what it must be instead (see Tags below). To show marks throughout the puzzle, turn on **Whole puzzle** in the configure menu (see "Configuration" below).
+Snyder marks are off at first; a cell you tag with `m` shows what it must be instead (see Tags below). To show marks throughout the puzzle, set **Whole puzzle** to `Snyder marks` in the configure menu (see "Configuration" below).
 
 The marks update after every key, as values are entered, deleted, undone or filled in. Up to three marks are spaced out; four or five are shown closed up; more than that show `.....`. With a high threshold and rows and columns included, that happens often: in a row, column or box with 5 or fewer empty cells, every possible value has 5 or fewer places, so every one is marked. During setup the marks are hidden, and they come back when you start playing.
 
@@ -151,7 +151,7 @@ Your settings are saved with the puzzle (see "Saving and restoring" below).
 These settings choose which "must be" marks are shown (see "Must be" marks above):
 - **Kind of house:** `box` (the default) marks values with few places left in their box; `box, row or column` marks a value with few enough places in any of the three.
 - **Threshold:** how few places a value must have left to be marked, from `2 or fewer places` (the default) to `5 or fewer places`.
-- **Whole puzzle:** `off` (the default) shows no Snyder marks; `on` shows them in every empty cell that isn't tagged. Kind of house and threshold apply only here.
+- **Whole puzzle:** `off` (the default) shows no Snyder marks. `Snyder marks` shows them in every empty cell that isn't tagged; kind of house and threshold apply only to this choice. `must be` treats every cell as if you had tagged it: each empty cell shows what it must be, and all the small digits turn light sky blue (see Tags). Your own tags are kept, and show again as before when you choose something else.
 
 ### Ruled-out values
 
