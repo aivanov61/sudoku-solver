@@ -16,11 +16,16 @@
 # -----------------------------------------------------------------------------
 
 from abc import abstractmethod
+from typing import TYPE_CHECKING
 
 from game.house import House
 from game.rules.eliminating_rule import EliminatingRule
-from game.rules.rule import Elimination
+from game.rules.rule import Elimination, Eliminations
 from game.user_interface import Highlight
+
+if TYPE_CHECKING:
+    from game.cell import Cell, RuledOut
+    from game.puzzle import Puzzle
 
 
 class IntersectionRule(EliminatingRule):
@@ -33,8 +38,8 @@ class IntersectionRule(EliminatingRule):
 
     LEVEL = "intersections"
 
-    def eliminations(self, puzzle, ruled_out=frozenset()) -> dict:
-        found = {}
+    def eliminations(self, puzzle: "Puzzle", ruled_out: "RuledOut" = frozenset()) -> Eliminations:
+        found: Eliminations = {}
         for source in puzzle.houses():
             if self._is_source(source):
                 for value in source.values_left():
@@ -49,7 +54,7 @@ class IntersectionRule(EliminatingRule):
 
     # Private functions
 
-    def __rule_out(self, value, source, ruled_out, found) -> None:
+    def __rule_out(self, value: int, source: House, ruled_out: "RuledOut", found: Eliminations) -> None:
         """Find the value ruled out of the rest of a house of another kind that holds every place it has left in the source"""
         places = source.places(value, ruled_out)
         target = self.__house_holding(places, source) if len(places) > 1 else None
@@ -61,12 +66,14 @@ class IntersectionRule(EliminatingRule):
             for cell in removed:
                 self._keep_simplest(found, (cell, value), elimination)
 
-    def __house_holding(self, places, source) -> House:
+    def __house_holding(self, places: list["Cell"], source: House) -> House | None:
         """Return the house, of another kind than the source, that holds every one of the places; or None"""
         holds_all = lambda house: house.kind != source.kind and all(place in house.cells for place in places)
         return next((house for house in places[0].houses() if holds_all(house)), None)
 
-    def __elimination(self, value, source, target, places, removed, ruled_out) -> Elimination:
+    def __elimination(
+        self, value: int, source: House, target: House, places: list["Cell"], removed: list["Cell"], ruled_out: "RuledOut",
+    ) -> Elimination:
         """Return why the value is out of the rest of the target, relying on what left it only in the crossing, its places"""
         why = f"in {source.name()}, {value} can only go in {target.name()}"
         gone = tuple(cell for cell in source.cells if (cell, value) in ruled_out and cell not in target.cells)
@@ -76,7 +83,7 @@ class IntersectionRule(EliminatingRule):
         highlight = Highlight(box, still_can, dict.fromkeys((*removed, *blocked), (value,)))
         return Elimination(why, self.NAME, tuple((cell, value) for cell in gone), highlight)
 
-    def __only_places_left(self, value, removed, ruled_out) -> list:
+    def __only_places_left(self, value: int, removed: list["Cell"], ruled_out: "RuledOut") -> list["Cell"]:
         """Return the one place the value has left in each box that losing it from the removed cells leaves with just one"""
         after = {*ruled_out, *((cell, value) for cell in removed)}
         boxes = (next(house for house in cell.houses() if house.kind == House.BOX) for cell in removed)

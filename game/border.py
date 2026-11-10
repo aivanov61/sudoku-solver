@@ -15,6 +15,9 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from collections.abc import Collection
+
+
 class Border:
     """Which sides of a cell lie on the edge of its block: layout data, however the edges are drawn"""
 
@@ -23,17 +26,17 @@ class Border:
     RIGHT = "right"
     BOTTOM = "bottom"
 
-    def __init__(self, borders=frozenset()):
+    def __init__(self, borders: Collection[str] = frozenset()) -> None:
         self.__borders = borders
 
-    def is_top(self):
+    def is_top(self) -> bool:
         return self.TOP in self.__borders
 
-    def is_left(self):
+    def is_left(self) -> bool:
         return self.LEFT in self.__borders
 
-    def is_right(self):
+    def is_right(self) -> bool:
         return self.RIGHT in self.__borders
 
-    def is_bottom(self):
+    def is_bottom(self) -> bool:
         return self.BOTTOM in self.__borders

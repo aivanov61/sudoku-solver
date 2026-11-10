@@ -16,11 +16,16 @@
 # -----------------------------------------------------------------------------
 
 from itertools import combinations
+from typing import TYPE_CHECKING
 
 from game.house import House
 from game.rules.eliminating_rule import EliminatingRule
-from game.rules.rule import Elimination
+from game.rules.rule import Elimination, Eliminations
 from game.user_interface import Highlight
+
+if TYPE_CHECKING:
+    from game.cell import Cell, RuledOut
+    from game.puzzle import Puzzle
 
 
 class HiddenSetRule(EliminatingRule):
@@ -29,10 +34,10 @@ class HiddenSetRule(EliminatingRule):
     value from those cells.  Each subclass says how many: its SIZE.
     """
 
-    SIZE = None  # how many values share that many cells
+    SIZE: int  # how many values share that many cells, set by each subclass
 
-    def eliminations(self, puzzle, ruled_out=frozenset()) -> dict:
-        found = {}
+    def eliminations(self, puzzle: "Puzzle", ruled_out: "RuledOut" = frozenset()) -> Eliminations:
+        found: Eliminations = {}
         for house in puzzle.houses():
             for values in combinations(self.__values_with_few_places(house, ruled_out), self.SIZE):
                 cells = [cell for cell in house.cells if cell.candidates(ruled_out).intersection(values)]
@@ -42,10 +47,10 @@ class HiddenSetRule(EliminatingRule):
 
     # Private functions
 
-    def __values_with_few_places(self, house: House, ruled_out) -> list:
+    def __values_with_few_places(self, house: House, ruled_out: "RuledOut") -> list[int]:
         return [value for value in house.values_left() if 2 <= len(house.places(value, ruled_out)) <= self.SIZE]
 
-    def __rule_out(self, values, cells, house: House, ruled_out, found) -> None:
+    def __rule_out(self, values: tuple[int, ...], cells: list["Cell"], house: House, ruled_out: "RuledOut", found: Eliminations) -> None:
         """Find every other value ruled out of the cells"""
         removed = [(cell, value) for cell in cells for value in sorted(cell.candidates(ruled_out)) if value not in values]
         if removed:
@@ -53,7 +58,7 @@ class HiddenSetRule(EliminatingRule):
             for found_value in removed:
                 self._keep_simplest(found, found_value, elimination)
 
-    def __elimination(self, values, cells, house: House, ruled_out) -> Elimination:
+    def __elimination(self, values: tuple[int, ...], cells: list["Cell"], house: House, ruled_out: "RuledOut") -> Elimination:
         """Return why the other values are out of the cells, relying on what left the values only there"""
         why = f"in {house.name()}, {self._listed(values)} can only go in {self._named(cells)}"
         outside = [cell for cell in house.cells if cell not in cells]

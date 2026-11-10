@@ -16,8 +16,10 @@
 # -----------------------------------------------------------------------------
 
 from dataclasses import dataclass, field
+from typing import Any
 
 from game.eliminations_setting import EliminationsSetting
+from game.config_option import ConfigOption
 from game.marks_setting import MarksSetting
 
 
@@ -34,17 +36,19 @@ class Settings:
 
     KINDS = (MarksSetting, EliminationsSetting)  # every kind of setting, in the order the player is offered them
 
-    by_name: dict = field(default_factory=lambda: {kind.NAME: kind() for kind in Settings.KINDS})
+    by_name: dict[str, MarksSetting | EliminationsSetting] = field(default_factory=lambda: {kind.NAME: kind() for kind in Settings.KINDS})
 
-    def of(self, kind):
+    def of[Kind: MarksSetting | EliminationsSetting](self, kind: type[Kind]) -> Kind:
         """Return the setting of that kind"""
-        return self.by_name[kind.NAME]
+        setting = self.by_name[kind.NAME]
+        assert isinstance(setting, kind), "each setting is kept under its own kind's NAME"
+        return setting
 
-    def options(self) -> list:
+    def options(self) -> list[ConfigOption]:
         """Return every setting's options, one setting after another"""
         return [option for kind in Settings.KINDS for option in self.of(kind).options()]
 
-    def from_options(self, options) -> "Settings":
+    def from_options(self, options: list[ConfigOption]) -> "Settings":
         """Return the settings the options describe, given as options() lists them"""
         by_name, start = {}, 0
         for kind in Settings.KINDS:
@@ -53,11 +57,12 @@ class Settings:
             start += count
         return Settings(by_name)
 
-    def saved(self) -> dict:
+    def saved(self) -> dict[str, Any]:
         """Return every setting as plain data, by name, for the save file"""
         return {name: setting.saved() for name, setting in self.by_name.items()}
 
-    def from_saved(saved) -> "Settings":
+    @staticmethod
+    def from_saved(saved: dict[str, Any]) -> "Settings":
         """Return the settings saved by saved(); a setting that wasn't saved is its default"""
         return Settings({
             kind.NAME: kind.from_saved(saved[kind.NAME]) if kind.NAME in saved else kind() for kind in Settings.KINDS

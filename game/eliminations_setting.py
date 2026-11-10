@@ -16,6 +16,7 @@
 # -----------------------------------------------------------------------------
 
 from dataclasses import dataclass
+from typing import Any
 
 from game.config_option import ConfigOption
 from game.rules.order import RULES
@@ -40,12 +41,13 @@ class EliminationsSetting:
 
     level: str = NONE
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Refuse a level the options don't offer, such as one from a damaged save file"""
         if self.level not in EliminationsSetting.levels():
             raise ValueError(f"Unknown level for ruled-out values: {self.level}")
 
-    def levels() -> tuple:
+    @staticmethod
+    def levels() -> tuple[str, ...]:
         """Return none, then each level the rules name, once, in the order of the rules"""
         return (EliminationsSetting.NONE, *dict.fromkeys(rule.LEVEL for rule in RULES if rule.LEVEL))
 
@@ -54,19 +56,21 @@ class EliminationsSetting:
         levels = EliminationsSetting.levels()
         return rule.LEVEL in levels[1 : levels.index(self.level) + 1]
 
-    def options(self) -> list:
+    def options(self) -> list[ConfigOption]:
         """Return the option the player can configure, as set now: the level"""
         levels = EliminationsSetting.levels()
         notes = (self.NONE_NOTE, *(self.LEVEL_NOTE.format(level=level) for level in levels[1:]))
         return [ConfigOption(self.GROUP, "Remove from cells", tuple((level, level) for level in levels), self.level, notes)]
 
-    def from_options(options) -> "EliminationsSetting":
+    @staticmethod
+    def from_options(options: list[ConfigOption]) -> "EliminationsSetting":
         """Return the setting the options describe, given as options() lists them"""
         return EliminationsSetting(options[0].value)
 
-    def saved(self) -> dict:
+    def saved(self) -> dict[str, Any]:
         """Return the setting as plain data for the save file"""
         return {"level": self.level}
 
-    def from_saved(saved) -> "EliminationsSetting":
+    @staticmethod
+    def from_saved(saved: dict[str, Any]) -> "EliminationsSetting":
         return EliminationsSetting(saved["level"])

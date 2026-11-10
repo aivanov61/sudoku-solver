@@ -16,6 +16,9 @@
 # -----------------------------------------------------------------------------
 
 from dataclasses import dataclass, replace
+from typing import Any
+
+from game.actions import Action
 
 
 @dataclass(frozen=True)
@@ -28,17 +31,17 @@ class ConfigOption:
 
     group: str
     name: str
-    choices: tuple  # (label, value) for each choice, in the order offered
-    value: object
-    notes: tuple = ()  # a note for each choice, in the same order ("" for none), or none at all
-    note_action: object = None  # the Action whose key the notes name as {key}
+    choices: tuple[tuple[str, Any], ...]  # (label, value) for each choice, in the order offered
+    value: Any  # each setting's own kind of value
+    notes: tuple[str, ...] = ()  # a note for each choice, in the same order ("" for none), or none at all
+    note_action: Action | None = None  # the Action whose key the notes name as {key}
 
-    def labels(self) -> list:
+    def labels(self) -> list[str]:
         return [label for label, _ in self.choices]
 
     def chosen_index(self) -> int:
         return [value for _, value in self.choices].index(self.value)
 
-    def with_choice(self, index) -> "ConfigOption":
+    def with_choice(self, index: int) -> "ConfigOption":
         """Return the option with the choice at index chosen"""
         return replace(self, value=self.choices[index][1])

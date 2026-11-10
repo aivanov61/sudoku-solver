@@ -16,10 +16,17 @@
 # -----------------------------------------------------------------------------
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
 
+from game.house import House
 from game.user_interface import Highlight
+
+if TYPE_CHECKING:
+    from game.cell import Cell, RuledOut
+    from game.puzzle import Puzzle
 
 
 class Outcome(Enum):
@@ -33,15 +40,15 @@ class Move:
 
     outcome: Outcome
     hint: str  # why this is the next move, or the warning that stops solving
-    cell: object = None  # the cell to fill in or to point the player at, if any
-    value: int = None  # the value to fill in (MOVED), or the value that has no place left (STOPPED)
-    house: object = None  # the house the value has no place left in (STOPPED)
-    highlight: Highlight = None  # what the hint points at on the board, if anything
-    reasons: dict = None  # {(cell, value): Elimination} for each removal the move needs, oldest first, if it comes with its own
+    cell: "Cell | None" = None  # the cell to fill in or to point the player at, if any
+    value: int | None = None  # the value to fill in (MOVED), or the value that has no place left (STOPPED)
+    house: House | None = None  # the house the value has no place left in (STOPPED)
+    highlight: Highlight | None = None  # what the hint points at on the board, if anything
+    reasons: "Eliminations | None" = None  # {(cell, value): Elimination} for each removal the move needs, oldest first, if it comes with its own
 
-    def missing(self) -> tuple:
+    def missing(self) -> tuple["Cell", int] | None:
         """Return (cell, value) for a warning about a value with no place left, to show it in the cell; or None"""
-        return (self.cell, self.value) if self.outcome is Outcome.STOPPED and self.value else None
+        return (self.cell, self.value) if self.outcome is Outcome.STOPPED and self.cell and self.value else None
 
 
 @dataclass(frozen=True)
@@ -50,10 +57,11 @@ class Elimination:
 
     why: str  # why it is ruled out, such as: in box 2, 4 can only go in row 1
     rule: str  # the NAME of the rule that ruled it out
-    relied_on: tuple = ()  # each (cell, value) that had to be ruled out first
-    highlight: Highlight = None  # what the reason points at on the board, if anything
+    relied_on: tuple[tuple["Cell", int], ...] = ()  # each (cell, value) that had to be ruled out first
+    highlight: Highlight | None = None  # what the reason points at on the board, if anything
 
-    def needed_for(removals, ruled_out) -> dict:
+    @staticmethod
+    def needed_for(removals: Iterable[tuple["Cell", int]], ruled_out: "Eliminations") -> "Eliminations":
         """Return {(cell, value): Elimination}, in the order found, for each of the removals and each one those rely on"""
         needed, to_follow = set(), list(removals)
         while to_follow:
@@ -62,6 +70,9 @@ class Elimination:
                 needed.add(found)
                 to_follow.extend(ruled_out[found].relied_on)
         return {found: why for found, why in ruled_out.items() if found in needed}
+
+
+type Eliminations = dict[tuple[Cell, int], Elimination]  # {(cell, value): Elimination} for values ruled out of cells
 
 
 class Rule(ABC):
@@ -74,14 +85,14 @@ class Rule(ABC):
     the puzzle never stores: tagged cells leave them out of what they must be.
     """
 
-    NAME = None  # shown in brackets after each hint, e.g. "[single value]"
+    NAME = ""  # shown in brackets after each hint, e.g. "[single value]"
     LEVEL = None  # the level of a rule that rules values out, which the player can choose to see removed
 
     @abstractmethod
-    def find(self, puzzle) -> Move:
+    def find(self, puzzle: "Puzzle") -> Move | None:
         """Return this rule's move in the puzzle, or None if it has none"""
 
-    def eliminations(self, puzzle, ruled_out=frozenset()) -> dict:
+    def eliminations(self, puzzle: "Puzzle", ruled_out: "RuledOut" = frozenset()) -> Eliminations:
         """
         Return {(cell, value): Elimination} for each value this rule rules out of a cell now, once each (cell, value)
         in ruled_out is left out; most rules rule out none
@@ -90,15 +101,18 @@ class Rule(ABC):
 
     # Interface required for subclasses
 
-    def _move(self, outcome, hint, cell=None, value=None, house=None, highlight=None, reasons=None) -> Move:
+    def _move(
+        self, outcome: Outcome, hint: str, cell: "Cell | None" = None, value: int | None = None, house: House | None = None,
+        highlight: Highlight | None = None, reasons: Eliminations | None = None,
+    ) -> Move:
         """Return a move whose hint ends with this rule's name"""
         return Move(outcome, f"{hint} [{self.NAME}] ", cell, value, house, highlight, reasons)
 
-    def _listed(self, items) -> str:
+    def _listed(self, items: Iterable[object]) -> str:
         """Return the items as the player reads them, such as: 4 and 7"""
         *rest, last = map(str, items)
         return f"{', '.join(rest)} and {last}" if rest else last
 
-    def _named(self, cells) -> str:
+    def _named(self, cells: Iterable["Cell"]) -> str:
         """Return where the cells are, counted from 1, such as: (1,2) and (1,5)"""
         return self._listed(f"({cell.row + 1},{cell.col + 1})" for cell in cells)

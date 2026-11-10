@@ -15,8 +15,13 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from typing import TYPE_CHECKING
+
 from game.cell import Cell
 from game.rules.rule import Move, Outcome, Rule
+
+if TYPE_CHECKING:
+    from game.puzzle import Puzzle
 
 
 class DeadEndRule(Rule):
@@ -28,12 +33,14 @@ class DeadEndRule(Rule):
     NAME = "dead end"
     WARNING = "Dead end; try either undoing or rewinding-back-to-a-previous-guess."
 
-    def find(self, puzzle) -> Move:
+    def find(self, puzzle: "Puzzle") -> Move | None:
         cell = puzzle.first_cell_where(Cell.is_dead_end)
         if cell is not None:
             return self._move(Outcome.STOPPED, self.WARNING, cell)
         cell = puzzle.first_cell_where(Cell.unplaceable_value)
         if cell is None:
             return None
-        value, house = cell.unplaceable_value()
+        missing = cell.unplaceable_value()
+        assert missing, "first_cell_where chose the cell for having one"
+        value, house = missing
         return self._move(Outcome.STOPPED, self.WARNING, cell, value, house)

@@ -25,10 +25,10 @@ class Input:
     Get keys from the display's terminal and decode them into commands (see Commands)
     """
 
-    def __init__(self, display: Display):
+    def __init__(self, display: Display) -> None:
         self.__display = display
 
-    def get_cmd(self, offered, timeout=None) -> tuple:
+    def get_cmd(self, offered: tuple[Action, ...], timeout: float | None = None) -> tuple[Action | str, int | None] | None:
         """Return (command, digit) for the next bound key, given the actions the mode offers; None after a timeout"""
         while True:
             try:
@@ -41,7 +41,7 @@ class Input:
             if command:
                 return command
 
-    def get_key_of(self, keys) -> str:
+    def get_key_of(self, keys: tuple[str, ...]) -> str | None:
         """Return the next key that is one of the keys; None after CTRL-C or anything wrong with the terminal"""
         while True:
             try:
@@ -53,9 +53,9 @@ class Input:
 
     # Private functions
 
-    def __read_key(self, timeout=None) -> str:
+    def __read_key(self, timeout: float | None = None) -> str:
         """Return the key pressed: its name (e.g. KEY_ENTER) for special keys, else the character; "" after a timeout"""
         term = self.__display.term
         with term.cbreak():
             keystroke = term.inkey(timeout=timeout)
-        return keystroke.name if keystroke.is_sequence else str(keystroke)
+        return keystroke.name or str(keystroke)

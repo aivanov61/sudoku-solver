@@ -90,6 +90,12 @@ class TestPuzzleCatalog(TestCase):
     def test_layout_class_is_available_for_loaded_layouts(self):
         self.assertEqual(self.__layout("Complete").board_class.__name__, "Complete")
 
+    def test_board_is_a_new_board_of_the_layout(self):
+        layout = self.__layout("Complete")
+        board = layout.board()
+        self.assertEqual(type(board).__name__, "Complete")
+        self.assertIsNot(layout.board(), board)
+
     # Private functions
 
     def __labels(self):

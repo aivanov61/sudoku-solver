@@ -16,7 +16,12 @@
 # -----------------------------------------------------------------------------
 
 
+from typing import TYPE_CHECKING
+
 from game.border import Border
+
+if TYPE_CHECKING:
+    from game.cell import Cell, RuledOut
 
 
 class House:
@@ -30,7 +35,7 @@ class House:
     ROW = "row"
     COLUMN = "column"
 
-    def __init__(self, kind: str, cells: list, number: int = None):
+    def __init__(self, kind: str, cells: list["Cell"], number: int | None = None) -> None:
         self.kind = kind
         self.cells = cells
         self.number = number  # counted from 1: rows down, columns across and boxes across, then down
@@ -39,19 +44,19 @@ class House:
         """Return what the player calls this house, such as: box 2"""
         return f"{self.kind} {self.number}"
 
-    def values_left(self) -> list:
+    def values_left(self) -> list[int]:
         """Return, in order, every value some cell of the house can still hold"""
         return sorted({value for cell in self.cells for value in cell.possible_values()})
 
-    def places(self, value, ruled_out=frozenset()) -> list:
+    def places(self, value: int, ruled_out: "RuledOut" = frozenset()) -> list["Cell"]:
         """Return the cells, in order, that can still hold the value, leaving out each (cell, value) ruled out"""
         return [cell for cell in self.cells if value in cell.possible_values() and (cell, value) not in ruled_out]
 
-    def has_no_place_for(self, value) -> bool:
+    def has_no_place_for(self, value: int) -> bool:
         """Return True if no cell holds the value and none can any more"""
         return not self.places(value) and all(cell.value() != value for cell in self.cells)
 
-    def edges_of(self, cell) -> Border:
+    def edges_of(self, cell: "Cell") -> Border:
         """Return the sides of the cell, one of the house's, that lie on the outline of the house"""
         spots = {(other.row, other.col) for other in self.cells}
         beside = {

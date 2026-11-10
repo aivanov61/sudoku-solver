@@ -31,12 +31,12 @@ class Entry:
         INITIAL = "initial"
         GUESS = "guess"
 
-        value: int = 0
-        prim_attr: str = None
+        value: int | None = 0
+        prim_attr: str | None = None
 
     cell: "Cell"
     valueinfo: ValueInfo
-    previous_valueinfo: ValueInfo = None
+    previous_valueinfo: ValueInfo | None = None
 
 
 class History:
@@ -44,13 +44,13 @@ class History:
     Keep and manage history of entries
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.__entries: list[Entry] = []
 
-    def clear(self):
+    def clear(self) -> None:
         self.__entries.clear()
 
-    def add(self, entry: Entry):
+    def add(self, entry: Entry) -> None:
         self.__entries.append(entry)
 
     def undo(self) -> Entry:

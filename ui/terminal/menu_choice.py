@@ -30,7 +30,7 @@ class MenuChoice(MenuItem):
     NEXT_KEYS = ("KEY_TAB", "KEY_RIGHT")
     PREVIOUS_KEYS = ("KEY_BTAB", "KEY_LEFT")
 
-    def __init__(self, name, labels: list, chosen=0):
+    def __init__(self, name: str, labels: list[str], chosen: int = 0) -> None:
         self.chosen = chosen  # the index of the label chosen
         self.__name = name
         self.__labels = labels
@@ -46,7 +46,7 @@ class MenuChoice(MenuItem):
     def is_picked_by_enter(self) -> bool:
         return True
 
-    def handle(self, key) -> None:
+    def handle(self, key: str) -> None:
         if key in self.NEXT_KEYS + self.PREVIOUS_KEYS:
             step = 1 if key in self.NEXT_KEYS else -1
             self.chosen = (self.chosen + step) % len(self.__labels)

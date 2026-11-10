@@ -30,7 +30,8 @@ class ErrorLog:
 
     FILE = "sudoku.log"
 
-    def record(error) -> str:
+    @staticmethod
+    def record(error: BaseException) -> str | None:
         """Append the time and the error's traceback to the log; return the log's file name, or None if it can't be written"""
         try:
             with open(ErrorLog.FILE, "a", encoding="utf-8") as log:
@@ -41,7 +42,8 @@ class ErrorLog:
             return None
         return ErrorLog.FILE
 
-    def where(error) -> str:
+    @staticmethod
+    def where(error: BaseException) -> str:
         """Return the innermost place on the error's stack, e.g. "game/puzzle.py:123 in up_" """
         frame = traceback.extract_tb(error.__traceback__)[-1]
         return f"{os.path.relpath(frame.filename)}:{frame.lineno} in {frame.name}"

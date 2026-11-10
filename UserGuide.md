@@ -4,7 +4,7 @@ This program lets you type in a 9x9 Sudoku puzzle, such as one from a newspaper 
 
 ## Getting started
 
-1. Install Python 3, then the `blessed` package: `pip install -r requirements.txt`
+1. Install Python 3.14 or later, then the `blessed` package: `pip install -r requirements.txt`
 2. In a terminal, go to the program's folder and run: `python sudoku.py`
 3. A copyright notice appears. It goes away after 5 seconds, or press any key.
 4. If there's more than one puzzle layout, a menu lists them, with the chosen one highlighted. Use the up and down arrows to choose a layout and press `ENTER` to play it, or press `ESC` or `q` to quit (it asks you to confirm with `y`). If the list doesn't fit on the screen, `---more---` shows at the top or bottom, and the arrows scroll the rest into view. Scrolling can take the highlighted layout off the screen; `ENTER` then brings it back into view, and a second `ENTER` plays it. A layout that can't be played is grayed out, with a note after its name, **(broken: …)**, and the arrows skip it. If no layout can be played, `ENTER` ends the program.

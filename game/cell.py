@@ -15,10 +15,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from collections.abc import Callable, Collection, Iterable, Iterator
 from typing import TYPE_CHECKING
 
 from game.border import Border
-from game.cell_attrs import CellAttrs
+from game.cell_attrs import Attributes, CellAttrs
 from game.cell_solver import CellSolver
 from game.house import House
 from game.marks_setting import MarksSetting
@@ -43,7 +44,7 @@ class Cell:
     1. Trigger recalculation of other puzzle cell values when this cell value changes
     """
 
-    def __init__(self, parent: "RectangularBlock", row: int = 0, col: int = 0, borders: Border = Border()):
+    def __init__(self, parent: "RectangularBlock", row: int = 0, col: int = 0, borders: Border = Border()) -> None:
         self._value = None
         self._solver = CellSolver(parent)  # Use the Solver class
         self._attrs = tuple()
@@ -56,14 +57,14 @@ class Cell:
         self.col = col
         self.borders = borders
 
-    def value(self) -> int:
+    def value(self) -> int | None:
         return self._value
 
-    def attr(self) -> tuple:
+    def attr(self) -> Attributes:
         """Return the attributes."""
         return self._attrs
 
-    def set(self, value, attrs=()) -> None:
+    def set(self, value: int | None, attrs: Attributes = ()) -> None:
         """Set the cell value and attributes, reporting any change"""
         if value and value not in self._parent.values():
             raise ValueError(f"Cell value must be in {self._parent.values()}")
@@ -75,18 +76,18 @@ class Cell:
         if (self._value, self._attrs) != before:
             self.__report_change()
 
-    def possible_values(self) -> set:
+    def possible_values(self) -> set[int]:
         return self._solver.possible_values()
 
-    def shown_possible(self) -> set:
+    def shown_possible(self) -> set[int]:
         """Return the possible values the cell shows: all of them but those removed as ruled out"""
         return self.possible_values() - self._removed
 
-    def removed_possible(self) -> set:
+    def removed_possible(self) -> set[int]:
         """Return the possible values not among those shown, having been removed as ruled out"""
         return self.possible_values() & self._removed
 
-    def marks(self) -> tuple:
+    def marks(self) -> tuple[int, ...]:
         """
         Return the marks the cell shows: once tagged or treated as tagged, what it must be; otherwise its "must be" marks (Snyder
         notation), the possible values with few places left in the cell's houses
@@ -100,7 +101,7 @@ class Cell:
         """Return True if the cell is to be shown as tagged: the player tagged it, or the settings treat it as tagged"""
         return self._tagged or self._treated_as_tagged
 
-    def set_tagged(self, tagged) -> None:
+    def set_tagged(self, tagged: bool) -> None:
         """Tag the cell for the player, or untag it, reporting any change; the tag stays whatever the cell's value"""
         if tagged != self._tagged:
             self._tagged = tagged
@@ -108,10 +109,10 @@ class Cell:
 
     # Interface required for blocks
 
-    def single_possible_value(self) -> int:
+    def single_possible_value(self) -> int | None:
         return self._solver.single_possible_value()
 
-    def hidden_single(self, ruled_out=frozenset()) -> tuple:
+    def hidden_single(self, ruled_out: RuledOut = frozenset()) -> tuple[int, House] | None:
         """
         Return (value, house) for the lowest value that can go nowhere else in one of the cell's houses, once each
         (cell, value) in ruled_out is left out, looking in its box first, then its row and column; or None if
@@ -120,7 +121,7 @@ class Cell:
         is_only_place = lambda house, value: house.places(value, ruled_out) == [self]
         return self.__first_in_houses(sorted(self.candidates(ruled_out)), is_only_place)
 
-    def unplaceable_value(self) -> tuple:
+    def unplaceable_value(self) -> tuple[int, House] | None:
         """
         Return (value, house) for the lowest value missing from one of the empty cell's houses with no place left
         there, looking in its box first, then its row and column; or None if there is none or the cell has a value
@@ -138,7 +139,7 @@ class Cell:
 
     # Interface required for the board
 
-    def refresh_marks(self, setting: MarksSetting, ruled_out=frozenset(), removed=frozenset()) -> None:
+    def refresh_marks(self, setting: MarksSetting | None, ruled_out: RuledOut = frozenset(), removed: RuledOut = frozenset()) -> None:
         """
         Show what the cell must be once tagged or treated as tagged, leaving out each (cell, value) ruled out, or else
         the Snyder marks the setting asks for in the whole puzzle, counting only what is not removed; nothing without a
@@ -153,7 +154,7 @@ class Cell:
 
     # Interface required for related cells
 
-    def forced_value(self, ruled_out=frozenset()) -> int:
+    def forced_value(self, ruled_out: RuledOut = frozenset()) -> int | None:
         """
         Return the value the cell is forced to hold now, once each (cell, value) in ruled_out is left out: its only
         candidate, or else its hidden single; or None
@@ -164,25 +165,25 @@ class Cell:
         hidden = self.hidden_single(ruled_out)
         return hidden[0] if hidden else None
 
-    def add_possible(self, value) -> None:
+    def add_possible(self, value: int) -> None:
         """Add back a possible value, unless the cell has a value or a related cell holds it"""
         if not self._value and value not in self.possible_values() and not self.__is_held_by_related_cell(value):
             self._solver.add_possible(value)
             self.__report_change()
 
-    def remove_possible(self, value) -> None:
+    def remove_possible(self, value: int) -> None:
         """Remove a possible value, reporting the change if it was possible"""
         if value in self.possible_values():
             self._solver.remove_possible(value)
             self.__report_change()
 
-    def mark_conflicted(self, value) -> None:
+    def mark_conflicted(self, value: int) -> None:
         """Mark the cell as conflicted if it holds the value just entered in a related cell"""
         if value == self._value and not self.is_marked_in_conflict():
             self.__add_attr(CellAttrs.CONFLICTED)
             self.__report_change()
 
-    def clear_resolved_conflict(self, value) -> None:
+    def clear_resolved_conflict(self, value: int) -> None:
         """Clear the cell's conflict mark if it holds the value and no related cell holds it any more"""
         if value == self._value and self.is_marked_in_conflict() and not self.__is_held_by_related_cell(value):
             self._attrs = tuple(attr for attr in self._attrs if attr not in CellAttrs.CONFLICT_ATTRS)
@@ -190,30 +191,30 @@ class Cell:
 
     # Interface required for the solving rules
 
-    def candidates(self, ruled_out=frozenset()) -> set:
+    def candidates(self, ruled_out: RuledOut = frozenset()) -> set[int]:
         """Return the possible values, leaving out each (cell, value) in ruled_out"""
         return {value for value in self.possible_values() if (self, value) not in ruled_out}
 
-    def houses(self) -> list:
+    def houses(self) -> list[House]:
         """Return the cell's houses: its box, then its row and column"""
         return list(self._parent.houses_of(self.row, self.col))
 
     # Private functions
 
-    def __mark_if_conflicting(self, value) -> None:
+    def __mark_if_conflicting(self, value: int | None) -> None:
         if value and self.__is_held_by_related_cell(value):
             self.__add_attr(CellAttrs.CONFLICTING)
 
-    def __is_held_by_related_cell(self, value) -> bool:
+    def __is_held_by_related_cell(self, value: int) -> bool:
         return any(cell.value() == value for cell in self.__related_cells())
 
-    def __related_cells(self):
+    def __related_cells(self) -> Iterator["Cell"]:
         return self._parent.related_cells(self.row, self.col)
 
-    def __add_attr(self, attr) -> None:
+    def __add_attr(self, attr: str) -> None:
         self._attrs = (*self._attrs, attr)
 
-    def __smart_update(self, value) -> None:
+    def __smart_update(self, value: int | None) -> None:
         """
         The brains of the cell.  It will update the cell taking into account any logic/analysis required.
         """
@@ -244,7 +245,7 @@ class Cell:
     def __report_change(self) -> None:
         self._parent.cell_changed(self)
 
-    def __marks_for(self, setting, ruled_out, removed) -> tuple:
+    def __marks_for(self, setting: MarksSetting | None, ruled_out: RuledOut, removed: RuledOut) -> tuple[int, ...]:
         if setting is None:
             return ()
         if self._tagged or setting.treats_every_cell_as_tagged():
@@ -253,7 +254,7 @@ class Cell:
             return self.__snyder_marks(setting.threshold, setting.kinds, removed)
         return ()
 
-    def __must_be(self, ruled_out) -> tuple:
+    def __must_be(self, ruled_out: RuledOut) -> tuple[int, ...]:
         """
         Return what the cell must be, as far as the values forced now and those ruled out tell: its own forced
         value, or else its candidates but those forced into related cells
@@ -264,13 +265,13 @@ class Cell:
         taken = {cell.forced_value(ruled_out) for cell in self.__related_cells()}
         return tuple(value for value in sorted(self.candidates(ruled_out)) if value not in taken)
 
-    def __snyder_marks(self, threshold, kinds, removed) -> tuple:
+    def __snyder_marks(self, threshold: int, kinds: tuple[str, ...], removed: RuledOut) -> tuple[int, ...]:
         """Return, in order, the values not removed with threshold places or fewer, not counting those removed, in a house of the kinds"""
         houses = [house for house in self.houses() if house.kind in kinds]
         few_places = lambda value: any(len(house.places(value, removed)) <= threshold for house in houses)
         return tuple(value for value in sorted(self.candidates(removed)) if few_places(value))
 
-    def __first_in_houses(self, values, applies) -> tuple:
+    def __first_in_houses(self, values: Iterable[int], applies: Callable[[House, int], object]) -> tuple[int, House] | None:
         """
         Return (value, house) for the first of the values for which applies(house, value) is true, going through
         the cell's houses in turn, box first; or None
@@ -280,3 +281,6 @@ class Cell:
                 if applies(house, value):
                     return value, house
         return None
+
+
+type RuledOut = Collection[tuple[Cell, int]]  # each (cell, value) ruled out, as cells and rules take it

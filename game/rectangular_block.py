@@ -15,6 +15,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from collections.abc import Callable, Iterator
+
 from game.board import Board
 from game.border import Border
 from game.cell import Cell
@@ -37,7 +39,7 @@ class RectangularBlock:
     ]
     # fmt: on
 
-    def __init__(self, parent: Board, row: int, col: int, rows: int = 0, cols: int = 0):
+    def __init__(self, parent: Board, row: int, col: int, rows: int = 0, cols: int = 0) -> None:
         self.parent = parent
         self.block_row = row
         self.block_col = col
@@ -47,18 +49,18 @@ class RectangularBlock:
 
     # Interface required for boards
 
-    def cell(self, row, col) -> Cell:
+    def cell(self, row: int, col: int) -> Cell:
         return self._cells[row % self.rows][col % self.cols]
 
-    def cells_in_row(self, row):
+    def cells_in_row(self, row: int) -> Iterator[Cell]:
         """Yield the cells of this block that are in the given puzzle row"""
         yield from self.cells_where(lambda cell: cell.row == row)
 
-    def cells_in_col(self, col):
+    def cells_in_col(self, col: int) -> Iterator[Cell]:
         """Yield the cells of this block that are in the given puzzle column"""
         yield from self.cells_where(lambda cell: cell.col == col)
 
-    def cells_where(self, condition):
+    def cells_where(self, condition: Callable[[Cell], object]) -> Iterator[Cell]:
         """Yield the cells of this block for which condition(cell) is true"""
         yield from (cell for cell in self.__cells() if condition(cell))
 
@@ -67,10 +69,10 @@ class RectangularBlock:
     def values(self) -> range:
         return range(1, self.rows * self.cols + 1)
 
-    def cell_changed(self, cell) -> None:
+    def cell_changed(self, cell: Cell) -> None:
         self.parent.cell_changed(cell)
 
-    def related_cells(self, row, col):
+    def related_cells(self, row: int, col: int) -> Iterator[Cell]:
         """Yield, once each, every other cell in the same block, row or column as the cell at row, col"""
         seen = {self.cell(row, col)}
         for house in self.houses_of(row, col):
@@ -82,7 +84,7 @@ class RectangularBlock:
     def box(self) -> House:
         return House(House.BOX, list(self.__cells()), self.parent.box_number(self))
 
-    def houses_of(self, row, col):
+    def houses_of(self, row: int, col: int) -> Iterator[House]:
         """Yield the houses of the cell at row, col: this block's box, then its row and column from the board"""
         yield self.box()
         yield House(House.ROW, list(self.parent.cells_in_row(row)), row + 1)
@@ -90,17 +92,17 @@ class RectangularBlock:
 
     # Private functions
 
-    def __initialize_cells(self):
-        self._cells = [[None for _col in range(self.cols)] for _row in range(self.rows)]
-        for row in range(self.rows):
-            for col in range(self.cols):
-                self._cells[row][col] = Cell(parent=self, **self.__phys_pos(row, col), borders=self.BORDERS[row][col])
+    def __initialize_cells(self) -> None:
+        self._cells = [
+            [Cell(parent=self, **self.__phys_pos(row, col), borders=self.BORDERS[row][col]) for col in range(self.cols)]
+            for row in range(self.rows)
+        ]
 
-    def __phys_pos(self, row, col):
+    def __phys_pos(self, row: int, col: int) -> dict[str, int]:
         return {
             "row": self.block_row * self.rows + row,
             "col": self.block_col * self.cols + col,
         }
 
-    def __cells(self):
+    def __cells(self) -> Iterator[Cell]:
         return (cell for cells in self._cells for cell in cells)

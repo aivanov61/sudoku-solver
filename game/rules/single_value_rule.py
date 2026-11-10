@@ -15,8 +15,13 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from typing import TYPE_CHECKING
+
 from game.cell import Cell
 from game.rules.rule import Move, Outcome, Rule
+
+if TYPE_CHECKING:
+    from game.puzzle import Puzzle
 
 
 class SingleValueRule(Rule):
@@ -24,7 +29,7 @@ class SingleValueRule(Rule):
 
     NAME = "single value"
 
-    def find(self, puzzle) -> Move:
+    def find(self, puzzle: "Puzzle") -> Move | None:
         cell = puzzle.first_cell_where(Cell.single_possible_value)
         if cell is None:
             return None

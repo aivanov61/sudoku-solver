@@ -15,6 +15,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from collections.abc import Callable
+
 from game.actions import Action, Mode, OFFERED_ACTIONS
 from game.board import Board
 from game.cell import Cell
@@ -22,10 +24,12 @@ from game.cell_attrs import CellAttrs
 from game.completion_report import CompletionReport
 from game.eliminations_setting import EliminationsSetting
 from game.game_file import GameFile
+from game.house import House
 from game.marks_setting import MarksSetting
 from game.moves import Moves
 from game.puzzle_solver import PuzzleSolver
 from game.rules.dead_end_rule import DeadEndRule
+from game.rules.rule import Eliminations, Move
 from game.save_file import SavedPuzzle
 from game.settings import Settings
 from game.user_interface import Message, MessageKind, UserInterface
@@ -56,7 +60,7 @@ class Puzzle:
     interface (see user_interface.py).
     """
 
-    def __init__(self, board: Board, ui: UserInterface):
+    def __init__(self, board: Board, ui: UserInterface) -> None:
         # Public attributes required for all puzzles
         self.selected_cell = (0, 0)  # row, col (NOT x, y)
         self.is_playing = True
@@ -82,7 +86,7 @@ class Puzzle:
         """Show a notice, a newly changed completion, or why the move "n" pointed out is right, if any; otherwise leave it blank"""
         self.__ui.status(self.__notice or self.__report.message() or self.__solver.pending_hint())
 
-    def handle(self, action, digit=None) -> None:
+    def handle(self, action: Action, digit: int | None = None) -> None:
         """Carry out the player's action (with its digit, for values and guesses), then show the status"""
         self.__action_received(action)
         getattr(self, f"{action.value}_")(*([] if digit is None else [digit]))
@@ -98,10 +102,10 @@ class Puzzle:
         if self.__ui.confirm("Really quit?"):
             self.force_quit_()
 
-    def value_(self, val) -> None:
+    def value_(self, val: int) -> None:
         self.__enter(val, None)
 
-    def guess_(self, val) -> None:
+    def guess_(self, val: int) -> None:
         """Enter the value as a guess, which rewind can go back to; only while playing"""
         if not self.__refused_while_initializing():
             self.__enter(val, CellAttrs.GUESS)
@@ -187,22 +191,22 @@ class Puzzle:
 
     # Interface required for the solver and the other helpers
 
-    def first_cell_where(self, condition) -> Cell:
+    def first_cell_where(self, condition: Callable[[Cell], object]) -> Cell | None:
         """Return the first cell, left to right and top to bottom, for which condition(cell) is true, or None"""
         return self.__board.first_cell_where(condition)
 
-    def houses(self) -> list:
+    def houses(self) -> list[House]:
         """Return every house of the board: each box, then every row and every column"""
         return self.__board.houses()
 
-    def everything_ruled_out(self) -> dict:
+    def everything_ruled_out(self) -> Eliminations:
         """Return {(cell, value): Elimination} for what all the rules rule out together, whatever the player chose to see removed"""
         return self.__solver.everything_ruled_out()
 
-    def select(self, cell) -> None:
+    def select(self, cell: Cell) -> None:
         self.selected_cell = (cell.row, cell.col)
 
-    def enter_solved_value(self, cell, value) -> None:
+    def enter_solved_value(self, cell: Cell, value: int) -> None:
         """Enter a value found by the solver, the same way as a typed value but marked SOLVED"""
         self.__moves.enter(cell, value, CellAttrs.SOLVED)
 
@@ -230,7 +234,7 @@ class Puzzle:
             self.__moves.recorded(),
         )
 
-    def restore(self, saved) -> None:
+    def restore(self, saved: SavedPuzzle) -> None:
         """
         Empty the board, enter the givens in setup mode, replay the moves in the saved mode, tag the cells, then
         point out any dead end
@@ -250,7 +254,7 @@ class Puzzle:
 
     # Private functions
 
-    def __use_mode(self, initializing) -> None:
+    def __use_mode(self, initializing: bool) -> None:
         """Enter setup or play mode, announcing it and the actions it offers to the user interface"""
         self._initializing = initializing
         mode = Mode.SETUP if initializing else Mode.PLAY
@@ -267,14 +271,14 @@ class Puzzle:
             removed = self.__solver.removed(self.__settings.of(EliminationsSetting))
             self.__board.refresh_marks(self.__settings.of(MarksSetting), {**self.__solver.ruled_out(), **removed}, removed)
 
-    def __action_received(self, action) -> None:
+    def __action_received(self, action: Action) -> None:
         """Any action ends the notice and the completion report; any action but "n" and "w" cancels the move a previous "n" pointed out"""
         self.__notice = None
         self.__report.seen()
         if action not in (Action.NEXT, Action.WHY):
             self.__solver.cancel_pending_move()
 
-    def __enter(self, val, prim_attr) -> None:
+    def __enter(self, val: int | None, prim_attr: str | None) -> None:
         """Enter the value in the selected cell, with its primary attribute, then point out any dead end"""
         cell = self.__selected_cell()
         if not self.__refused_as_given(cell):
@@ -284,14 +288,14 @@ class Puzzle:
     def __selected_cell(self) -> Cell:
         return self.__board.cell(*self.selected_cell)
 
-    def __refused_as_given(self, cell) -> bool:
+    def __refused_as_given(self, cell: Cell) -> bool:
         """Warn that a given cannot be changed while playing, returning whether the cell is one"""
         is_refused = not self._initializing and CellAttrs.INITIAL in cell.attr()
         if is_refused:
             self.__warn("Cannot change an initial value while playing. ")
         return is_refused
 
-    def __warn(self, text) -> None:
+    def __warn(self, text: str) -> None:
         self.__ui.inform(Message(text, MessageKind.WARNING))
 
     def __found_dead_end(self) -> bool:
@@ -299,12 +303,13 @@ class Puzzle:
         dead_end = DeadEndRule().find(self)
         if dead_end is None:
             return False
+        assert dead_end.cell, "a dead end is always in a cell"
         self.select(dead_end.cell)
         text = self.__setup_dead_end_warning(dead_end) if self._initializing else dead_end.hint
         self.__notice = Message(text, MessageKind.WARNING, dead_end.missing())
         return True
 
-    def __setup_dead_end_warning(self, dead_end) -> str:
+    def __setup_dead_end_warning(self, dead_end: Move) -> str:
         """Say why the setup leads to the dead end, and to change it"""
         if dead_end.house:
             reason = f"{dead_end.value} has no place left in this {dead_end.house.kind}"
@@ -318,7 +323,7 @@ class Puzzle:
             self.__warn("This works only while playing - ESC starts playing. ")
         return self._initializing
 
-    def __move(self, d_row, d_col) -> None:
+    def __move(self, d_row: int, d_col: int) -> None:
         """Move the selected cell, stopping at the edges of the board"""
         row, col = self.selected_cell
         row = min(max(row + d_row, 0), self.__board.v_cells - 1)
@@ -332,7 +337,7 @@ class Puzzle:
             return True
         return self.__found_dead_end()
 
-    def __switch_mode(self, initializing) -> None:
+    def __switch_mode(self, initializing: bool) -> None:
         self.__use_mode(initializing)
         self.display_status()
 
@@ -354,7 +359,7 @@ class Puzzle:
             self.__ui.inform(self.__report.already_complete())
         return is_complete
 
-    def __inform(self, message) -> None:
+    def __inform(self, message: Message | None) -> None:
         """Show the message, if there is one, until the player has seen it"""
         if message:
             self.__ui.inform(message)

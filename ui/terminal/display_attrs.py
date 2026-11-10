@@ -17,7 +17,7 @@
 
 from dataclasses import dataclass
 
-from game.cell_attrs import CellAttrs
+from game.cell_attrs import Attributes, CellAttrs
 
 
 class DisplayAttrs:
@@ -50,8 +50,8 @@ class DisplayAttrs:
 
     @dataclass
     class FgBgAttr:
-        fg: tuple = None
-        bg: tuple = None
+        fg: tuple[str, ...] | None = None
+        bg: tuple[str, ...] | None = None
 
     ATTRS_PRIMARY = {
         # The following are mutually exclusive basic required attributes
@@ -66,42 +66,50 @@ class DisplayAttrs:
         CellAttrs.CONFLICTED: FgBgAttr(None, ("yellow",)),
     }
 
-    def outer_border(_str, _attrs):
+    @staticmethod
+    def outer_border(_str: str, _attrs: Attributes) -> str:
         """Render outer border attributes - currently no rendering"""
         return _str
 
-    def inner_border(_str, _attrs):
+    @staticmethod
+    def inner_border(_str: str, _attrs: Attributes) -> str:
         """Render inner border attributes - currently no rendering"""
         return _str
 
-    def render(_attrs: tuple[str]) -> str:
+    @staticmethod
+    def render(_attrs: Attributes) -> str:
         """Render the term.[attr] string for both foreground and background attributes"""
         fg, bg = DisplayAttrs.__get_fg_bg(_attrs)
         return DisplayAttrs.__style(fg, bg)
 
-    def render_bg(_attrs) -> str:
+    @staticmethod
+    def render_bg(_attrs: Attributes) -> str:
         """Render the term.[attr] string for only the background attributes"""
         _fg, bg = DisplayAttrs.__get_fg_bg(_attrs)
         return DisplayAttrs.__style(None, bg)
 
-    def render_small_digits(_attrs, tagged, removed=False) -> str:
+    @staticmethod
+    def render_small_digits(_attrs: Attributes, tagged: bool, removed: bool = False) -> str:
         """Render the term.[attr] string for the small digits: the background attributes, in REMOVED_VALUES if removed, else TAGGED_COLOR if tagged"""
         _fg, bg = DisplayAttrs.__get_fg_bg(_attrs)
         tagged_color = DisplayAttrs.TAGGED_COLOR if tagged else None
         return DisplayAttrs.__style(DisplayAttrs.REMOVED_VALUES if removed else tagged_color, bg)
 
-    def render_ruled_out_digits(_attrs) -> str:
+    @staticmethod
+    def render_ruled_out_digits(_attrs: Attributes) -> str:
         """Render the term.[attr] string for the small digits of values ruled out: RULED_OUT_DIGITS on the background attributes"""
         _fg, bg = DisplayAttrs.__get_fg_bg(_attrs)
         return DisplayAttrs.__style(DisplayAttrs.RULED_OUT_DIGITS, bg)
 
-    def is_beyond_last_shade(depth) -> bool:
+    @staticmethod
+    def is_beyond_last_shade(depth: int) -> bool:
         """Return True if the guess depth needs a lighter shade of gray than the last one"""
         return depth * DisplayAttrs.GRAY_STEP > DisplayAttrs.MAX_GRAY_LEVEL
 
     # Private functions
 
-    def __get_fg_bg(_attrs):
+    @staticmethod
+    def __get_fg_bg(_attrs: Attributes) -> tuple[str, str]:
         primary = DisplayAttrs.__get_attrs(_attrs, DisplayAttrs.ATTRS_PRIMARY)
         optional = DisplayAttrs.__get_attrs(_attrs, DisplayAttrs.ATTRS_OPTIONAL)
         fg = "_".join(optional.fg or primary.fg or (DisplayAttrs.DEFAULT_COLOR,))
@@ -110,13 +118,16 @@ class DisplayAttrs:
         bg = "_".join(optional.bg or primary.bg or bg_level)
         return fg, bg
 
-    def __style(fg, bg) -> str:
+    @staticmethod
+    def __style(fg: str | None, bg: str) -> str:
         return f"{fg}_on_{bg}" if fg and bg else fg if fg else f"on_{bg}" if bg else "normal"
 
-    def __depth(_attrs) -> int:
+    @staticmethod
+    def __depth(_attrs: Attributes) -> int:
         """Return the guess depth, 0 when there is none"""
         return next(iter([attr["depth"] for attr in _attrs if isinstance(attr, dict) and "depth" in attr]), 0)
 
-    def __get_attrs(_attrs, _attr_list) -> FgBgAttr:
+    @staticmethod
+    def __get_attrs(_attrs: Attributes, _attr_list: dict[str, FgBgAttr]) -> FgBgAttr:
         key = next(iter([key for key in _attr_list.keys() if key in _attrs]), None)
         return _attr_list[key] if key else DisplayAttrs.FgBgAttr()

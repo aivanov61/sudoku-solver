@@ -21,7 +21,7 @@ from ui.terminal.menu_item import MenuItem
 class MenuEntry(MenuItem):
     """A menu line that ENTER picks, standing for a value; one that can't be picked is grayed out and skipped"""
 
-    def __init__(self, label, value, can_pick=True):
+    def __init__(self, label: str, value: object, can_pick: bool = True) -> None:
         self.value = value
         self.__label = label
         self.__can_pick = can_pick

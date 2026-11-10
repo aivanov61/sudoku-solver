@@ -16,8 +16,13 @@
 # -----------------------------------------------------------------------------
 
 from abc import abstractmethod
+from typing import TYPE_CHECKING
 
-from game.rules.rule import Move, Outcome, Rule
+from game.rules.rule import Elimination, Eliminations, Move, Outcome, Rule
+
+if TYPE_CHECKING:
+    from game.cell import Cell, RuledOut
+    from game.puzzle import Puzzle
 
 
 class EliminatingRule(Rule):
@@ -26,7 +31,7 @@ class EliminatingRule(Rule):
     eliminations leave, with a hint explaining both; each subclass says what it rules out.
     """
 
-    def find(self, puzzle) -> Move:
+    def find(self, puzzle: "Puzzle") -> Move | None:
         ruled_out = self.eliminations(puzzle)
         if not ruled_out:
             return None
@@ -36,12 +41,12 @@ class EliminatingRule(Rule):
         return self.__move_into(cell, ruled_out)
 
     @abstractmethod
-    def eliminations(self, puzzle, ruled_out=frozenset()) -> dict:
+    def eliminations(self, puzzle: "Puzzle", ruled_out: "RuledOut" = frozenset()) -> Eliminations:
         """Return {(cell, value): Elimination} for each value ruled out of a cell, as in Rule.eliminations()"""
 
     # Interface required for subclasses
 
-    def _keep_simplest(self, found, ruled_out_value, elimination) -> None:
+    def _keep_simplest(self, found: Eliminations, ruled_out_value: tuple["Cell", int], elimination: Elimination) -> None:
         """Note the elimination as why the (cell, value) is ruled out, unless the reason already noted relies on no more"""
         kept = found.get(ruled_out_value)
         if kept is None or len(elimination.relied_on) < len(kept.relied_on):
@@ -49,7 +54,7 @@ class EliminatingRule(Rule):
 
     # Private functions
 
-    def __move_into(self, cell, ruled_out) -> Move:
+    def __move_into(self, cell: "Cell", ruled_out: Eliminations) -> Move:
         """Return the move filling in the value the eliminations force into the cell, explaining why"""
         candidates = cell.candidates(ruled_out)
         if len(candidates) == 1:
@@ -58,7 +63,9 @@ class EliminatingRule(Rule):
             elimination = ruled_out[(cell, ruled)]
             hint = f"Only {value} fits here: {elimination.why}, which rules {ruled} out here."
         else:
-            value, house = cell.hidden_single(ruled_out)
+            hidden = cell.hidden_single(ruled_out)
+            assert hidden, "a cell forced to hold a value with more than one candidate holds a hidden single"
+            value, house = hidden
             elimination = next(ruled_out[(other, value)] for other in house.cells if (other, value) in ruled_out)
             hint = f"{value} fits nowhere else in its {house.kind}: {elimination.why}."
         return self._move(Outcome.MOVED, hint, cell, value, highlight=elimination.highlight)

@@ -15,6 +15,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from typing import Any
+
 from game.actions import Action
 
 
@@ -176,7 +178,8 @@ class Commands:
         },
     ]
 
-    def command_for(key, offered) -> tuple:
+    @staticmethod
+    def command_for(key: str, offered: tuple[Action, ...]) -> tuple[Action | str, int | None] | None:
         """Return (command, digit) for a key, the digit only for values and guesses; None if the key is not bound"""
         bindings = [binding for binding in Commands.BINDINGS if key in binding["keys"]]
         if not bindings:
@@ -185,19 +188,23 @@ class Commands:
         is_digit = key in Commands.DIGITS + Commands.SHIFTED_DIGITS
         return binding["command"], int(key.translate(Commands.unshifted_value)) if is_digit else None
 
-    def label_for(command) -> str:
+    @staticmethod
+    def label_for(command: Action | str) -> str:
         """Return the label naming the command's keys, e.g. "m" for tagging a cell"""
         return Commands.__binding_of(command)["label"]
 
-    def keys_for(command) -> tuple:
+    @staticmethod
+    def keys_for(command: Action | str) -> tuple[str, ...]:
         """Return every key bound to the command, e.g. ("w", "W") for walking through why values were taken off"""
         return tuple(Commands.__binding_of(command)["keys"])
 
-    def panel(offered) -> list:
+    @staticmethod
+    def panel(offered: tuple[Action, ...]) -> list[tuple[str, str]]:
         """The offered commands' lines for the command panel: (keys, name)"""
         return [(binding["label"], binding["name"]) for binding in Commands.BINDINGS if Commands.__is_offered(binding["command"], offered)]
 
-    def long_help(offered) -> str:
+    @staticmethod
+    def long_help(offered: tuple[Action, ...]) -> str:
         """Long help - a one-pager of the offered commands, their descriptions lined up after their keys"""
         bindings = [binding for binding in Commands.BINDINGS if Commands.__is_offered(binding["command"], offered)]
         width = max(len(binding["label"]) for binding in bindings)
@@ -205,8 +212,10 @@ class Commands:
 
     # Private functions
 
-    def __binding_of(command) -> dict:
+    @staticmethod
+    def __binding_of(command: Action | str) -> dict[str, Any]:
         return next(binding for binding in Commands.BINDINGS if binding["command"] == command)
 
-    def __is_offered(command, offered) -> bool:
+    @staticmethod
+    def __is_offered(command: Action | str, offered: tuple[Action, ...]) -> bool:
         return command == Commands.HELP or command in offered

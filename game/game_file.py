@@ -36,7 +36,7 @@ class GameFile:
 
     DEFAULT_FILE_NAME = "sudoku"
 
-    def __init__(self, puzzle: "Puzzle", ui: UserInterface):
+    def __init__(self, puzzle: "Puzzle", ui: UserInterface) -> None:
         self.__puzzle = puzzle
         self.__ui = ui
         self.__file_name = self.DEFAULT_FILE_NAME  # the file name last saved or restored, as typed, without its extension
@@ -48,8 +48,10 @@ class GameFile:
             self.__warn("Nothing to save - the board is empty. ")
             return
         name = self.__ui.ask_file_name("Save to file:", self.__file_name, SaveFile.EXTENSION)
-        path = name and SaveFile.located(name)
-        if not path or os.path.exists(path) and not self.__ui.confirm(f"{path} already exists.  Replace it?"):
+        if not name:
+            return
+        path = SaveFile.located(name)
+        if os.path.exists(path) and not self.__ui.confirm(f"{path} already exists.  Replace it?"):
             return
         try:
             SaveFile.write(path, self.__puzzle.saved_state())
@@ -62,7 +64,9 @@ class GameFile:
     def restore(self) -> None:
         """Replace the puzzle with one saved to a file, asking first if that would lose any values"""
         name = self.__ui.ask_file_name("Restore from file:", self.__file_name, SaveFile.EXTENSION)
-        saved = name and self.__read(SaveFile.located(name))
+        if not name:
+            return
+        saved = self.__read(SaveFile.located(name))
         if not saved or self.__puzzle.has_values() and not self.__ui.confirm("Restoring replaces every value.  Really restore?"):
             return
         self.__remember(name)
@@ -72,21 +76,21 @@ class GameFile:
 
     # Private functions
 
-    def __warn(self, text) -> None:
+    def __warn(self, text: str) -> None:
         self.__ui.inform(Message(text, MessageKind.WARNING))
 
-    def __warn_ignored(self, ignored) -> None:
+    def __warn_ignored(self, ignored: tuple[str, ...]) -> None:
         """Name the entries ignored, or only count them where the names don't fit"""
         entries = "entry" if len(ignored) == 1 else "entries"
         text = f"Ignored {entries} from a newer sudoku: {', '.join(ignored)}. "
         short = f"Ignored {len(ignored)} {entries} from a newer sudoku. "
         self.__ui.inform(Message(text, MessageKind.WARNING, short=short))
 
-    def __remember(self, name) -> None:
+    def __remember(self, name: str) -> None:
         """Offer the name next time, without its extension"""
         self.__file_name = name.removesuffix(SaveFile.EXTENSION)
 
-    def __read(self, path) -> SavedPuzzle:
+    def __read(self, path: str) -> SavedPuzzle | None:
         """Return the puzzle saved in the file, or None after warning why it cannot be restored here"""
         try:
             saved = SaveFile.read(path)

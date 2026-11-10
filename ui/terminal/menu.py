@@ -15,7 +15,11 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from collections.abc import Sequence
+from typing import Any
+
 from ui.terminal.display import Display, echo
+from ui.terminal.menu_item import MenuItem
 
 
 class Menu:
@@ -37,7 +41,9 @@ class Menu:
     HINT = "ENTER brings the highlighted line back into view"
     LEAVE_KEYS = ("KEY_ESCAPE", "q", "Q")
 
-    def __init__(self, title, items: list, keys_help, display: Display, quit_question=None, start=0):
+    def __init__(
+        self, title: str, items: Sequence[MenuItem], keys_help: str, display: Display, quit_question: str | None = None, start: int = 0,
+    ) -> None:
         self.__title = title
         self.__items = items
         self.__keys_help = keys_help
@@ -46,48 +52,48 @@ class Menu:
         self.__selected = self.__next_selectable(start - 1, 1)  # index of the selected item, None when none can be
         self.__top = 0  # index of the first item shown
         self.__message = ""
-        if self.__selected is not None:
-            self.__bring_into_view(self.__selected)
+        self.__bring_selection_into_view()
 
-    def choose(self):
+    def choose(self) -> Any:
         """Return the value of the item picked, or None if the player leaves or there is nothing to pick"""
         try:
             while True:
                 self.__draw()
                 key = self.__read_key()
+                item = None if self.__selected is None else self.__items[self.__selected]
                 if key == "KEY_ENTER" and self.__is_selection_hidden():
-                    self.__bring_into_view(self.__selected)
-                elif key == "KEY_ENTER" and self.__selected is None:
-                    return None
-                elif key == "KEY_ENTER" and self.__items[self.__selected].is_picked_by_enter():
-                    return self.__items[self.__selected].value
+                    self.__bring_selection_into_view()
+                elif key == "KEY_ENTER" and (item is None or item.is_picked_by_enter()):
+                    return item.value if item else None
                 elif key in self.LEAVE_KEYS and self.__leave_confirmed():
                     return None
                 elif key in ("KEY_UP", "KEY_DOWN"):
                     self.__move(1 if key == "KEY_DOWN" else -1)
-                elif self.__selected in self.__shown(self.__top):
-                    self.__items[self.__selected].handle(key)
+                elif item and not self.__is_selection_hidden():
+                    item.handle(key)
         except KeyboardInterrupt:
             return None
 
-    def selected_index(self) -> int:
+    def selected_index(self) -> int | None:
         """Return the index of the selected item, to open on it another time; None when none can be selected"""
         return self.__selected
 
     # Private functions
 
-    def __next_selectable(self, start, step) -> int:
+    def __next_selectable(self, start: int, step: int) -> int | None:
         """Return the index of the first item past start, going by step, that can be selected, or None"""
         indexes = range(start + step, len(self.__items)) if step > 0 else range(start + step, -1, -1)
         return next((index for index in indexes if self.__items[index].is_selectable()), None)
 
-    def __bring_into_view(self, index) -> None:
-        """Scroll as little as needed for the item to be shown"""
-        self.__top = min(self.__top, index)
-        while index not in self.__shown(self.__top):
+    def __bring_selection_into_view(self) -> None:
+        """Scroll as little as needed for the selected item, if any, to be shown"""
+        if self.__selected is None:
+            return
+        self.__top = min(self.__top, self.__selected)
+        while self.__selected not in self.__shown(self.__top):
             self.__top += 1
 
-    def __shown(self, top) -> range:
+    def __shown(self, top: int) -> range:
         """Return the indexes of the items shown from top, leaving room for a "more" line above or below"""
         count = self.__display.term.height - self.RESERVED_LINES - (top > 0)
         if top + count < len(self.__items):
@@ -113,10 +119,10 @@ class Menu:
     def __is_selection_hidden(self) -> bool:
         return self.__selected is not None and self.__selected not in self.__shown(self.__top)
 
-    def __more_line(self, is_more) -> list:
+    def __more_line(self, is_more: bool) -> list[str]:
         return [self.MORE] if is_more else []
 
-    def __item_line(self, index) -> str:
+    def __item_line(self, index: int) -> str:
         """Return the item's text, indented: reversed when selected, else grayed out if the item says so"""
         term, item = self.__display.term, self.__items[index]
         text = item.text()
@@ -133,7 +139,7 @@ class Menu:
             key = term.inkey()
             if key.name == "CSI" and term.inkey(timeout=0) == "Z":  # blessed reads Shift-TAB as "\x1b[" then "Z"
                 return "KEY_BTAB"
-        return key.name if key.is_sequence else str(key)
+        return key.name or str(key)
 
     def __leave_confirmed(self) -> bool:
         """Ask the quit question, if there is one, on the menu's message line; only "y" or "Y" confirms"""
@@ -144,20 +150,19 @@ class Menu:
         self.__message = ""
         return self.__read_key() in ("y", "Y")
 
-    def __move(self, step) -> None:
+    def __move(self, step: int) -> None:
         """
         Select the next item that way that can be selected and bring it into view; scroll a line that way
         instead when there is none, or when the selected item is out of view
         """
-        is_moving = self.__selected is not None and not self.__is_selection_hidden()
-        found = self.__next_selectable(self.__selected, step) if is_moving else None
+        found = None if self.__selected is None or self.__is_selection_hidden() else self.__next_selectable(self.__selected, step)
         if found is None:
             self.__scroll(step)
         else:
             self.__selected = found
-            self.__bring_into_view(found)
+            self.__bring_selection_into_view()
 
-    def __scroll(self, step) -> None:
+    def __scroll(self, step: int) -> None:
         """Scroll a line that way, unless the first or last item is already shown"""
         self.__top = max(0, min(self.__top + step, self.__last_top()))
 

@@ -15,6 +15,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from collections.abc import Iterator
+
 from game.board import Board
 from game.rectangular_block import RectangularBlock
 
@@ -31,7 +33,7 @@ class Board3x3(Board):
     H_BLOCKS = 3  # columns
     V_BLOCKS = 3  # rows
 
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__(v_cells=self.V_BLOCKS**2, h_cells=self.H_BLOCKS**2)
         self.__block_grid = [
             [
@@ -43,8 +45,8 @@ class Board3x3(Board):
 
     # Interface required for Board
 
-    def _blocks(self):
+    def _blocks(self) -> Iterator[RectangularBlock]:
         return (block for blocks in self.__block_grid for block in blocks)
 
-    def _block_at(self, row, col):
+    def _block_at(self, row: int, col: int) -> RectangularBlock:
         return self.__block_grid[row // self.V_BLOCKS][col // self.H_BLOCKS]

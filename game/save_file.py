@@ -18,7 +18,9 @@
 import json
 import os
 
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, fields
+from typing import Any
 
 from game.settings import Settings
 
@@ -30,11 +32,11 @@ class SavedPuzzle:
     layout: str  # the layout's NAME
     initializing: bool
     settings: Settings  # what the player configured, such as the "must be" marks
-    selected_cell: tuple  # (row, col)
-    tags: list  # (row, col) for each tagged cell
-    givens: list  # (row, col, value) for each given
-    moves: list  # (row, col, value, prim_attr) for each entry in the history, oldest first
-    ignored: tuple = ()  # the entries in the file, from a newer version, that this one doesn't know; never saved
+    selected_cell: tuple[int, int]  # (row, col)
+    tags: list[tuple[int, int]]  # (row, col) for each tagged cell
+    givens: list[tuple[int, int, int | None]]  # (row, col, value) for each given
+    moves: list[tuple[int, int, int | None, str | None]]  # (row, col, value, prim_attr) for each entry in the history, oldest first
+    ignored: tuple[str, ...] = ()  # the entries in the file, from a newer version, that this one doesn't know; never saved
 
 
 class SaveFileError(Exception):
@@ -63,11 +65,13 @@ class SaveFile:
     FOLDER = "saved_games"
     EXTENSION = ".json"
 
-    def located(name) -> str:
+    @staticmethod
+    def located(name: str) -> str:
         """Return the path for a file name: in FOLDER unless the name includes a folder of its own"""
         return name if os.path.dirname(name) else os.path.join(SaveFile.FOLDER, name)
 
-    def write(path, saved: SavedPuzzle) -> None:
+    @staticmethod
+    def write(path: str, saved: SavedPuzzle) -> None:
         if os.path.dirname(path) == SaveFile.FOLDER:
             os.makedirs(SaveFile.FOLDER, exist_ok=True)
         with open(path, "w", encoding="utf-8") as file:
@@ -75,7 +79,8 @@ class SaveFile:
             del state["ignored"]
             json.dump({"format": SaveFile.FORMAT, "version": SaveFile.VERSION, "state": state}, file, indent=1)
 
-    def read(path) -> SavedPuzzle:
+    @staticmethod
+    def read(path: str) -> SavedPuzzle:
         """Return the puzzle saved in the file, upgraded to the current version; raise SaveFileError if it can't be"""
         data = SaveFile.__load(path)
         if data["version"] > SaveFile.VERSION:
@@ -92,7 +97,8 @@ class SaveFile:
 
     # Private functions
 
-    def __load(path) -> dict:
+    @staticmethod
+    def __load(path: str) -> dict[str, Any]:
         try:
             with open(path, encoding="utf-8") as file:
                 data = json.load(file)
@@ -105,17 +111,20 @@ class SaveFile:
             raise SaveFile.__damaged(path)
         return data
 
-    def __damaged(path) -> SaveFileError:
+    @staticmethod
+    def __damaged(path: str) -> SaveFileError:
         return SaveFileError(f"Cannot restore {path} - it is not a saved puzzle, or it is damaged. ")
 
-    def __upgrading_marks(state, upgrade) -> dict:
+    @staticmethod
+    def __upgrading_marks(state: dict[str, Any], upgrade: Callable[[dict[str, Any]], dict[str, Any]]) -> dict[str, Any]:
         """Return the state with its marks setting, if it has one, converted by the function given"""
         marks = state.get("settings", {}).get("marks")
         if marks is None:
             return state
         return {**state, "settings": {**state["settings"], "marks": upgrade(marks)}}
 
-    def __marks_with_whole_puzzle(marks) -> dict:
+    @staticmethod
+    def __marks_with_whole_puzzle(marks: dict[str, Any]) -> dict[str, Any]:
         """
         Return the version 1 marks as version 2 saves them: marks that were off (no threshold) show in tagged cells
         only, with a threshold of 2, and marks that were on show in the whole puzzle
@@ -123,11 +132,13 @@ class SaveFile:
         threshold = marks["threshold"]
         return {"threshold": threshold or 2, "kinds": marks["kinds"], "whole_puzzle": threshold is not None}
 
-    def __marks_with_named_choice(marks) -> dict:
+    @staticmethod
+    def __marks_with_named_choice(marks: dict[str, Any]) -> dict[str, Any]:
         """Return the version 2 marks as version 3 saves them: the whole puzzle switch is now one of three named choices"""
         return {**marks, "whole_puzzle": "snyder" if marks["whole_puzzle"] else "off"}
 
-    def __saved_puzzle(path, data) -> SavedPuzzle:
+    @staticmethod
+    def __saved_puzzle(path: str, data: dict[str, Any]) -> SavedPuzzle:
         """Turn the file's saved state back into a SavedPuzzle, with tuples where JSON stored lists"""
         state = data["state"]
         try:
@@ -144,7 +155,8 @@ class SaveFile:
         except (KeyError, TypeError, ValueError):
             raise SaveFile.__damaged(path)
 
-    def __unknown(saved, known, path="") -> tuple:
+    @staticmethod
+    def __unknown(saved: dict[str, Any], known: dict[str, Any], path: str = "") -> tuple[str, ...]:
         """
         Return the path (names joined by dots) of each entry saved that isn't among the known ones, walking into
         the entries that both hold as dictionaries
@@ -157,7 +169,8 @@ class SaveFile:
                 unknown += SaveFile.__unknown(value, known[name], f"{path}{name}.")
         return unknown
 
-    def __known_file() -> dict:
+    @staticmethod
+    def __known_file() -> dict[str, Any]:
         """Return the entries this version writes to a file, with every setting as saved by default"""
         state = {**{field.name: None for field in fields(SavedPuzzle)}, "settings": Settings().saved()}
         return {"format": None, "version": None, "state": state}

@@ -16,6 +16,7 @@
 # -----------------------------------------------------------------------------
 
 from dataclasses import dataclass
+from typing import Any
 
 from game.actions import Action
 from game.config_option import ConfigOption
@@ -49,10 +50,10 @@ class MarksSetting:
     )
 
     threshold: int = 2
-    kinds: tuple = BOX_ONLY
+    kinds: tuple[str, ...] = BOX_ONLY
     whole_puzzle: str = OFF  # what the cells of the whole puzzle show, beyond those tagged
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Refuse a setting the options don't offer, such as one from a damaged save file"""
         if self.threshold not in MarksSetting.THRESHOLDS:
             raise ValueError(f"Unknown threshold for marks: {self.threshold}")
@@ -67,7 +68,7 @@ class MarksSetting:
     def treats_every_cell_as_tagged(self) -> bool:
         return self.whole_puzzle == MarksSetting.MUST_BE
 
-    def options(self) -> list:
+    def options(self) -> list[ConfigOption]:
         """Return the options the player can configure, as set now: the kind of house, the threshold, the whole puzzle"""
         kinds = (("box", MarksSetting.BOX_ONLY), ("box, row or column", MarksSetting.EVERY_HOUSE))
         thresholds = tuple((f"{threshold} or fewer places", threshold) for threshold in self.THRESHOLDS)
@@ -80,14 +81,16 @@ class MarksSetting:
             ),
         ]
 
-    def from_options(options) -> "MarksSetting":
+    @staticmethod
+    def from_options(options: list[ConfigOption]) -> "MarksSetting":
         """Return the setting the options describe, given as options() lists them"""
         kinds, threshold, whole_puzzle = (option.value for option in options)
         return MarksSetting(threshold, kinds, whole_puzzle)
 
-    def saved(self) -> dict:
+    def saved(self) -> dict[str, Any]:
         """Return the setting as plain data for the save file"""
         return {"threshold": self.threshold, "kinds": list(self.kinds), "whole_puzzle": self.whole_puzzle}
 
-    def from_saved(saved) -> "MarksSetting":
+    @staticmethod
+    def from_saved(saved: dict[str, Any]) -> "MarksSetting":
         return MarksSetting(saved["threshold"], tuple(saved["kinds"]), saved["whole_puzzle"])

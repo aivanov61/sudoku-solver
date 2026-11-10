@@ -16,9 +16,10 @@
 # -----------------------------------------------------------------------------
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable, Iterator
 from typing import TYPE_CHECKING
 
-from game.cell import Cell
+from game.cell import Cell, RuledOut
 from game.cell_attrs import CellAttrs
 from game.house import House
 from game.marks_setting import MarksSetting
@@ -36,30 +37,32 @@ class Board(ABC):
     every block, because in other layouts the blocks may not form a regular grid.
     """
 
-    def __init__(self, v_cells: int, h_cells: int):
+    NAME: str  # set by each layout
+
+    def __init__(self, v_cells: int, h_cells: int) -> None:
         self.v_cells = v_cells
         self.h_cells = h_cells
         self.__listener = lambda cell: None  # hears of every change to a cell
 
     # Interface required for the puzzle
 
-    def report_changes_to(self, listener) -> None:
+    def report_changes_to(self, listener: Callable[[Cell], None]) -> None:
         """Have listener(cell) called whenever a cell's value, attributes or possible values change"""
         self.__listener = listener
 
-    def cells(self) -> list:
+    def cells(self) -> list[Cell]:
         """Return every cell, left to right and top to bottom"""
         return self.cells_where(lambda cell: True)
 
-    def cell(self, row, col) -> Cell:
+    def cell(self, row: int, col: int) -> Cell:
         return self._block_at(row, col).cell(row, col)
 
-    def cells_where(self, condition) -> list:
+    def cells_where(self, condition: Callable[[Cell], object]) -> list[Cell]:
         """Return the cells for which condition(cell) is true, left to right and top to bottom"""
         cells = (cell for block in self._blocks() for cell in block.cells_where(condition))
         return sorted(cells, key=lambda cell: (cell.row, cell.col))
 
-    def first_cell_where(self, condition) -> Cell:
+    def first_cell_where(self, condition: Callable[[Cell], object]) -> Cell | None:
         """Return the first cell, left to right and top to bottom, for which condition(cell) is true, or None"""
         return next(iter(self.cells_where(condition)), None)
 
@@ -72,7 +75,7 @@ class Board(ABC):
     def has_conflicts(self) -> bool:
         return self.first_cell_where(Cell.is_marked_in_conflict) is not None
 
-    def refresh_marks(self, setting: MarksSetting, ruled_out=frozenset(), removed=frozenset()) -> None:
+    def refresh_marks(self, setting: MarksSetting | None, ruled_out: RuledOut = frozenset(), removed: RuledOut = frozenset()) -> None:
         """
         Have every cell show its marks: what it must be once tagged, leaving out each (cell, value) ruled out, or
         else the "must be" marks (Snyder notation) the setting asks for; none for a setting of None.  Each
@@ -81,19 +84,19 @@ class Board(ABC):
         for cell in self.cells():
             cell.refresh_marks(setting, ruled_out, removed)
 
-    def houses(self) -> list:
+    def houses(self) -> list[House]:
         """Return every house: each block's box, then every row and every column"""
         boxes = [block.box() for block in self._blocks()]
         rows = [House(House.ROW, list(self.cells_in_row(row)), row + 1) for row in range(self.v_cells)]
         columns = [House(House.COLUMN, list(self.cells_in_col(col)), col + 1) for col in range(self.h_cells)]
         return boxes + rows + columns
 
-    def givens(self) -> list:
+    def givens(self) -> list[tuple[int, int, int | None]]:
         """Return (row, col, value) for each value entered while setting up the puzzle"""
         is_given = lambda cell: CellAttrs.INITIAL in cell.attr()
         return [(cell.row, cell.col, cell.value()) for cell in self.cells_where(is_given)]
 
-    def tags(self) -> list:
+    def tags(self) -> list[tuple[int, int]]:
         """Return (row, col) for each tagged cell"""
         return [(cell.row, cell.col) for cell in self.cells_where(Cell.is_tagged)]
 
@@ -106,12 +109,12 @@ class Board(ABC):
 
     # Interface required for blocks
 
-    def cells_in_row(self, row):
+    def cells_in_row(self, row: int) -> Iterator[Cell]:
         """Yield the cells in the given row, left to right, as identified by each block"""
         for block in self._blocks():
             yield from block.cells_in_row(row)
 
-    def cells_in_col(self, col):
+    def cells_in_col(self, col: int) -> Iterator[Cell]:
         """Yield the cells in the given column, top to bottom, as identified by each block"""
         for block in self._blocks():
             yield from block.cells_in_col(col)
@@ -120,15 +123,15 @@ class Board(ABC):
         """Return the number of the block's box, counted from 1 in the order of the layout's blocks"""
         return list(self._blocks()).index(block) + 1
 
-    def cell_changed(self, cell) -> None:
+    def cell_changed(self, cell: Cell) -> None:
         self.__listener(cell)
 
     # Interface required from layout subclasses
 
     @abstractmethod
-    def _blocks(self):
+    def _blocks(self) -> Iterator["RectangularBlock"]:
         """Yield every block of the layout"""
 
     @abstractmethod
-    def _block_at(self, row, col):
+    def _block_at(self, row: int, col: int) -> "RectangularBlock":
         """Return the block that holds the cell at the given board row and column"""

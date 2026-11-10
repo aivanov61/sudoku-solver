@@ -34,3 +34,6 @@ class CellAttrs:
     CONFLICTED = "conflicted"
     PRIMARY = (INITIAL, GUESS, SOLVED)
     CONFLICT_ATTRS = (CONFLICTING, CONFLICTED)
+
+
+type Attributes = tuple[str | dict[str, int], ...]  # a cell's attributes, as CellAttrs describes them

@@ -40,5 +40,5 @@ class MenuItem(ABC):
     def is_picked_by_enter(self) -> bool:
         return False
 
-    def handle(self, key) -> None:
+    def handle(self, key: str) -> None:
         """Act on a key the menu leaves to the selected item; most items ignore them"""

@@ -15,10 +15,14 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-from game.actions import Action
+from collections.abc import Iterable
+
+from game.actions import Action, Mode
+from game.cell import Cell
 from game.cell_attrs import CellAttrs
+from game.config_option import ConfigOption
 from game.puzzle import Puzzle
-from game.user_interface import Message, MessageKind
+from game.user_interface import Highlight, Message, MessageKind, Step
 from ui.error_log import ErrorLog
 from ui.terminal.commands import Commands
 from ui.terminal.display import Display
@@ -27,6 +31,7 @@ from ui.terminal.input import Input
 from ui.terminal.menu import Menu
 from ui.terminal.menu_choice import MenuChoice
 from ui.terminal.menu_heading import MenuHeading
+from ui.terminal.menu_item import MenuItem
 from ui.terminal.menu_note import MenuNote
 
 
@@ -42,7 +47,7 @@ class TerminalUI:
     LATER_STEP_KEYS = Commands.keys_for(Action.DOWN)
     STEPS_DONE_KEYS = (*Commands.keys_for(Action.WHY), "KEY_ENTER", "KEY_ESCAPE")
 
-    def __init__(self, display: Display, v_cells: int, h_cells: int):
+    def __init__(self, display: Display, v_cells: int, h_cells: int) -> None:
         display.geometry(v_cells, h_cells)
         display.validate_screen_size()
         self.__display = display
@@ -64,13 +69,15 @@ class TerminalUI:
             if not self.__display.validate_screen_size():
                 game.render()
             self.__display.move_to_cell(*game.selected_cell)
-            self.__carry_out(game, *self.__input.get_cmd(self.__offered))
+            command = self.__input.get_cmd(self.__offered)
+            assert command, "without a timeout, a key is always waited for"
+            self.__carry_out(game, *command)
         self.__display.move_to_status_line()
         print("\n")
 
     # Interface required for the game
 
-    def status(self, message) -> None:
+    def status(self, message: Message | None) -> None:
         """
         Show the message, and on the board its missing value and what it points at, until the next status, clearing
         any lines a longer message wrapped onto; without the command panel, a blank status line shows the mode
@@ -79,22 +86,22 @@ class TerminalUI:
         self.__display.show_on_status_line(self.__status_text(message))
         self.__show_on_board(message)
 
-    def inform(self, message) -> None:
+    def inform(self, message: Message) -> None:
         """Show the message, and on the board its missing value and what it points at, until a key is hit"""
         self.__show_on_board(message)
         room = self.__display.term.width - len(Display.HIT_ANY_KEY)
         self.__display.show_on_status_line(self.__styled(message, room), wait=True)
         self.__take_back_from_board()
 
-    def confirm(self, question) -> bool:
+    def confirm(self, question: str) -> bool:
         return self.__display.confirm(question)
 
-    def ask_file_name(self, prompt, default, extension) -> str:
+    def ask_file_name(self, prompt: str, default: str, extension: str) -> str | None:
         """Ask for the file name with the extension shown after it; return it with the extension, or None if cancelled or empty"""
         name = self.__display.ask(prompt, default, extension)
         return name + extension if name else None
 
-    def configure(self, options) -> list:
+    def configure(self, options: list[ConfigOption]) -> list[ConfigOption]:
         """
         Show the options in a menu, each group under a heading, opening where the player last left it; return them
         as chosen once ENTER applies them, or as they were if ESC cancels
@@ -103,12 +110,12 @@ class TerminalUI:
         items = self.__menu_items(options, choices)
         menu = Menu("Configure", items, self.CONFIGURE_KEYS_HELP, self.__display, start=self.__configure_line)
         picked = menu.choose()
-        self.__configure_line = menu.selected_index()
+        self.__configure_line = menu.selected_index() or 0
         if picked is None:
             return options
         return [option.with_choice(choice.chosen) for option, choice in zip(options, choices)]
 
-    def walk_through(self, steps) -> None:
+    def walk_through(self, steps: list[Step]) -> None:
         """
         Show one step at a time on the status line with the cursor on its cell; the up and down keys go to the step
         before or after, stopping at the first and last, and the walk's own keys (or CTRL-C) end it
@@ -126,21 +133,21 @@ class TerminalUI:
             else:
                 return
 
-    def guess_depth_changed(self, depth) -> None:
+    def guess_depth_changed(self, depth: int) -> None:
         """Warn when guesses go from within the shades of gray to deeper than the last one"""
         runs_out = DisplayAttrs.is_beyond_last_shade(depth) and not DisplayAttrs.is_beyond_last_shade(self.__guess_depth)
         self.__guess_depth = depth
         if runs_out:
             self.inform(Message("No more shades of gray left - repeating last shade. ", MessageKind.WARNING))
 
-    def show_board(self, cells) -> None:
+    def show_board(self, cells: list[Cell]) -> None:
         """Clear the screen and draw every cell whole, and the command panel"""
         self.__display.clear_screen()
         for cell in cells:
             self.__draw_whole_cell(cell)
         self.__draw_panel()
 
-    def cell_changed(self, cell) -> None:
+    def cell_changed(self, cell: Cell) -> None:
         """
         Redraw only what differs from what was last drawn: the whole cell when its attributes changed, and the
         small digits (marks and possible values) when its tag changed
@@ -156,7 +163,7 @@ class TerminalUI:
             self.__draw_possible_values(cell)
         self.__remember(cell)
 
-    def mode_changed(self, mode, actions) -> None:
+    def mode_changed(self, mode: Mode, actions: tuple[Action, ...]) -> None:
         self.__mode = mode
         self.__offered = actions
         self.__draw_panel()
@@ -173,7 +180,7 @@ class TerminalUI:
             for cell in dict.fromkeys((*highlight.house.cells, *highlight.cells, *highlight.gone)):
                 self.__draw_whole_cell(cell)
 
-    def __show_on_board(self, message) -> None:
+    def __show_on_board(self, message: Message | None) -> None:
         """Draw the message's missing value in its cell and what it points at, if it has them"""
         if message and message.missing:
             cell, value = message.missing
@@ -182,7 +189,7 @@ class TerminalUI:
         if message and message.highlight:
             self.__show_highlight(message.highlight)
 
-    def __show_highlight(self, highlight) -> None:
+    def __show_highlight(self, highlight: Highlight) -> None:
         """Draw the outline of the house in yellow, the digits in yellow where they can still go and in red where they can't"""
         for cell in highlight.house.cells:
             self.__display.draw_highlighted_edges(cell.row, cell.col, highlight.house.edges_of(cell), cell.borders)
@@ -192,10 +199,10 @@ class TerminalUI:
             self.__display.draw_cell_ruled_out_value(cell.row, cell.col, self.__joined(digits))
         self.__showing_highlight = highlight
 
-    def __joined(self, digits) -> str:
+    def __joined(self, digits: Iterable[int]) -> str:
         return " ".join(map(str, digits))
 
-    def __menu_items(self, options, choices) -> list:
+    def __menu_items(self, options: list[ConfigOption], choices: list[MenuChoice]) -> list[MenuItem]:
         """Return the choices, with a heading before the first of each group, and its notes under each that has them"""
         items, group = [], None
         for option, choice in zip(options, choices):
@@ -207,17 +214,18 @@ class TerminalUI:
                 items.append(MenuNote(choice, self.__notes_with_key(option)))
         return items
 
-    def __notes_with_key(self, option) -> list:
+    def __notes_with_key(self, option: ConfigOption) -> list[str]:
         """Return the option's notes, naming the key for their action where they say {key}"""
         key = Commands.label_for(option.note_action) if option.note_action else ""
         return [note.format(key=key) for note in option.notes]
 
-    def __carry_out(self, game: Puzzle, command, digit) -> None:
+    def __carry_out(self, game: Puzzle, command: Action | str, digit: int | None) -> None:
         """Show the help screen, or hand the action to the game, surviving an action that breaks"""
         if command == Commands.HELP:
             self.__show_help()
             game.render()
             return
+        assert isinstance(command, Action), "help is the only command that isn't an action"
         try:
             game.handle(command, digit)
         except Exception as error:
@@ -229,7 +237,7 @@ class TerminalUI:
         print(Commands.long_help(self.__offered))
         self.__display.hit_any_key_to_continue()
 
-    def __report_broken(self, game: Puzzle, command, error) -> None:
+    def __report_broken(self, game: Puzzle, command: Action, error: Exception) -> None:
         """
         Log the error, say what broke, why and where until a key is hit, then show the whole game again,
         as the message may have scrolled the screen; a broken quit stops the game instead
@@ -248,21 +256,21 @@ class TerminalUI:
         print("\n" + self.__display.term.clear_eol + "FORCING quit")
         game.force_quit_()
 
-    def __status_text(self, message) -> str:
+    def __status_text(self, message: Message | None) -> str:
         if message:
             return self.__styled(message, self.__display.term.width)
         if self.__mode and not self.__display.panel:
             return self.__display.term.gray50(self.MODE_HINT.format(mode=self.__mode.value))
         return ""
 
-    def __styled(self, message, room) -> str:
+    def __styled(self, message: Message, room: int) -> str:
         """Successes and hints in the solved style (light sky blue), everything else in yellow"""
         text = self.__fitting_text(message, room)
         if message.kind in (MessageKind.SUCCESS, MessageKind.HINT):
             return self.__display.styled(text, (CellAttrs.SOLVED,))
         return self.__display.term.yellow(text)
 
-    def __fitting_text(self, message, room) -> str:
+    def __fitting_text(self, message: Message, room: int) -> str:
         """
         The message's text, or its short text when the whole text is longer than the room on the line; without
         the command panel, always the whole text, which wraps
@@ -275,23 +283,24 @@ class TerminalUI:
         if self.__mode and self.__display.panel:
             self.__display.draw_command_panel(self.__mode.value, Commands.panel(self.__offered))
 
-    def __draw_whole_cell(self, cell) -> None:
+    def __draw_whole_cell(self, cell: Cell) -> None:
         self.__display.draw_cell(cell.row, cell.col, cell.borders, cell.attr())
         self.__draw_middle(cell)
         self.__draw_possible_values(cell)
         self.__remember(cell)
 
-    def __draw_middle(self, cell) -> None:
+    def __draw_middle(self, cell: Cell) -> None:
         """Draw the middle line: the marks (none on a filled cell), then the value on top of them, if any"""
         self.__display.draw_cell_marks(cell.row, cell.col, cell.marks(), cell.attr(), cell.looks_tagged())
-        if cell.value():
-            self.__display.draw_cell_value(cell.row, cell.col, cell.value(), cell.attr())
+        value = cell.value()
+        if value:
+            self.__display.draw_cell_value(cell.row, cell.col, value, cell.attr())
 
-    def __draw_possible_values(self, cell) -> None:
+    def __draw_possible_values(self, cell: Cell) -> None:
         display = self.__display
         display.draw_cell_possible_values(cell.row, cell.col, cell.shown_possible(), cell.attr(), cell.looks_tagged(), cell.removed_possible())
 
-    def __remember(self, cell) -> None:
+    def __remember(self, cell: Cell) -> None:
         """Keep what the cell looks like now"""
         drawn = (cell.attr(), cell.value(), cell.shown_possible(), cell.marks(), cell.looks_tagged(), cell.removed_possible())
         self.__drawn[(cell.row, cell.col)] = drawn

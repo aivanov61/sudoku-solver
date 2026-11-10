@@ -21,7 +21,7 @@ from ui.terminal.menu_item import MenuItem
 class MenuHeading(MenuItem):
     """A menu line naming the group of lines below it; it is never selected"""
 
-    def __init__(self, title):
+    def __init__(self, title: str) -> None:
         self.__title = title
 
     def text(self) -> str:

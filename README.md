@@ -7,7 +7,7 @@ obvious moves (n) or make them all at once (a), and save and restore puzzles (s,
 ## Requirements
 
 Once this git package is downloaded into a directory, the only two requirements are:
-1. Python 3 is installed
+1. Python 3.14 or later is installed
 1. Blessed (at least ver 1.20.0) - `pip install -r requirements.txt`
 
 The terminal must use UTF-8 and be at least 80 columns by 29 lines, or 55 columns by 31 lines with `--no-panel` (see below).
@@ -101,7 +101,10 @@ watched: `ui/terminal/tests/display_test.py::TestDisplay` draws on the terminal 
 
 To work on the code, install the development tools with `pip install -r requirements-dev.txt`
 (`pyproject.toml` holds their settings).  From the top-level directory:
-- `py -m ruff check` looks for likely mistakes, such as unused imports
+- `py -m ruff check` looks for likely mistakes, such as unused imports, and for parameters or return types left without a type
+- `py -m pyright` checks that the types agree with the code. On Windows, where `python`
+  may only open the Microsoft Store, point it at py's Python so it finds blessed:
+  `py -m pyright --pythonpath "$(py -c 'import sys; print(sys.executable)')"`
 - `py -m coverage run -m pytest`, then `py -m coverage report`, shows which lines the tests never run
 
 ## Purpose and Design

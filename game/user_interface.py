@@ -17,7 +17,14 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Protocol
+from typing import Protocol, TYPE_CHECKING
+
+from game.actions import Action, Mode
+from game.config_option import ConfigOption
+from game.house import House
+
+if TYPE_CHECKING:
+    from game.cell import Cell
 
 
 class MessageKind(Enum):
@@ -33,25 +40,25 @@ class MessageKind(Enum):
 class Highlight:
     """What a message points at on the board: a house, the digits to show where they can still go, and where they can't"""
 
-    house: object  # the House
-    cells: dict  # {cell: digits} where the digits can still go, as far as it explains the message
-    gone: dict  # {cell: digits} where the message rules them out, and the empty cells of its house they can't go in
+    house: House
+    cells: "dict[Cell, tuple[int, ...]]"  # {cell: digits} where the digits can still go, as far as it explains the message
+    gone: "dict[Cell, tuple[int, ...]]"  # {cell: digits} where the message rules them out, and the empty cells of its house they can't go in
 
 
 @dataclass(frozen=True)
 class Message:
     text: str
     kind: MessageKind
-    missing: tuple = None  # (cell, value): a value with no place left, shown in the cell while the message is
-    short: str = None  # a shorter text, shown instead when the whole text doesn't fit
-    highlight: Highlight = None  # what the message points at, shown on the board while the message is
+    missing: "tuple[Cell, int] | None" = None  # (cell, value): a value with no place left, shown in the cell while the message is
+    short: str | None = None  # a shorter text, shown instead when the whole text doesn't fit
+    highlight: Highlight | None = None  # what the message points at, shown on the board while the message is
 
 
 @dataclass(frozen=True)
 class Step:
     """One step of an explanation the player walks through: the message, and the cell it is about"""
 
-    cell: object
+    cell: "Cell"
     message: Message
 
 
@@ -63,34 +70,44 @@ class UserInterface(Protocol):
     Dialogs are synchronous: they return the player's answer.
     """
 
-    def status(self, message) -> None:
+    def status(self, message: "Message | None") -> None:
         """Show the message (and its missing value, if any) until the next command; None leaves the status line blank"""
+        ...
 
-    def inform(self, message) -> None:
+    def inform(self, message: "Message") -> None:
         """Show the message (and its missing value, if any) and wait until the player has seen it"""
+        ...
 
-    def confirm(self, question) -> bool:
+    def confirm(self, question: str) -> bool:
         """Ask a yes/no question, returning True only for yes"""
+        ...
 
-    def ask_file_name(self, prompt, default, extension) -> str:
+    def ask_file_name(self, prompt: str, default: str, extension: str) -> str | None:
         """Ask for a file name, offering the default; the player doesn't type the extension, which is added to the
         name returned; return None if the player cancels"""
+        ...
 
-    def configure(self, options) -> list:
+    def configure(self, options: list[ConfigOption]) -> list[ConfigOption]:
         """Let the player change the options (see ConfigOption), returning them as chosen; the game then shows the
         board afresh"""
+        ...
 
-    def walk_through(self, steps) -> None:
+    def walk_through(self, steps: list[Step]) -> None:
         """Let the player go back and forth through the steps (see Step), each shown with its cell, until done"""
+        ...
 
-    def guess_depth_changed(self, depth) -> None:
+    def guess_depth_changed(self, depth: int) -> None:
         """Hear that values are now entered depth guesses deep (0 when no guess is in play)"""
+        ...
 
-    def show_board(self, cells) -> None:
+    def show_board(self, cells: list["Cell"]) -> None:
         """Show the whole board afresh: every cell, with its block edges (cell.borders)"""
+        ...
 
-    def cell_changed(self, cell) -> None:
+    def cell_changed(self, cell: "Cell") -> None:
         """Hear that the cell's value, attributes or possible values changed, to show it as it is now"""
+        ...
 
-    def mode_changed(self, mode, actions) -> None:
+    def mode_changed(self, mode: Mode, actions: tuple[Action, ...]) -> None:
         """Hear that the puzzle is now in the mode (see actions.py), which offers these actions"""
+        ...

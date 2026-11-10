@@ -17,10 +17,13 @@
 
 import functools
 
+from collections.abc import Collection, Iterable, Iterator
 from contextlib import contextmanager
 
 from blessed import Terminal
+from blessed.keyboard import Keystroke
 from game.border import Border
+from game.cell_attrs import Attributes
 from ui.terminal.display_attrs import DisplayAttrs as Attrs
 
 echo = functools.partial(print, end="", flush=True)
@@ -71,17 +74,17 @@ class Display:
     HIT_ANY_KEY = "Hit any key to continue: "  # the prompt after a message the player must see
     STATUS_LINES_WITHOUT_PANEL = 3  # the status line and two more for a long message to wrap onto, without the panel
 
-    def __init__(self, term: Terminal = None, panel=True):
+    def __init__(self, term: Terminal | None = None, panel: bool = True) -> None:
         self.term = term or Terminal()  # the blessed terminal to draw on
         self.panel = panel  # whether the command panel is drawn beside the puzzle
-        self.geom = {"h_cells": None, "v_cells": None}
+        self.geom = {"h_cells": 0, "v_cells": 0}  # set by geometry()
 
-    def geometry(self, v_cells, h_cells):
+    def geometry(self, v_cells: int, h_cells: int) -> None:
         """Set the size of the board, in cells"""
         self.geom["h_cells"] = h_cells
         self.geom["v_cells"] = v_cells
 
-    def validate_screen_size(self):
+    def validate_screen_size(self) -> bool:
         is_size_ok = True
         min_width = self.min_width()
         min_height = self.min_height()
@@ -108,11 +111,11 @@ class Display:
         """The puzzle plus the status line; without the panel, plus the lines a long message wraps onto"""
         return self.y(self.geom["v_cells"]) + 1 + (1 if self.panel else self.STATUS_LINES_WITHOUT_PANEL)
 
-    def clear_screen(self):
+    def clear_screen(self) -> None:
         echo(self.term.home())
         echo(self.term.clear())
 
-    def draw_cell(self, row=0, col=0, border=Border(), attrs=tuple()):
+    def draw_cell(self, row: int = 0, col: int = 0, border: Border = Border(), attrs: Attributes = ()) -> None:
         x, y = self.x(col), self.y(row)
         echo(self.term.move_xy(x, y))
         self.__draw_edge_line(0, border, attrs)
@@ -123,32 +126,32 @@ class Display:
         self.__draw_edge_line(self.CELL_HEIGHT, border, attrs)
 
     # Cell location helpers
-    def x(self, cell_col):
+    def x(self, cell_col: int) -> int:
         """Return the screen column of the upper-left corner of the cell given its column relative to other cells"""
         return self.CELL_WIDTH * cell_col
 
-    def y(self, cell_row):
+    def y(self, cell_row: int) -> int:
         """Return the screen row of the upper-left corner of the cell given its row relative to other cells"""
         return self.CELL_HEIGHT * cell_row
 
-    def draw_cell_value(self, row=0, col=0, value=" ", attrs=()):
+    def draw_cell_value(self, row: int = 0, col: int = 0, value: int | str = " ", attrs: Attributes = ()) -> None:
         """Draw the value in the middle of the cell using the rendered attributes"""
         self.move_to_cell(row, col)
         echo(self.styled(str(value), attrs))
 
-    def draw_cell_missing_value(self, row=0, col=0, value=" "):
+    def draw_cell_missing_value(self, row: int = 0, col: int = 0, value: int | str = " ") -> None:
         """Draw a value with no place left in the middle of the cell, in the missing value's colors"""
         self.__draw_in_middle(row, col, value, Attrs.MISSING_VALUE)
 
-    def draw_cell_highlighted_value(self, row=0, col=0, value=" "):
+    def draw_cell_highlighted_value(self, row: int = 0, col: int = 0, value: int | str = " ") -> None:
         """Draw a value a message points at in the middle of the cell, in the highlighted value's colors"""
         self.__draw_in_middle(row, col, value, Attrs.HIGHLIGHTED_VALUE)
 
-    def draw_cell_ruled_out_value(self, row=0, col=0, value=" "):
+    def draw_cell_ruled_out_value(self, row: int = 0, col: int = 0, value: int | str = " ") -> None:
         """Draw a value a message rules out in the middle of the cell, in the ruled out value's colors"""
         self.__draw_in_middle(row, col, value, Attrs.RULED_OUT_VALUE)
 
-    def draw_highlighted_edges(self, row=0, col=0, edges=Border(), border=Border()):
+    def draw_highlighted_edges(self, row: int = 0, col: int = 0, edges: Border = Border(), border: Border = Border()) -> None:
         """Draw just the given sides of the cell, in the highlighted border's color, each as thick or thin as it always is"""
         x, y = self.x(col), self.y(row)
         right, bottom = x + self.CELL_WIDTH, y + self.CELL_HEIGHT
@@ -159,38 +162,40 @@ class Display:
         for spot_x, spot_y in spots:
             echo(self.term.move_xy(spot_x, spot_y) + style + self.__frame_char(spot_x - x, spot_y - y, border, ()) + self.term.normal)
 
-    def move_to_cell(self, row=0, col=0):
+    def move_to_cell(self, row: int = 0, col: int = 0) -> None:
         """Move to the middle of the cell"""
         x = self.x(col) + self.CELL_WIDTH // 2
         y = self.y(row) + self.CELL_VALUE_ROW
         echo(self.term.move_xy(x, y))
 
-    def styled(self, text, attrs) -> str:
+    def styled(self, text: str, attrs: Attributes) -> str:
         """Return the text styled with the attributes' colors, e.g. (CellAttrs.SOLVED,) for light sky blue"""
         return getattr(self.term, Attrs.render(attrs)) + text + self.term.normal
 
-    def draw_cell_marks(self, row=0, col=0, marks=(), attrs=(), tagged=False):
+    def draw_cell_marks(self, row: int = 0, col: int = 0, marks: tuple[int, ...] = (), attrs: Attributes = (), tagged: bool = False) -> None:
         """Draw the "must be" marks across the middle of the cell, blanking it when there are none"""
         x = self.x(col) + 1
         y = self.y(row) + self.CELL_VALUE_ROW
         echo(self.term.move_xy(x, y))
         echo(self.__small_digits_style(attrs, tagged) + self.__marks_text(marks) + self.term.normal)
 
-    def draw_cell_possible_values(self, row=0, col=0, values=(), attrs=(), tagged=False, removed=()):
+    def draw_cell_possible_values(
+        self, row: int = 0, col: int = 0, values: Collection[int] = (), attrs: Attributes = (), tagged: bool = False, removed: Collection[int] = (),
+    ) -> None:
         """Draw at the bottom of the cell the values removed as ruled out that fit, in red, then the possible values, marked out if they all fit"""
         all_fit = len(values) <= self.CELL_HORIZONTAL_SIZE
-        values = sorted(values) if all_fit else "....."
-        ruled_out = self.__ruled_out_text(len(values), removed)
+        shown = sorted(values) if all_fit else "....."
+        ruled_out = self.__ruled_out_text(len(shown), removed)
         x = self.x(col) + 1
         y = self.y(row) + self.CELL_VALUES_ROW
         echo(self.term.move_xy(x, y))
         rendered_attrs = self.__small_digits_style(attrs, tagged, bool(removed) and all_fit)
-        echo(rendered_attrs + " " * (self.CELL_HORIZONTAL_SIZE - len(ruled_out) - len(values)) + self.term.normal)
+        echo(rendered_attrs + " " * (self.CELL_HORIZONTAL_SIZE - len(ruled_out) - len(shown)) + self.term.normal)
         if ruled_out:
             echo(getattr(self.term, Attrs.render_ruled_out_digits(attrs)) + ruled_out + self.term.normal)
-        echo(rendered_attrs + self.__small(values) + self.term.normal)
+        echo(rendered_attrs + self.__small(shown) + self.term.normal)
 
-    def draw_command_panel(self, title, entries):
+    def draw_command_panel(self, title: str, entries: list[tuple[str, str]]) -> None:
         """Draw the title, then one command per line (its keys in red, then its name), clearing the rest beside the puzzle"""
         lines = [self.term.bold(title), ""]
         lines += [self.term.red(keys.ljust(self.PANEL_KEYS_WIDTH)) + name for keys, name in entries]
@@ -198,26 +203,26 @@ class Display:
             line = lines[y] if y < len(lines) else ""
             echo(self.term.move_xy(self.__panel_x(), y) + line + self.term.clear_eol)
 
-    def move_to_status_line(self):
+    def move_to_status_line(self) -> None:
         echo(self.term.move_xy(*self.status_line_location()))
 
-    def status_line_location(self):
+    def status_line_location(self) -> tuple[int, int]:
         return 0, (self.geom["v_cells"] or 0) * self.CELL_HEIGHT + 1
 
-    def warn(self, msg, wait=False):
+    def warn(self, msg: str, wait: bool = False) -> None:
         self.show_on_status_line(self.term.yellow(msg), wait=wait)
 
-    def show_on_status_line(self, text, wait=False):
+    def show_on_status_line(self, text: str, wait: bool = False) -> None:
         """Show already styled text on the status line; if asked, prompt to hit a key after it and wait for one"""
         with self.__status_line_message(text + (self.HIT_ANY_KEY if wait else "")):
             if wait:
                 self.__wait_for_a_key()
 
-    def hit_any_key_to_continue(self):
+    def hit_any_key_to_continue(self) -> None:
         echo(self.HIT_ANY_KEY)
         self.__wait_for_a_key()
 
-    def confirm(self, msg) -> bool:
+    def confirm(self, msg: str) -> bool:
         """Ask a yes/no question on the status line; only "y" or "Y" confirms"""
         with self.__status_line_message(self.term.yellow(msg + " (y/n) ")):
             try:
@@ -226,7 +231,7 @@ class Display:
             except KeyboardInterrupt:
                 return False
 
-    def ask(self, msg, default="", suffix="") -> str:
+    def ask(self, msg: str, default: str = "", suffix: str = "") -> str | None:
         """
         Ask for a line of text on the status line, starting from the default, with the suffix shown after it.
         The arrows move the cursor within the text, never into the suffix; ENTER accepts the text (without the
@@ -254,7 +259,7 @@ class Display:
         except KeyboardInterrupt:
             pass
 
-    def __ruled_out_text(self, used, removed) -> str:
+    def __ruled_out_text(self, used: int, removed: Iterable[int]) -> str:
         """Return the removed values in the columns the rest leave: the lowest that fit, then a dot if some don't, in a column of its own"""
         room = self.CELL_HORIZONTAL_SIZE - used
         digits = sorted(removed)
@@ -262,10 +267,10 @@ class Display:
             return self.__small(digits)
         return self.__small(digits[: room - 1]) + "." if room else ""
 
-    def __small(self, digits) -> str:
+    def __small(self, digits: Iterable[int | str]) -> str:
         return "".join(str(digit).translate(self.small_nums) for digit in digits)
 
-    def __draw_in_middle(self, row, col, value, style) -> None:
+    def __draw_in_middle(self, row: int, col: int, value: int | str, style: str) -> None:
         text = str(value)
         x = self.x(col) + self.CELL_WIDTH // 2 - len(text) // 2
         echo(self.term.move_xy(x, self.y(row) + self.CELL_VALUE_ROW))
@@ -275,11 +280,11 @@ class Display:
         """The screen column where the command panel starts: past the puzzle's right edge and a gap"""
         return self.x(self.geom["h_cells"]) + 1 + self.PANEL_GAP
 
-    def __draw_edge_line(self, down, border, attrs):
+    def __draw_edge_line(self, down: int, border: Border, attrs: Attributes) -> None:
         """Draw the top or bottom line of a cell, the given number of lines down from its top"""
         echo("".join(self.__frame_char(across, down, border, attrs) for across in range(self.CELL_WIDTH + 1)))
 
-    def __frame_char(self, across, down, border, attrs) -> str:
+    def __frame_char(self, across: int, down: int, border: Border, attrs: Attributes) -> str:
         """Return the character of the cell's frame this far across and down from its corner: thick on its block's edge"""
         top_or_bottom = {0: border.is_top(), self.CELL_HEIGHT: border.is_bottom()}
         sides = {0: border.is_left(), self.CELL_WIDTH: border.is_right()}
@@ -287,16 +292,16 @@ class Display:
         inner_char = self.bigplus if is_on_line and is_on_side else self.hline if is_on_line else self.vline
         return self.__border_char(top_or_bottom.get(down, False) or sides.get(across, False), inner_char, attrs)
 
-    def __border_char(self, is_outer, inner_char, attrs) -> str:
+    def __border_char(self, is_outer: bool, inner_char: str, attrs: Attributes) -> str:
         return Attrs.outer_border(self.fullblock, attrs) if is_outer else Attrs.inner_border(inner_char, attrs)
 
-    def __draw_inner_line(self, down, border, attrs):
+    def __draw_inner_line(self, down: int, border: Border, attrs: Attributes) -> None:
         left = self.__frame_char(0, down, border, attrs)
         right = self.__frame_char(self.CELL_WIDTH, down, border, attrs)
         rendered_str = self.__rendered_bg_attrs(attrs) + " " * self.CELL_HORIZONTAL_SIZE + self.term.normal
         echo(left + rendered_str + right)
 
-    def __marks_text(self, marks) -> str:
+    def __marks_text(self, marks: tuple[int, ...]) -> str:
         """Return the marks in small digits, centred: spaced while that fits, else closed up, else dots"""
         width = self.CELL_HORIZONTAL_SIZE
         digits = [str(mark).translate(self.small_nums) for mark in marks]
@@ -304,14 +309,14 @@ class Display:
         text = spaced if len(spaced) <= width else "".join(digits)
         return (text if len(text) <= width else "." * width).center(width)
 
-    def __rendered_bg_attrs(self, attrs) -> str:
+    def __rendered_bg_attrs(self, attrs: Attributes) -> str:
         return getattr(self.term, Attrs.render_bg(attrs))
 
-    def __small_digits_style(self, attrs, tagged, removed=False) -> str:
+    def __small_digits_style(self, attrs: Attributes, tagged: bool, removed: bool = False) -> str:
         return getattr(self.term, Attrs.render_small_digits(attrs, tagged, removed))
 
     @contextmanager
-    def __status_line_message(self, text):
+    def __status_line_message(self, text: str) -> Iterator[None]:
         """
         Show the styled text on the status line, split at words onto the lines below when it is too long, after
         clearing to the end of the screen; keep the cursor after it until the block ends.  The text never reaches
@@ -324,7 +329,7 @@ class Display:
             echo(self.term.clear_eos + lines[0] + below)
             yield
 
-    def __status_lines(self, text, room) -> list:
+    def __status_lines(self, text: str, room: int) -> list[str]:
         """Split the text at words into lines leaving the last column free, at most room of them, cut short with …"""
         lines = self.term.wrap(text, self.term.width - 2) or [""]
         if len(lines) > max(1, room):
@@ -332,11 +337,11 @@ class Display:
             lines[-1] += "…" + self.term.normal
         return lines
 
-    def __move_cursor_left(self, count):
+    def __move_cursor_left(self, count: int) -> None:
         if count:
             echo(self.term.move_left(count))
 
-    def __edited(self, text, cursor, key) -> tuple:
+    def __edited(self, text: str, cursor: int, key: Keystroke) -> tuple[str, int]:
         """
         Return the text and the cursor after a key: the arrows move the cursor, backspace removes the character
         before it and delete the one at it, other special keys are ignored, and any other key is inserted at it

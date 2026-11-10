@@ -18,9 +18,10 @@
 
 from typing import TYPE_CHECKING
 
-from game.rules.rule import Elimination, Move, Outcome, Rule
+from game.rules.rule import Elimination, Eliminations, Move, Outcome, Rule
 
 if TYPE_CHECKING:
+    from game.cell import Cell, RuledOut
     from game.puzzle import Puzzle
 
 
@@ -33,20 +34,20 @@ class CombinedRule(Rule):
 
     NAME = "combined rules"
 
-    def find(self, puzzle: "Puzzle") -> Move:
+    def find(self, puzzle: "Puzzle") -> Move | None:
         ruled_out = puzzle.everything_ruled_out()
         moves = [self.__move_into(cell, ruled_out) for cell in self.__newly_forced(puzzle, ruled_out)]
-        return min(moves, key=lambda move: len(move.reasons), default=None)
+        return min(moves, key=lambda move: len(move.reasons or {}), default=None)
 
     # Private functions
 
-    def __newly_forced(self, puzzle: "Puzzle", ruled_out) -> list:
+    def __newly_forced(self, puzzle: "Puzzle", ruled_out: "RuledOut") -> list["Cell"]:
         """Return, left to right and top to bottom, each cell forced to hold a value only once the values are ruled out"""
         cells = {cell for house in puzzle.houses() for cell in house.cells}
         forced = [cell for cell in cells if cell.forced_value(ruled_out) and not cell.forced_value()]
         return sorted(forced, key=lambda cell: (cell.row, cell.col))
 
-    def __move_into(self, cell, ruled_out) -> Move:
+    def __move_into(self, cell: "Cell", ruled_out: Eliminations) -> Move:
         """Return the move filling in the value the removals force into the cell"""
         candidates = cell.candidates(ruled_out)
         if len(candidates) == 1:
@@ -55,10 +56,12 @@ class CombinedRule(Rule):
             verb = "are" if len(others) > 1 else "is"
             reason = f"Only {value} fits here once {self._listed(others)} {verb} ruled out"
             return self.__move(cell, value, reason, [(cell, other) for other in others], ruled_out)
-        value, house = cell.hidden_single(ruled_out)
+        hidden = cell.hidden_single(ruled_out)
+        assert hidden, "a cell forced to hold a value with more than one candidate holds a hidden single"
+        value, house = hidden
         others = [other for other in house.places(value) if other is not cell]
         reason = f"{value} fits nowhere else in its {house.kind} once it is ruled out of {self._named(others)}"
         return self.__move(cell, value, reason, [(other, value) for other in others], ruled_out)
 
-    def __move(self, cell, value, reason, removals, ruled_out) -> Move:
+    def __move(self, cell: "Cell", value: int, reason: str, removals: list[tuple["Cell", int]], ruled_out: Eliminations) -> Move:
         return self._move(Outcome.MOVED, f"{reason} (press w for why).", cell, value, reasons=Elimination.needed_for(removals, ruled_out))

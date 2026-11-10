@@ -30,18 +30,18 @@ class CellSolver:
     For now, it only contains the `_possible_values` attribute.
     """
 
-    def __init__(self, cell_parent: "RectangularBlock"):
+    def __init__(self, cell_parent: "RectangularBlock") -> None:
         self._possible_values = set(cell_parent.values())
 
-    def possible_values(self) -> set:
+    def possible_values(self) -> set[int]:
         """Return the set of possible values for the cell."""
         return self._possible_values
 
-    def add_possible(self, value) -> None:
+    def add_possible(self, value: int) -> None:
         """Add a value to the set of possible values for the cell."""
         self._possible_values.add(value)
 
-    def remove_possible(self, value) -> None:
+    def remove_possible(self, value: int) -> None:
         """Remove a value from the set of possible values for the cell."""
         self._possible_values.discard(value)
 
@@ -49,6 +49,6 @@ class CellSolver:
         """Remove all possible values for the cell."""
         self._possible_values.clear()
 
-    def single_possible_value(self) -> int:
+    def single_possible_value(self) -> int | None:
         """Return the only possible value for the cell, or None unless exactly one is left."""
         return next(iter(self._possible_values)) if len(self._possible_values) == 1 else None

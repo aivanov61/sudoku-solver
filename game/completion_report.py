@@ -30,7 +30,7 @@ class CompletionReport:
     The puzzle provides is_complete() and has_conflicts().
     """
 
-    def __init__(self, puzzle: "Puzzle"):
+    def __init__(self, puzzle: "Puzzle") -> None:
         self.__puzzle = puzzle
         self.__reported = None  # the completion last reported
         self.__unseen = None  # a reported completion the player has not yet answered with a command
@@ -67,7 +67,7 @@ class CompletionReport:
 
     # Private functions
 
-    def __completion(self) -> str:
+    def __completion(self) -> str | None:
         """None until the puzzle is complete, then 'solved' or 'errors'"""
         if not self.__puzzle.is_complete():
             return None

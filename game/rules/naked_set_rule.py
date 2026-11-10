@@ -16,11 +16,16 @@
 # -----------------------------------------------------------------------------
 
 from itertools import combinations
+from typing import TYPE_CHECKING
 
 from game.house import House
 from game.rules.eliminating_rule import EliminatingRule
-from game.rules.rule import Elimination
+from game.rules.rule import Elimination, Eliminations
 from game.user_interface import Highlight
+
+if TYPE_CHECKING:
+    from game.cell import Cell, RuledOut
+    from game.puzzle import Puzzle
 
 
 class NakedSetRule(EliminatingRule):
@@ -29,10 +34,10 @@ class NakedSetRule(EliminatingRule):
     from the rest of the house.  Each subclass says how many: its SIZE.
     """
 
-    SIZE = None  # how many cells share that many values
+    SIZE: int  # how many cells share that many values, set by each subclass
 
-    def eliminations(self, puzzle, ruled_out=frozenset()) -> dict:
-        found = {}
+    def eliminations(self, puzzle: "Puzzle", ruled_out: "RuledOut" = frozenset()) -> Eliminations:
+        found: Eliminations = {}
         for house in puzzle.houses():
             for cells in combinations(self.__cells_with_few_values(house, ruled_out), self.SIZE):
                 values = sorted(set().union(*(cell.candidates(ruled_out) for cell in cells)))
@@ -42,10 +47,10 @@ class NakedSetRule(EliminatingRule):
 
     # Private functions
 
-    def __cells_with_few_values(self, house: House, ruled_out) -> list:
+    def __cells_with_few_values(self, house: House, ruled_out: "RuledOut") -> list["Cell"]:
         return [cell for cell in house.cells if 2 <= len(cell.candidates(ruled_out)) <= self.SIZE]
 
-    def __rule_out(self, values, cells, house: House, ruled_out, found) -> None:
+    def __rule_out(self, values: list[int], cells: tuple["Cell", ...], house: House, ruled_out: "RuledOut", found: Eliminations) -> None:
         """Find the values ruled out of the rest of the house"""
         lost = {other: tuple(v for v in values if v in other.candidates(ruled_out)) for other in house.cells if other not in cells}
         gone = {cell: digits for cell, digits in lost.items() if digits}
@@ -54,7 +59,9 @@ class NakedSetRule(EliminatingRule):
             for value in digits:
                 self._keep_simplest(found, (cell, value), elimination)
 
-    def __elimination(self, values, cells, house: House, gone, ruled_out) -> Elimination:
+    def __elimination(
+        self, values: list[int], cells: tuple["Cell", ...], house: House, gone: dict["Cell", tuple[int, ...]], ruled_out: "RuledOut",
+    ) -> Elimination:
         """Return why the values are out of the rest of the house, relying on what left the cells with only those values"""
         why = f"in {house.name()}, {self._named(cells)} can only hold {self._listed(values)}"
         relied_on = tuple((cell, value) for cell in cells for value in sorted(cell.possible_values()) if (cell, value) in ruled_out)

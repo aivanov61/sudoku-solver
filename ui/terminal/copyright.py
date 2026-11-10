@@ -38,5 +38,6 @@ class Copyright:
         along with this program.  If not, see <https://www.gnu.org/licenses/>.
     """
 
-    def splash():
+    @staticmethod
+    def splash() -> None:
         print(Copyright.COPYRIGHT)

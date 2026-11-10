@@ -15,8 +15,13 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from typing import TYPE_CHECKING
+
 from game.cell import Cell
 from game.rules.rule import Move, Outcome, Rule
+
+if TYPE_CHECKING:
+    from game.puzzle import Puzzle
 
 
 class ConflictsRule(Rule):
@@ -24,7 +29,7 @@ class ConflictsRule(Rule):
 
     NAME = "conflicts"
 
-    def find(self, puzzle) -> Move:
+    def find(self, puzzle: "Puzzle") -> Move | None:
         if puzzle.first_cell_where(Cell.is_marked_in_conflict) is None:
             return None
         return self._move(Outcome.STOPPED, "Resolve the conflicts first.")

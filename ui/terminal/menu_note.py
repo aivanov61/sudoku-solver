@@ -27,7 +27,7 @@ class MenuNote(MenuItem):
 
     INDENT = MenuChoice.INDENT + "  "  # under its choice
 
-    def __init__(self, choice: MenuChoice, notes: list):
+    def __init__(self, choice: MenuChoice, notes: list[str]) -> None:
         self.__choice = choice
         self.__notes = notes  # the note for each of the choice's labels, "" for none
 

@@ -18,7 +18,7 @@
 from typing import TYPE_CHECKING
 
 from game.cell import Cell
-from game.cell_attrs import CellAttrs
+from game.cell_attrs import Attributes, CellAttrs
 from game.history import History, Entry
 from game.user_interface import UserInterface
 
@@ -36,7 +36,7 @@ class Moves:
     The puzzle provides is_initializing(); the user interface hears of every change of guess depth.
     """
 
-    def __init__(self, puzzle: "Puzzle", ui: UserInterface):
+    def __init__(self, puzzle: "Puzzle", ui: UserInterface) -> None:
         self.__puzzle = puzzle
         self.__ui = ui
         self.__guess_depth = 0
@@ -44,7 +44,7 @@ class Moves:
 
     # Interface required for the puzzle
 
-    def enter(self, cell, value, prim_attr=None) -> None:
+    def enter(self, cell: Cell, value: int | None, prim_attr: str | None = None) -> None:
         """Enter a value with its primary attribute (None for a typed value) and record it while playing; value None clears the cell"""
         is_playing = not self.__puzzle.is_initializing()
         if prim_attr == CellAttrs.GUESS and is_playing:
@@ -74,7 +74,7 @@ class Moves:
             cell = self.undo()
         return cell if self.__history.is_empty() else self.__history.last().cell
 
-    def recorded(self) -> list:
+    def recorded(self) -> list[tuple[int, int, int | None, str | None]]:
         """Return every recorded move as (row, col, value, prim_attr), oldest first"""
         return [
             (entry.cell.row, entry.cell.col, entry.valueinfo.value, entry.valueinfo.prim_attr)
@@ -90,28 +90,28 @@ class Moves:
     def __one_guess_deeper(self) -> None:
         self.__set_guess_depth(self.__guess_depth + 1)
 
-    def __set_guess_depth(self, depth) -> None:
+    def __set_guess_depth(self, depth: int) -> None:
         """Change the guess depth, telling the user interface if it changed"""
         if depth != self.__guess_depth:
             self.__ui.guess_depth_changed(depth)
         self.__guess_depth = depth
 
-    def __attributes(self, prim_attr) -> tuple:
+    def __attributes(self, prim_attr: str | None) -> Attributes:
         """Primary attribute: INITIAL while initializing, else prim_attr (if any); plus the guess depth"""
         attr = [CellAttrs.INITIAL] if self.__puzzle.is_initializing() else [prim_attr] if prim_attr else []
         attr += [dict(depth=self.__guess_depth)] if self.__guess_depth else []
         return tuple(attr)
 
-    def __record(self, cell, value, attr) -> None:
+    def __record(self, cell: Cell, value: int | None, attr: Attributes) -> None:
         new_info = Entry.ValueInfo(value, self.__prim_attr(attr))
         prev_value = cell.value()
         prev_info = Entry.ValueInfo(prev_value, self.__prim_attr(cell.attr())) if prev_value else None
         self.__history.add(Entry(cell, new_info, prev_info))
 
-    def __prim_attr(self, attr) -> str:
+    def __prim_attr(self, attr: Attributes) -> str | None:
         return next((prim_attr for prim_attr in CellAttrs.PRIMARY if prim_attr in attr), None)
 
-    def __is_guess(self, entry) -> bool:
+    def __is_guess(self, entry: Entry) -> bool:
         return entry.valueinfo.prim_attr == CellAttrs.GUESS
 
     def __one_guess_shallower(self) -> None:
