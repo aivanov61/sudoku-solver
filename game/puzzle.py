@@ -48,7 +48,7 @@ class Puzzle:
 
     And the following methods:
         render() - show the whole game afresh
-        handle(action, digit) - carry out one action from the player
+        handle(action, digit, position) - carry out one action from the player
         force_quit_() - stop playing at once, without asking (e.g. when an action breaks)
 
     handle() calls the puzzle's method for the Action (see actions.py): the action's value with an
@@ -86,10 +86,14 @@ class Puzzle:
         """Show a notice, a newly changed completion, or why the move "n" pointed out is right, if any; otherwise leave it blank"""
         self.__ui.status(self.__notice or self.__report.message() or self.__solver.pending_hint())
 
-    def handle(self, action: Action, digit: int | None = None) -> None:
-        """Carry out the player's action (with its digit, for values and guesses), then show the status"""
+    def handle(self, action: Action, digit: int | None = None, position: tuple[int, int] | None = None) -> None:
+        """
+        Carry out the player's action (with its digit, for values and guesses, or its (row, col) position, for
+        selecting a cell), then show the status
+        """
         self.__action_received(action)
-        getattr(self, f"{action.value}_")(*([] if digit is None else [digit]))
+        arguments = (digit,) if digit is not None else position or ()
+        getattr(self, f"{action.value}_")(*arguments)
         self.__refresh_marks()
         self.display_status()
 
@@ -121,6 +125,10 @@ class Puzzle:
 
     def right_(self) -> None:
         self.__move(0, 1)
+
+    def select_(self, row: int, col: int) -> None:
+        """Go straight to the cell, e.g. where the player tapped"""
+        self.selected_cell = (row, col)
 
     def play_(self) -> None:
         if not self.__setup_blocks_playing():

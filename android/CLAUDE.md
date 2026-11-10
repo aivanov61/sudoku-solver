@@ -14,7 +14,7 @@ Anton wants to explore an Android app as the next big thing. We agreed on this a
 - **The UI is native Kotlin with Jetpack Compose.**
 - **A Python adapter, `ui/android/`, beside `ui/terminal/`,** will implement the `UserInterface` port
   (`game/user_interface.py`) and pass each call on to Kotlin. The player's actions come back the other way as
-  `puzzle.handle(action, digit)`. It belongs in the repo's `ui/` so the repo's tests, ruff and pyright cover it.
+  `puzzle.handle(action, digit, position)`; a tap on a cell is `Action.SELECT` with its `(row, col)` position. It belongs in the repo's `ui/` so the repo's tests, ruff and pyright cover it.
 - **Dialogs stay synchronous**, which is Anton's earlier decision. `confirm()`, `ask_file_name()`,
   `configure()` and `walk_through()` block until the player answers, so the game runs on its own thread. A
   dialog posts its request to the UI thread and waits on a queue for the answer. Never block the UI thread.

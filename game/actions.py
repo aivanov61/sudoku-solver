@@ -29,6 +29,7 @@ class Action(Enum):
     DOWN = "down"
     LEFT = "left"
     RIGHT = "right"
+    SELECT = "select"  # go straight to a cell, given its position (e.g. a tap); no key is bound to it
     DEL = "del"
     UNDO = "undo"
     REWIND = "rewind"
@@ -53,12 +54,12 @@ class Mode(Enum):
 # The actions each mode offers; the puzzle refuses the others with a warning
 OFFERED_ACTIONS = {
     Mode.SETUP: (
-        Action.PLAY, Action.VALUE, Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT, Action.DEL, Action.TAG,
-        Action.CONFIGURE, Action.SAVE, Action.OPEN, Action.QUIT,
+        Action.PLAY, Action.VALUE, Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT, Action.SELECT, Action.DEL,
+        Action.TAG, Action.CONFIGURE, Action.SAVE, Action.OPEN, Action.QUIT,
     ),
     Mode.PLAY: (
-        Action.INIT, Action.VALUE, Action.GUESS, Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT, Action.DEL,
-        Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT, Action.TAG, Action.WHY, Action.CONFIGURE, Action.SAVE,
+        Action.INIT, Action.VALUE, Action.GUESS, Action.UP, Action.DOWN, Action.LEFT, Action.RIGHT, Action.SELECT,
+        Action.DEL, Action.UNDO, Action.REWIND, Action.AUTO, Action.NEXT, Action.TAG, Action.WHY, Action.CONFIGURE, Action.SAVE,
         Action.OPEN, Action.QUIT,
     ),
 }

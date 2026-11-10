@@ -55,6 +55,10 @@ class TestPuzzle(TestCase):
         self.puzzle.handle(Action.UP)
         self.assertEqual(self.puzzle.selected_cell, (3, 4))
 
+    def test_handle_carries_out_an_action_with_its_position(self):
+        self.puzzle.handle(Action.SELECT, position=(2, 7))
+        self.assertEqual(self.puzzle.selected_cell, (2, 7))
+
     # Cursor movement
 
     def test_arrow_commands_move_the_selected_cell(self):
@@ -77,6 +81,11 @@ class TestPuzzle(TestCase):
         self.puzzle.down_()
         self.puzzle.right_()
         self.assertEqual(self.puzzle.selected_cell, (8, 8))
+
+    def test_select_command_moves_straight_to_the_cell(self):
+        self.puzzle.selected_cell = (0, 0)
+        self.puzzle.select_(6, 3)
+        self.assertEqual(self.puzzle.selected_cell, (6, 3))
 
     # Entering values
 
