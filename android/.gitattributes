@@ -1,0 +1,4 @@
+# gradlew is a shell script and must keep LF endings; the jar is binary
+gradlew text eol=lf
+*.bat text eol=crlf
+*.jar binary

@@ -3,6 +3,7 @@
 [tool.ruff]
 line-length = 150
 target-version = "py314"  # annotations are evaluated lazily, so a name can be used before it is defined
+extend-exclude = ["android"]  # the Android app's build holds a copy of game/
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "B", "PLE", "ANN"]  # rules that catch mistakes, and every parameter and return typed for the IDE; matters of style are left to the code base's own norms
