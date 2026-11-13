@@ -23,6 +23,10 @@ import com.chaquo.python.PyException
 import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.trySendBlocking
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlin.concurrent.thread
 
 /**
@@ -33,8 +37,13 @@ class PythonGame(private val application: Application) : Game {
     @Volatile
     private var ui: PyObject? = null  // the game's AndroidUI, once Python has started
 
-    override fun start(onEvent: (GameEvent) -> Unit) {
-        thread(name = "game", isDaemon = true) { play(onEvent) }
+    /**
+     * The game's reports, as a Flow: callbackFlow turns PythonScreen's calls into the flow's values.  Each is handed
+     * over with trySendBlocking, which holds the game's thread until the collector has room, so none is lost.
+     */
+    override val events: Flow<GameEvent> = callbackFlow {
+        thread(name = "game", isDaemon = true) { play { event -> trySendBlocking(event) } }
+        awaitClose()  // the game's thread can't be stopped: it ends with the app
     }
 
     override fun act(action: GameAction, digit: Int?, position: Position?) {
@@ -52,7 +61,9 @@ class PythonGame(private val application: Application) : Game {
 
     // Private functions
 
-    /** Start Python (slow the first time, as it unpacks), set up the standard board, then play until the game is over */
+    /**
+     * Start Python (slow the first time, as it unpacks), set up the standard board, then play until the game is over
+     */
     private fun play(onEvent: (GameEvent) -> Unit) {
         try {
             if (!Python.isStarted()) {

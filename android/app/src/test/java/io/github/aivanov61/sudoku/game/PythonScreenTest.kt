@@ -40,6 +40,13 @@ class PythonScreenTest {
         assertEquals(listOf(GameEvent.CellChanged(Position(8, 8), cell)), events)
     }
 
+    @Test
+    fun aKindTheAppDoesNotKnowIsShownAsTyped() {
+        screen.showCell(0, 0, 4, "pencilled", false, 0, intArrayOf(), arrayOf())
+        val cell = CellState(4, CellKind.TYPED, false, 0, emptySet(), emptySet())
+        assertEquals(listOf(GameEvent.CellChanged(Position(0, 0), cell)), events)
+    }
+
     // Everything else
 
     @Test
@@ -51,7 +58,14 @@ class PythonScreenTest {
     @Test
     fun aStatusComesWithItsKind() {
         screen.showStatus("Resolve the conflicts before playing. ", "warning")
-        assertEquals(listOf(GameEvent.StatusChanged(GameMessage("Resolve the conflicts before playing. ", MessageKind.WARNING))), events)
+        val warning = GameMessage("Resolve the conflicts before playing. ", MessageKind.WARNING)
+        assertEquals(listOf(GameEvent.StatusChanged(warning)), events)
+    }
+
+    @Test
+    fun aMessageKindTheAppDoesNotKnowHasNoKind() {
+        screen.showStatus("Something new", "celebration")
+        assertEquals(listOf(GameEvent.StatusChanged(GameMessage("Something new", MessageKind.NONE))), events)
     }
 
     @Test
@@ -69,7 +83,14 @@ class PythonScreenTest {
     @Test
     fun aModeKeepsOnlyTheActionsTheAppKnows() {
         screen.modeChanged("SETUP", arrayOf("play", "value", "up", "select"))
-        assertEquals(listOf(GameEvent.ModeChanged("SETUP", setOf(GameAction.PLAY, GameAction.VALUE, GameAction.SELECT))), events)
+        val known = setOf(GameAction.PLAY, GameAction.VALUE, GameAction.SELECT)
+        assertEquals(listOf(GameEvent.ModeChanged("SETUP", known)), events)
+    }
+
+    @Test
+    fun anAnsweredQuestionIsOver() {
+        screen.questionAnswered()
+        assertEquals(listOf(GameEvent.Answered), events)
     }
 
     @Test

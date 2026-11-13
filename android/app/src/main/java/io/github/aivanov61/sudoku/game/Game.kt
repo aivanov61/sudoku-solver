@@ -17,12 +17,15 @@
 
 package io.github.aivanov61.sudoku.game
 
+import kotlinx.coroutines.flow.Flow
+
 /**
- * The game, as the app sees it: once started, it reports what happens as GameEvents, on the game's own thread,
+ * The game, as the app sees it: the data source behind GameRepository.  It reports what happens as GameEvents,
  * and carries out the player's actions and answers.  PythonGame is the real one.
  */
 interface Game {
-    fun start(onEvent: (GameEvent) -> Unit)
+    /** What the game reports, as it happens; collecting it starts the game, so it is collected once */
+    val events: Flow<GameEvent>
 
     /** Carry out the action, with its digit (values) or the position of the cell it points at (selecting) */
     fun act(action: GameAction, digit: Int? = null, position: Position? = null)

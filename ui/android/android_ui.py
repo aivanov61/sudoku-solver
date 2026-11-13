@@ -80,9 +80,11 @@ class AndroidUI:
         self.status(message)
 
     def confirm(self, question: str) -> bool:
-        """Have the screen ask the question, and wait for the player's answer"""
+        """Have the screen ask the question, wait for the player's answer, then tell the screen the question is over"""
         self.__screen.askConfirm(question)
-        return self.__answers.get()
+        yes = self.__answers.get()
+        self.__screen.questionAnswered()
+        return yes
 
     def ask_file_name(self, prompt: str, default: str, extension: str) -> str | None:
         """Cancel, as saving and restoring are not offered yet"""

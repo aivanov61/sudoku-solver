@@ -36,7 +36,9 @@ enum class GameAction(override val gameName: String) : GameNamed {
     QUIT("quit"),
 }
 
-/** How a cell's value got there: the game's primary attributes (game/cell_attrs.py), TYPED for a typed value or none */
+/**
+ * How a cell's value got there: the game's primary attributes (game/cell_attrs.py), TYPED for a typed value or none
+ */
 enum class CellKind(override val gameName: String) : GameNamed {
     TYPED(""),
     INITIAL("initial"),

@@ -22,7 +22,16 @@ package io.github.aivanov61.sudoku.game
  * by these names, with plain values.  Each call becomes a typed GameEvent.
  */
 class PythonScreen(private val onEvent: (GameEvent) -> Unit) {
-    fun showCell(row: Int, col: Int, value: Int, kind: String, conflicted: Boolean, depth: Int, possible: IntArray, edges: Array<String>) {
+    fun showCell(
+        row: Int,
+        col: Int,
+        value: Int,
+        kind: String,
+        conflicted: Boolean,
+        depth: Int,
+        possible: IntArray,
+        edges: Array<String>,
+    ) {
         val cell = CellState(
             value = value.takeIf { it > 0 },
             kind = fromGameName<CellKind>(kind) ?: CellKind.TYPED,
@@ -40,6 +49,8 @@ class PythonScreen(private val onEvent: (GameEvent) -> Unit) {
         onEvent(GameEvent.StatusChanged(GameMessage(text, fromGameName<MessageKind>(kind) ?: MessageKind.NONE)))
 
     fun askConfirm(question: String) = onEvent(GameEvent.Asked(question))
+
+    fun questionAnswered() = onEvent(GameEvent.Answered)
 
     fun modeChanged(mode: String, actions: Array<String>) =
         onEvent(GameEvent.ModeChanged(mode, actions.mapNotNull { fromGameName<GameAction>(it) }.toSet()))

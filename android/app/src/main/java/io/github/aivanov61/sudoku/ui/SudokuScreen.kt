@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.aivanov61.sudoku.data.GameState
 import io.github.aivanov61.sudoku.game.BoardSize
 import io.github.aivanov61.sudoku.game.CellKind
 import io.github.aivanov61.sudoku.game.CellState
@@ -67,18 +68,19 @@ fun SudokuScreen(state: SudokuUiState, intents: SudokuIntents) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(state.mode, style = MaterialTheme.typography.titleMedium)
-        val size = state.size
+        val game = state.game
+        Text(game.mode, style = MaterialTheme.typography.titleMedium)
+        val size = game.size
         if (size == null) {
             Text("Starting the game…")
         } else {
-            Board(size, state.cells, state.selected, intents::onCellTapped)
-            StatusLine(state.status)
+            Board(size, game.cells, game.selected, intents::onCellTapped)
+            StatusLine(game.message)
             DigitPad(intents::onDigit)
             Commands(state.modeSwitch, intents)
         }
     }
-    state.question?.let { question -> Confirm(question, intents::onAnswer) }
+    state.game.question?.let { question -> Confirm(question, intents::onAnswer) }
 }
 
 // Private functions
@@ -90,7 +92,8 @@ private fun Board(size: BoardSize, cells: Map<Position, CellState>, selected: Po
             Row(Modifier.weight(1f)) {
                 for (col in 0 until size.cols) {
                     val position = Position(row, col)
-                    Cell(cells[position], position == selected, Modifier.weight(1f).fillMaxSize().clickable { onTap(position) })
+                    val modifier = Modifier.weight(1f).fillMaxSize().clickable { onTap(position) }
+                    Cell(cells[position], position == selected, modifier)
                 }
             }
         }
@@ -100,7 +103,9 @@ private fun Board(size: BoardSize, cells: Map<Position, CellState>, selected: Po
 @Composable
 private fun Cell(cell: CellState?, isSelected: Boolean, modifier: Modifier) {
     Box(
-        modifier = modifier.background(cellBackground(cell, isSelected)).drawBehind { drawEdges(cell?.edges.orEmpty()) },
+        modifier = modifier
+            .background(cellBackground(cell, isSelected))
+            .drawBehind { drawEdges(cell?.edges.orEmpty()) },
         contentAlignment = Alignment.Center,
     ) {
         val value = cell?.value
@@ -172,7 +177,11 @@ private fun StatusLine(status: GameMessage) {
 private fun DigitPad(onDigit: (Int) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         for (digit in 1..9) {
-            FilledTonalButton(onClick = { onDigit(digit) }, modifier = Modifier.weight(1f), contentPadding = PaddingValues(0.dp)) {
+            FilledTonalButton(
+                onClick = { onDigit(digit) },
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(0.dp),
+            ) {
                 Text(digit.toString(), fontSize = 18.sp)
             }
         }
@@ -184,7 +193,12 @@ private fun DigitPad(onDigit: (Int) -> Unit) {
 private fun Commands(modeSwitch: GameAction, intents: SudokuIntents) {
     val switchLabel = if (modeSwitch == GameAction.PLAY) "Play" else "Setup"
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        for ((label, onClick) in listOf("Clear" to intents::onClear, switchLabel to intents::onSwitchMode, "Quit" to intents::onQuit)) {
+        val commands = listOf(
+            "Clear" to intents::onClear,
+            switchLabel to intents::onSwitchMode,
+            "Quit" to intents::onQuit,
+        )
+        for ((label, onClick) in commands) {
             OutlinedButton(onClick = onClick, modifier = Modifier.weight(1f)) {
                 Text(label)
             }
@@ -208,7 +222,14 @@ private fun SudokuScreenPreview() {
     val empty = CellState(null, CellKind.TYPED, false, 0, (1..9).toSet(), emptySet())
     val cells = (0 until 9).flatMap { row -> (0 until 9).map { col -> Position(row, col) to empty } }.toMap() +
         (Position(4, 4) to empty.copy(value = 5, kind = CellKind.INITIAL, possible = emptySet()))
-    val state = SudokuUiState(BoardSize(9, 9), cells, Position(4, 4), GameMessage("A hint", MessageKind.HINT), mode = "SETUP")
+    val game = GameState(
+        size = BoardSize(9, 9),
+        cells = cells,
+        selected = Position(4, 4),
+        message = GameMessage("A hint", MessageKind.HINT),
+        mode = "SETUP",
+    )
+    val state = SudokuUiState(game)
     MaterialTheme {
         Surface {
             SudokuScreen(state, PreviewIntents)

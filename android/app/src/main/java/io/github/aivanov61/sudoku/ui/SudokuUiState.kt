@@ -17,39 +17,12 @@
 
 package io.github.aivanov61.sudoku.ui
 
-import io.github.aivanov61.sudoku.game.BoardSize
-import io.github.aivanov61.sudoku.game.CellState
+import io.github.aivanov61.sudoku.data.GameState
 import io.github.aivanov61.sudoku.game.GameAction
-import io.github.aivanov61.sudoku.game.GameEvent
-import io.github.aivanov61.sudoku.game.GameMessage
-import io.github.aivanov61.sudoku.game.Position
 
-/** Everything the screen shows, as the game last reported it */
-data class SudokuUiState(
-    val size: BoardSize? = null,  // null until the game has started
-    val cells: Map<Position, CellState> = emptyMap(),
-    val selected: Position = Position(0, 0),
-    val status: GameMessage = GameMessage.NONE,
-    val question: String? = null,  // the question asked, until the player answers it
-    val mode: String = "",
-    val offered: Set<GameAction> = emptySet(),
-    val isOver: Boolean = false,
-) {
+/** Everything the game screen shows: the game as last reported, and what the screen works out from it */
+data class SudokuUiState(val game: GameState = GameState()) {
     /** The action that switches between setup and play: whichever of the two the mode offers */
     val modeSwitch: GameAction
-        get() = if (GameAction.PLAY in offered) GameAction.PLAY else GameAction.INIT
-
-    /** The state once the event has happened */
-    fun after(event: GameEvent): SudokuUiState = when (event) {
-        is GameEvent.Started -> copy(size = event.size)
-        is GameEvent.CellChanged -> copy(cells = cells + (event.position to event.cell))
-        is GameEvent.Selected -> copy(selected = event.position)
-        is GameEvent.StatusChanged -> copy(status = event.message)
-        is GameEvent.Asked -> copy(question = event.question)
-        is GameEvent.ModeChanged -> copy(mode = event.mode, offered = event.offered)
-        GameEvent.Over -> copy(isOver = true)
-    }
-
-    /** The state once the player has answered the question */
-    fun answered(): SudokuUiState = copy(question = null)
+        get() = if (GameAction.PLAY in game.offered) GameAction.PLAY else GameAction.INIT
 }

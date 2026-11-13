@@ -40,6 +40,14 @@ android {
         }
     }
 
+    buildTypes {
+        debug {
+            // Measure what the unit tests cover, with JaCoCo: gradle :app:createDebugUnitTestCoverageReport writes
+            // the report to app/build/reports/coverage/test/debug/index.html
+            enableUnitTestCoverage = true
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
@@ -90,4 +98,5 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

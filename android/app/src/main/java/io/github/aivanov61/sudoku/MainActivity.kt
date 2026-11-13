@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     val viewModel: SudokuViewModel = viewModel(factory = SudokuViewModel.Factory)
                     val state by viewModel.uiState.collectAsStateWithLifecycle()
-                    if (state.isOver) {
+                    if (state.game.isOver) {
                         LaunchedEffect(Unit) { finish() }
                     }
                     SudokuScreen(state, viewModel)

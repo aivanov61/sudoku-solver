@@ -19,50 +19,63 @@ package io.github.aivanov61.sudoku.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
-import io.github.aivanov61.sudoku.game.Game
+import io.github.aivanov61.sudoku.data.GameRepository
 import io.github.aivanov61.sudoku.game.GameAction
 import io.github.aivanov61.sudoku.game.Position
 import io.github.aivanov61.sudoku.game.PythonGame
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 /**
- * The game's state for the screen, kept for as long as the app runs, through rotations: it starts the game, turns
- * what the game reports into SudokuUiState, and turns the player's intents into the game's actions.
+ * The game screen's state holder: it turns the game's state (from GameRepository) into SudokuUiState, and the
+ * player's intents into the game's actions, each run in viewModelScope so it ends if the screen is closed for good.
  */
-class SudokuViewModel(private val game: Game) : ViewModel(), SudokuIntents {
-    private val state = MutableStateFlow(SudokuUiState())
-    val uiState: StateFlow<SudokuUiState> = state.asStateFlow()
-
-    init {
-        game.start { event -> state.update { it.after(event) } }
-    }
+class SudokuViewModel(private val repository: GameRepository) : ViewModel(), SudokuIntents {
+    /** The screen's state, worked out while the screen is shown (and for 5 seconds after, to ride out a rotation) */
+    val uiState: StateFlow<SudokuUiState> = repository.state
+        .map { SudokuUiState(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SudokuUiState(repository.state.value))
 
     // Interface required for the screen
 
-    override fun onCellTapped(position: Position) = game.act(GameAction.SELECT, position = position)
+    override fun onCellTapped(position: Position) = act(GameAction.SELECT, position = position)
 
-    override fun onDigit(digit: Int) = game.act(GameAction.VALUE, digit = digit)
+    override fun onDigit(digit: Int) = act(GameAction.VALUE, digit = digit)
 
-    override fun onClear() = game.act(GameAction.DEL)
+    override fun onClear() = act(GameAction.DEL)
 
-    override fun onSwitchMode() = game.act(state.value.modeSwitch)
+    override fun onSwitchMode() = act(SudokuUiState(repository.state.value).modeSwitch)
 
-    override fun onQuit() = game.act(GameAction.QUIT)
+    override fun onQuit() = act(GameAction.QUIT)
 
     override fun onAnswer(yes: Boolean) {
-        state.update { it.answered() }
-        game.answer(yes)
+        viewModelScope.launch { repository.answer(yes) }
+    }
+
+    // Private functions
+
+    private fun act(action: GameAction, digit: Int? = null, position: Position? = null) {
+        viewModelScope.launch { repository.act(action, digit, position) }
     }
 
     companion object {
-        /** Makes the view model with the real game, written in Python */
+        /**
+         * Makes the view model over the real game, written in Python.  For now the repository is made here, in a
+         * scope of its own for the app's lifetime; phase 2 moves it into an app container (dependency injection).
+         */
         val Factory = viewModelFactory {
-            initializer { SudokuViewModel(PythonGame(checkNotNull(this[APPLICATION_KEY]))) }
+            initializer {
+                val game = PythonGame(checkNotNull(this[APPLICATION_KEY]))
+                SudokuViewModel(GameRepository(game, CoroutineScope(SupervisorJob())))
+            }
         }
     }
 }

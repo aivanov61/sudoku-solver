@@ -17,99 +17,84 @@
 
 package io.github.aivanov61.sudoku.ui
 
+import io.github.aivanov61.sudoku.MainDispatcherRule
+import io.github.aivanov61.sudoku.data.GameRepository
 import io.github.aivanov61.sudoku.game.BoardSize
-import io.github.aivanov61.sudoku.game.Game
+import io.github.aivanov61.sudoku.game.FakeGame
+import io.github.aivanov61.sudoku.game.FakeGame.Act
 import io.github.aivanov61.sudoku.game.GameAction
 import io.github.aivanov61.sudoku.game.GameEvent
 import io.github.aivanov61.sudoku.game.Position
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Rule
 import org.junit.Test
 
 class SudokuViewModelTest {
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
+
     private val game = FakeGame()
-    private val viewModel = SudokuViewModel(game)
 
-    // The game's events
-
-    @Test
-    fun theGameIsStartedOnce() {
-        assertEquals(1, game.starts)
-    }
+    // The game's state
 
     @Test
-    fun whatTheGameReportsBecomesTheState() {
-        game.report(GameEvent.Started(BoardSize(9, 9)))
-        game.report(GameEvent.Selected(Position(3, 1)))
-        assertEquals(BoardSize(9, 9), viewModel.uiState.value.size)
-        assertEquals(Position(3, 1), viewModel.uiState.value.selected)
+    fun whatTheGameReportsBecomesTheScreensState() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = viewModel()
+        game.report(GameEvent.Started(BoardSize(9, 9)), GameEvent.Selected(Position(3, 1)))
+        assertEquals(BoardSize(9, 9), viewModel.uiState.value.game.size)
+        assertEquals(Position(3, 1), viewModel.uiState.value.game.selected)
     }
 
     // The player's intents
 
     @Test
-    fun tappingACellSelectsIt() {
-        viewModel.onCellTapped(Position(2, 7))
+    fun tappingACellSelectsIt() = runTest(mainDispatcherRule.dispatcher) {
+        viewModel().onCellTapped(Position(2, 7))
         assertEquals(listOf(Act(GameAction.SELECT, position = Position(2, 7))), game.acts)
     }
 
     @Test
-    fun aDigitIsEnteredAsAValue() {
-        viewModel.onDigit(5)
+    fun aDigitIsEnteredAsAValue() = runTest(mainDispatcherRule.dispatcher) {
+        viewModel().onDigit(5)
         assertEquals(listOf(Act(GameAction.VALUE, digit = 5)), game.acts)
     }
 
     @Test
-    fun clearDeletesTheValue() {
-        viewModel.onClear()
+    fun clearDeletesTheValue() = runTest(mainDispatcherRule.dispatcher) {
+        viewModel().onClear()
         assertEquals(listOf(Act(GameAction.DEL)), game.acts)
     }
 
     @Test
-    fun switchingModesUsesTheSwitchTheModeOffers() {
+    fun switchingModesUsesTheSwitchTheModeOffers() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = viewModel()
         game.report(GameEvent.ModeChanged("PLAY", setOf(GameAction.INIT)))
         viewModel.onSwitchMode()
         assertEquals(listOf(Act(GameAction.INIT)), game.acts)
     }
 
     @Test
-    fun quitAsksTheGameToQuit() {
-        viewModel.onQuit()
+    fun quitAsksTheGameToQuit() = runTest(mainDispatcherRule.dispatcher) {
+        viewModel().onQuit()
         assertEquals(listOf(Act(GameAction.QUIT)), game.acts)
     }
 
     @Test
-    fun anAnswerGoesToTheGameAndEndsTheQuestion() {
-        game.report(GameEvent.Asked("Really quit?"))
-        viewModel.onAnswer(false)
+    fun anAnswerGoesToTheGame() = runTest(mainDispatcherRule.dispatcher) {
+        viewModel().onAnswer(false)
         assertEquals(listOf(false), game.answers)
-        assertNull(viewModel.uiState.value.question)
     }
 
     // Private functions
 
-    private data class Act(val action: GameAction, val digit: Int? = null, val position: Position? = null)
-
-    /** A stand-in game that records what it is asked to do, and reports the events it is given */
-    private class FakeGame : Game {
-        var starts = 0
-        val acts = mutableListOf<Act>()
-        val answers = mutableListOf<Boolean>()
-        private var onEvent: (GameEvent) -> Unit = {}
-
-        override fun start(onEvent: (GameEvent) -> Unit) {
-            starts++
-            this.onEvent = onEvent
-        }
-
-        override fun act(action: GameAction, digit: Int?, position: Position?) {
-            acts += Act(action, digit, position)
-        }
-
-        override fun answer(yes: Boolean) {
-            answers += yes
-        }
-
-        fun report(event: GameEvent) = onEvent(event)
+    /** A view model over a repository of the fake game, everything running at once on the test's dispatcher */
+    private fun TestScope.viewModel(): SudokuViewModel {
+        val viewModel = SudokuViewModel(GameRepository(game, backgroundScope, mainDispatcherRule.dispatcher))
+        backgroundScope.launch { viewModel.uiState.collect() }  // for as long as the test runs, as the screen would
+        return viewModel
     }
 }

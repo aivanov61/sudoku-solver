@@ -46,6 +46,10 @@ class Screen(Protocol):
         """Ask the yes/no question, and give the answer to AndroidUI.answer()"""
         ...
 
+    def questionAnswered(self) -> None:
+        """Hear that the question asked has been answered, so it no longer shows"""
+        ...
+
     def modeChanged(self, mode: str, actions: list[str]) -> None:
         """Hear that the puzzle is now in the mode (a Mode's value), which offers these actions (Action values)"""
         ...

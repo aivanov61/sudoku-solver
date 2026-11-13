@@ -1,0 +1,6 @@
+# The Android project's code style.  Android Studio follows it: the wrap guide in the editor, and what
+# Code > Reformat Code wraps to.  Linters such as ktlint read it too.
+root = true
+
+[*]
+max_line_length = 120

@@ -17,7 +17,7 @@
 
 package io.github.aivanov61.sudoku.game
 
-/** What the game reports, as it happens (see Game.start()) */
+/** What the game reports, as it happens (see Game.events) */
 sealed interface GameEvent {
     /** The game has started on a board of this size; its cells follow */
     data class Started(val size: BoardSize) : GameEvent
@@ -33,6 +33,9 @@ sealed interface GameEvent {
 
     /** The game asks a yes/no question, and waits for Game.answer() */
     data class Asked(val question: String) : GameEvent
+
+    /** The question asked has been answered */
+    data object Answered : GameEvent
 
     /** The game is now in the mode (its name for the player), which offers these actions */
     data class ModeChanged(val mode: String, val offered: Set<GameAction>) : GameEvent

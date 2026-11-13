@@ -128,6 +128,11 @@ class TestAndroidUI(TestCase):
         self.assertTrue(self.ui.confirm("Really quit?"))
         self.screen.askConfirm.assert_called_once_with("Really quit?")
 
+    def test_confirm_tells_the_screen_once_the_question_is_answered(self):
+        self.ui.answer(True)
+        self.ui.confirm("Really quit?")
+        self.assertEqual(self.screen.method_calls, [call.askConfirm("Really quit?"), call.questionAnswered()])
+
     def test_confirm_returns_no_when_the_player_says_no(self):
         self.ui.answer(False)
         self.assertFalse(self.ui.confirm("Really quit?"))
