@@ -31,12 +31,12 @@ import kotlinx.coroutines.withContext
 
 /**
  * The data layer's one way to the game.  It keeps the game's state as last reported, for as long as the scope
- * lives (the app's, so it outlasts any screen), and carries out the player's actions off the UI thread.
+ * lives (the app's, so it outlasts any screen), and carries out the player's actions off the UI thread, in order.
  */
 class GameRepository(
     private val game: Game,
     scope: CoroutineScope,
-    private val dispatcher: CoroutineDispatcher = Dispatchers.IO,  // where calls into the game run: not the UI thread
+    private val inOrder: CoroutineDispatcher = OFF_UI_THREAD_IN_ORDER,  // runs calls one at a time, first in first out
 ) {
     /** The game as it last reported itself; the game starts as soon as the repository is made */
     val state: StateFlow<GameState> = game.events
@@ -44,7 +44,16 @@ class GameRepository(
         .stateIn(scope, SharingStarted.Eagerly, GameState())
 
     suspend fun act(action: GameAction, digit: Int? = null, position: Position? = null) =
-        withContext(dispatcher) { game.act(action, digit, position) }
+        withContext(inOrder) { game.act(action, digit, position) }
 
-    suspend fun answer(yes: Boolean) = withContext(dispatcher) { game.answer(yes) }
+    suspend fun answer(yes: Boolean) = withContext(inOrder) { game.answer(yes) }
+
+    private companion object {
+        /**
+         * Calls into the game run off the UI thread, and one at a time, so the game gets the player's actions in the
+         * order they were made: on Dispatchers.IO itself, a pool of threads, a tap and the digit right after it
+         * could overtake each other.
+         */
+        val OFF_UI_THREAD_IN_ORDER = Dispatchers.IO.limitedParallelism(1)
+    }
 }

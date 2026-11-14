@@ -63,7 +63,7 @@ its data sources. The Python game is at the bottom, as the source of truth for t
 | View | `SudokuScreen` | Stateless composables: draws the state, and passes taps on as intents (`SudokuIntents`) |
 | ViewModel | `SudokuViewModel` | `uiState = repository.state.map { SudokuUiState(it) }.stateIn(viewModelScope, WhileSubscribed(5 s))`; each intent is `viewModelScope.launch { repository.act(...) }` |
 | ViewModel | `SudokuUiState` | The game's state, plus what the screen works out from it (the mode switch) |
-| Data layer | `GameRepository` | The one way to the game, in an app-long scope: `state = events.runningFold(GameState()) { s, e -> s.after(e) }.stateIn(scope, Eagerly)`; `act()` and `answer()` run on `Dispatchers.IO` |
+| Data layer | `GameRepository` | The one way to the game, in an app-long scope: `state = events.runningFold(GameState()) { s, e -> s.after(e) }.stateIn(scope, Eagerly)`; `act()` and `answer()` run on `Dispatchers.IO`, one at a time, so they keep their order |
 | Data layer | `GameState` | Only what the game reported; `after(event)` works out each event's effect |
 | Data source | `Game` | The interface: `events: Flow<GameEvent>`, `act()`, `answer()` |
 | Data source | `PythonGame` | The real game: `events = callbackFlow { ... }` starts the game thread; `act()` calls `AndroidUI.act()` through Chaquopy |

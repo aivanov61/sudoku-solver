@@ -96,7 +96,8 @@ The Kotlin code, in three packages:
 - **`data/` is the data layer.** `GameRepository` is the one way to the game: it folds the events into a
   `StateFlow<GameState>` that lives in an app-long scope.
 
-  It runs `act()` and `answer()` on `Dispatchers.IO`, off the UI thread.
+  It runs `act()` and `answer()` on `Dispatchers.IO`, off the UI thread, one at a time
+  (`limitedParallelism(1)`), so the game gets the player's actions in the order they were made.
 
   `GameState.after(event)` works out each event's effect; `GameState` holds only what the game reported.
 
