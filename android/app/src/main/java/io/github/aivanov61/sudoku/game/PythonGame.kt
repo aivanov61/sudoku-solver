@@ -42,8 +42,11 @@ class PythonGame(private val application: Application) : Game {
      * over with trySendBlocking, which holds the game's thread until the collector has room, so none is lost.
      */
     override val events: Flow<GameEvent> = callbackFlow {
-        thread(name = "game", isDaemon = true) { play { event -> trySendBlocking(event) } }
-        awaitClose()  // the game's thread can't be stopped: it ends with the app
+        thread(name = "game", isDaemon = true) {
+            play { event -> trySendBlocking(event) }
+            close()  // the game is over: end the flow, so its collector ends too
+        }
+        awaitClose()  // the game's thread can't be stopped from here: it ends when the game is over
     }
 
     override fun act(action: GameAction, digit: Int?, position: Position?) {

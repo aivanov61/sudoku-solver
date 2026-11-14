@@ -22,12 +22,10 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import io.github.aivanov61.sudoku.SudokuApplication
 import io.github.aivanov61.sudoku.data.GameRepository
 import io.github.aivanov61.sudoku.game.GameAction
 import io.github.aivanov61.sudoku.game.Position
-import io.github.aivanov61.sudoku.game.PythonGame
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -67,14 +65,11 @@ class SudokuViewModel(private val repository: GameRepository) : ViewModel(), Sud
     }
 
     companion object {
-        /**
-         * Makes the view model over the real game, written in Python.  For now the repository is made here, in a
-         * scope of its own for the app's lifetime; phase 2 moves it into an app container (dependency injection).
-         */
+        /** Makes the view model over the app's one game repository, from the app's container */
         val Factory = viewModelFactory {
             initializer {
-                val game = PythonGame(checkNotNull(this[APPLICATION_KEY]))
-                SudokuViewModel(GameRepository(game, CoroutineScope(SupervisorJob())))
+                val application = checkNotNull(this[APPLICATION_KEY]) as SudokuApplication
+                SudokuViewModel(application.container.gameRepository)
             }
         }
     }

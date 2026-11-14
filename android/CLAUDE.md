@@ -80,14 +80,23 @@ no dead code, DRY, open/closed) apply to the Kotlin code as much as to the Pytho
 `docs/architecture.md` draws it as Mermaid diagrams: the layers, and one tap end to end. Update it at the end of
 each phase, marking what the phase added and changed.
 
-The Kotlin code, in three packages:
+The Kotlin code, in three packages, wired together by the app's container:
+
+- **Dependency injection by hand** (Google's manual DI). `SudokuApplication`, which the manifest names, is made
+  once per process before any screen, and makes the one `AppContainer` (`DefaultAppContainer`).
+
+  The container owns the app-long coroutine scope, and the `GameRepository` of the game in play. It makes the
+  game with the `newGame` it is given (`{ PythonGame(this) }`), when first asked for, and makes a new one once the
+  game is over, so the app never reopens on a finished game.
+
+  ViewModel factories ask the container for what their ViewModels need, rather than making it themselves.
 
 - **`game/` is the data source**: the game as the app sees it. `Game` is an interface whose `events` is a `Flow`
   of typed `GameEvent`s, and which takes typed `GameAction`s.
 
   `PythonGame` implements it, and is the only code that knows Chaquopy. Collecting `events` starts Python and the
   game on the game thread (off the UI thread, as the first start takes seconds), and `callbackFlow` turns the
-  game's reports into the flow.
+  game's reports into the flow, which ends when the game is over.
 
   `PythonScreen` implements the adapter's `Screen` (`ui/android/screen.py`), turning each call into a
   `GameEvent`. `GameNames.kt` maps the game's names (Action values, cell kinds, edges, message kinds) to Kotlin
@@ -107,8 +116,8 @@ The Kotlin code, in three packages:
   It implements `SudokuIntents` (`onDigit()`, `onCellTapped()`, ...), each launched in `viewModelScope`.
   `SudokuScreen` is stateless.
 
-- **Unit tests** (`app/src/test`, `gradle :app:testDebugUnitTest`) cover `GameState`, the repository and the
-  ViewModel over `FakeGame`, and `PythonScreen`; Python doesn't run in them.
+- **Unit tests** (`app/src/test`, `gradle :app:testDebugUnitTest`) cover `GameState`, the repository, the
+  ViewModel and the container over `FakeGame`, and `PythonScreen`; Python doesn't run in them.
 
   They use `kotlinx-coroutines-test`, and `MainDispatcherRule` stands in for the UI thread.
 
@@ -118,9 +127,6 @@ thread, taking actions from a queue that `act()` fills.
 `confirm()` waits on a second queue that `answer()` fills, then reports `questionAnswered()`.
 
 Gaps against the guide, to close in the phases that need them:
-
-- Dependency injection is a hand-made `ViewModelProvider.Factory`, which also makes the repository and its
-  scope (phase 2 moves them into an app container).
 
 - `inform()` doesn't wait yet, so a warning flashes and vanishes.
 

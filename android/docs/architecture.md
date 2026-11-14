@@ -1,9 +1,9 @@
 # The Android app's architecture
 
 How the app's code maps onto MVVM and Modern Android App Architecture, and how the parts talk to each other.
-Updated at the end of each phase; this is the state after **MVP 1, phase 1** (the data layer).
+Updated at the end of each phase; this is the state after **MVP 1, phase 2** (dependency injection by hand).
 
-Colors: green is new in phase 1, amber is changed in phase 1, uncolored is unchanged.
+Colors: green is new in phase 2, amber is changed in phase 2, uncolored is unchanged.
 
 Arrows: solid arrows are calls; dotted arrows are data flowing back, or a class implementing an interface.
 
@@ -11,6 +11,11 @@ Arrows: solid arrows are calls; dotted arrows are data flowing back, or a class 
 
 ```mermaid
 flowchart TB
+    subgraph App["App · dependency injection by hand"]
+        direction LR
+        SudokuApplication --> AppContainer["AppContainer"]
+    end
+
     subgraph View["View · Compose · UI thread"]
         direction LR
         MainActivity --> SudokuScreen
@@ -47,11 +52,14 @@ flowchart TB
     PythonGame -- "Chaquopy" --> AndroidUI
     AndroidUI -. "showCell(), askConfirm() …" .-> PythonScreen
     PythonScreen -. "GameEvent" .-> PythonGame
+    SudokuViewModel -- "Factory asks for gameRepository" --> AppContainer
+    AppContainer -- "makes, anew once the game is over" --> GameRepository
+    AppContainer -- "makes, with newGame" --> PythonGame
 
     classDef new fill:#2e7d32,stroke:#a5d6a7,stroke-width:2px,color:#ffffff
     classDef changed fill:#b45309,stroke:#fcd34d,stroke-width:2px,color:#ffffff
-    class GameRepository,GameState,FakeGame new
-    class MainActivity,SudokuScreen,SudokuViewModel,SudokuUiState,Game,PythonGame,PythonScreen,AndroidUI changed
+    class SudokuApplication,AppContainer new
+    class SudokuViewModel,PythonGame changed
 ```
 
 Everything from `GameRepository` down is MVVM's **Model**, which Google's guide splits into the data layer and
@@ -59,14 +67,16 @@ its data sources. The Python game is at the bottom, as the source of truth for t
 
 | Layer | Class | What it does |
 |---|---|---|
+| App | `SudokuApplication` | Made by Android once per process, before any screen (the manifest names it); makes the one `AppContainer` |
+| App | `AppContainer` | The app's dependencies (`DefaultAppContainer`): the app-long scope, and the `GameRepository` of the game in play, made when first asked for and anew once the game is over |
 | View | `MainActivity` | Makes the ViewModel, collects its `uiState` with `collectAsStateWithLifecycle()`, and shows `SudokuScreen`; closes once the game is over |
 | View | `SudokuScreen` | Stateless composables: draws the state, and passes taps on as intents (`SudokuIntents`) |
-| ViewModel | `SudokuViewModel` | `uiState = repository.state.map { SudokuUiState(it) }.stateIn(viewModelScope, WhileSubscribed(5 s))`; each intent is `viewModelScope.launch { repository.act(...) }` |
+| ViewModel | `SudokuViewModel` | `uiState = repository.state.map { SudokuUiState(it) }.stateIn(viewModelScope, WhileSubscribed(5 s))`; each intent is `viewModelScope.launch { repository.act(...) }`; its `Factory` gets the repository from the app's container |
 | ViewModel | `SudokuUiState` | The game's state, plus what the screen works out from it (the mode switch) |
 | Data layer | `GameRepository` | The one way to the game, in an app-long scope: `state = events.runningFold(GameState()) { s, e -> s.after(e) }.stateIn(scope, Eagerly)`; `act()` and `answer()` run on `Dispatchers.IO`, one at a time, so they keep their order |
 | Data layer | `GameState` | Only what the game reported; `after(event)` works out each event's effect |
 | Data source | `Game` | The interface: `events: Flow<GameEvent>`, `act()`, `answer()` |
-| Data source | `PythonGame` | The real game: `events = callbackFlow { ... }` starts the game thread; `act()` calls `AndroidUI.act()` through Chaquopy |
+| Data source | `PythonGame` | The real game: `events = callbackFlow { ... }` starts the game thread, and ends when the game is over; `act()` calls `AndroidUI.act()` through Chaquopy |
 | Data source | `PythonScreen` | What Python calls (`showCell()`, `askConfirm()`, `questionAnswered()`, ...), turned into `GameEvent`s |
 | Data source | `FakeGame` | A stand-in for tests: reports the events it is given, records the actions |
 | Python | `AndroidUI` | The port's adapter (`ui/android/`): `act()` → actions queue → `play()` → `puzzle.handle()`; `confirm()` waits for `answer()` |
