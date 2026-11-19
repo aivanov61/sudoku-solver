@@ -77,12 +77,16 @@ no dead code, DRY, open/closed) apply to the Kotlin code as much as to the Pytho
 
 ### Where the code is now
 
-`docs/architecture.md` draws it as Mermaid diagrams: an overview, then each feature (today the splash and the game)
-through the layers, with a sequence diagram for each. Update it at the end of each phase, marking what the phase
-added and changed.
+`docs/architecture.md` draws it as Mermaid diagrams: an overview, then each feature (today the splash, the layouts
+and the game) through the layers, with a sequence diagram for each. Update it at the end of each phase, marking what
+the phase added and changed.
 
-`MainActivity` hosts the screens in its composable `SudokuApp`: the splash until it has ended, then the game. It
-makes both features' ViewModels at once, so the game, and Python's slow first start, get going behind the splash.
+`MainActivity` hosts the screens in its composable `SudokuApp`, with Navigation 3: the back stack is a list of
+`Route`s (`ui/Keys.kt`), saved through rotation and process death, and `NavDisplay` shows the last one.
+
+Each entry gets its own ViewModels (`rememberViewModelStoreNavEntryDecorator()`). `SudokuApp` does the navigating,
+replacing each route with the next, so Back leaves the app: the splash, then the game when there is exactly one
+layout that can be picked, else the layout picker, then the game on the layout picked.
 
 The Kotlin code, in three packages, wired together by the app's container:
 
@@ -137,12 +141,17 @@ The Kotlin code, in three packages, wired together by the app's container:
   It implements `SudokuIntents` (`onDigit()`, `onCellTapped()`, ...), each launched in `viewModelScope`.
   `SudokuScreen` is stateless.
 
-  `SplashViewModel` reads the notice and starts a 5-second timer, each in its own coroutine in `viewModelScope`;
-  the timer or `onTap()` ends the splash (`SplashUiState.hasEnded`). `SplashScreen` is stateless: the title at the
-  top, and the notice centred below it.
+  `SplashViewModel` reads the notice and the layouts (which starts Python behind the splash) and starts a
+  5-second timer, each in its own coroutine in `viewModelScope`; the timer or `onTap()` ends the splash. Once it
+  has ended and the layouts are known, `SplashUiState.next` is the route that follows. `SplashScreen` is stateless:
+  the title at the top, and the notice centred below it.
 
-- **Unit tests** (`app/src/test`, `gradle :app:testDebugUnitTest`) cover `GameState`, the repository, both
-  ViewModels and the container, over `FakeGame` and `FakeCopyrightRepository`, and `PythonScreen`; Python doesn't
+  `LayoutPickerViewModel` reads the layouts for the stateless `LayoutPickerScreen`, which says so when none can be
+  picked. A pick is navigation, so it goes up to `SudokuApp` as a lambda, not to the ViewModel.
+
+- **Unit tests** (`app/src/test`, `gradle :app:testDebugUnitTest`) cover `GameState`, the repository, the
+  ViewModels and the container, over `FakeGame`, `FakeCopyrightRepository` and `FakeLayoutRepository` (which can
+  hold the layouts back, as a slow start of Python would), and `PythonScreen`; Python doesn't
   run in them.
 
   They use `kotlinx-coroutines-test`, and `MainDispatcherRule` stands in for the UI thread. The splash's timing
@@ -163,6 +172,13 @@ Gaps against the guide, to close in the phases that need them:
   The status line has no fixed height, so a wrapped message moves the buttons.
 
   Both are left for the MVP 1 screen redesign.
+
+- The game screen doesn't adapt to the window: the board is sized to the full width, so in landscape it is taller
+  than the screen, and the pad and buttons fall off the bottom.
+
+  Left for the screen redesign (phases 7 and 8): the board sized to the smaller of width and height, and in
+  landscape the message area, command palette and pad beside it. The orientation isn't locked, since Android
+  ignores that on large screens.
 
 ## Stages and phases
 
@@ -230,6 +246,9 @@ Branches are named `mvp<n>-phase<m>-<topic>`, e.g. `mvp1-phase1-data-layer`.
    can be planned is drawn before coding starts, and planning isn't done until it is.
 2. **Update `docs/architecture.md` first**, before any code: the phase's new and changed parts in green and amber,
    those not written yet marked `*`. Take each `*` off as its part gets written; none is left when the phase ends.
+
+   A phase built in steps (4a, 4b, ...) keeps its colors for the whole phase; `*` marks what the step being built
+   adds, and `*(4c)` what a later step does.
 
    Architecture comes first unless it isn't clear yet; then TDD lets it emerge, and the doc follows as it does.
 3. Write failing tests first, then build it.

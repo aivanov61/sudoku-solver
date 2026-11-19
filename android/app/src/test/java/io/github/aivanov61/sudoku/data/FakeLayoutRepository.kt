@@ -17,7 +17,28 @@
 
 package io.github.aivanov61.sudoku.data
 
-/** A fake layout repository for tests: it returns the layouts it was given */
-class FakeLayoutRepository(private val layouts: List<Layout>) : LayoutRepository {
-    override suspend fun layouts() = layouts
+import kotlinx.coroutines.CompletableDeferred
+
+/**
+ * A fake layout repository for tests: it returns the layouts it was given.  When [held], it holds them back until
+ * [release], as a slow first start of Python would.
+ */
+class FakeLayoutRepository(private val layouts: List<Layout>, held: Boolean = false) : LayoutRepository {
+    private val released = CompletableDeferred<Unit>()
+
+    init {
+        if (!held) {
+            release()
+        }
+    }
+
+    override suspend fun layouts(): List<Layout> {
+        released.await()
+        return layouts
+    }
+
+    /** Let the layouts be returned, to callers waiting and to those yet to come */
+    fun release() {
+        released.complete(Unit)
+    }
 }

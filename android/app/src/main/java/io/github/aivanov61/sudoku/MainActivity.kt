@@ -30,6 +30,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
+import androidx.navigation3.runtime.NavBackStack
+import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.ui.NavDisplay
+import io.github.aivanov61.sudoku.ui.LayoutPickerScreen
+import io.github.aivanov61.sudoku.ui.LayoutPickerViewModel
+import io.github.aivanov61.sudoku.ui.Route
 import io.github.aivanov61.sudoku.ui.SplashScreen
 import io.github.aivanov61.sudoku.ui.SplashViewModel
 import io.github.aivanov61.sudoku.ui.SudokuScreen
@@ -49,31 +59,63 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    /** The Sudoku app: copyright splash screen followed by the game, and then close when the game is over */
+    /**
+     * The Sudoku app: the copyright splash screen, then the layout picker when there isn't exactly one layout to play,
+     * then the game, closing when the game is over.  Navigation 3 shows the last route on the back stack; each step
+     * replaces the route before it, so Back leaves the app.  Each route's entry gets its own view models, which live
+     * as long as the route is on the back stack.
+     */
     @Composable
     private fun SudokuApp() {
+        val backStack = rememberNavBackStack(Route.Splash)  // saved through rotation and process death
+        NavDisplay(
+            backStack = backStack,
+            onBack = { backStack.removeLastOrNull() },
+            entryDecorators = listOf(
+                rememberSaveableStateHolderNavEntryDecorator(),
+                rememberViewModelStoreNavEntryDecorator(),
+            ),
+            entryProvider = entryProvider {
+                entry<Route.Splash> { Splash(onEnded = backStack::replaceLast) }
+                entry<Route.LayoutPicker> { LayoutPicker(onPick = { backStack.replaceLast(Route.Game(it)) }) }
+                entry<Route.Game> { route -> Game(route.layout) }
+            },
+        )
+    }
+
+    /** The splash screen, until it has ended: then [onEnded] is given the route that follows it */
+    @Composable
+    private fun Splash(onEnded: (Route) -> Unit) {
         val splash: SplashViewModel = viewModel(factory = SplashViewModel.Factory)
-        val splashState by splash.uiState.collectAsStateWithLifecycle()
-
-        // Made now, not after the splash, so the game (and Python's slow first start) gets started behind the splash
-        val game: SudokuViewModel = viewModel(factory = SudokuViewModel.factory(STANDARD_LAYOUT))
-        val gameState by game.uiState.collectAsStateWithLifecycle()
-
-        if (!splashState.hasEnded) {
-            SplashScreen(splashState.notice, splash::onTap)
-        } else {
-            if (gameState.game.isOver) {
-                LaunchedEffect(Unit) { finish() }
-            }
-            SudokuScreen(gameState, game)
+        val state by splash.uiState.collectAsStateWithLifecycle()
+        val next = state.next
+        if (next != null) {
+            LaunchedEffect(next) { onEnded(next) }
         }
+        SplashScreen(state.notice, splash::onTap)
     }
 
-    private companion object {
-        /**
-         * Temporary, deleted in phase 4b: the layout played until navigation takes the layouts from the game's catalog.
-         * It repeats Board3x3.NAME from the Python code, which only the catalog should give.
-         */
-        const val STANDARD_LAYOUT = "Standard 9x9"
+    /** The layout picker: [onPick] is given the name of the layout picked */
+    @Composable
+    private fun LayoutPicker(onPick: (String) -> Unit) {
+        val picker: LayoutPickerViewModel = viewModel(factory = LayoutPickerViewModel.Factory)
+        val state by picker.uiState.collectAsStateWithLifecycle()
+        LayoutPickerScreen(state, onPick = { onPick(it.name) })
     }
+
+    /** The game on the [layout] named, closing the app once it is over */
+    @Composable
+    private fun Game(layout: String) {
+        val game: SudokuViewModel = viewModel(factory = SudokuViewModel.factory(layout))
+        val state by game.uiState.collectAsStateWithLifecycle()
+        if (state.game.isOver) {
+            LaunchedEffect(Unit) { finish() }
+        }
+        SudokuScreen(state, game)
+    }
+}
+
+/** Show the [route] in place of the last one, so Back doesn't return to it */
+private fun NavBackStack<NavKey>.replaceLast(route: Route) {
+    this[lastIndex] = route
 }

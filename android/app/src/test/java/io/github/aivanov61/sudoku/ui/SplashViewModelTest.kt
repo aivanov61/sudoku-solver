@@ -19,14 +19,15 @@ package io.github.aivanov61.sudoku.ui
 
 import io.github.aivanov61.sudoku.MainDispatcherRule
 import io.github.aivanov61.sudoku.data.FakeCopyrightRepository
+import io.github.aivanov61.sudoku.data.FakeLayoutRepository
+import io.github.aivanov61.sudoku.data.Layout
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 import kotlin.time.Duration.Companion.milliseconds
@@ -41,18 +42,20 @@ class SplashViewModelTest {
         assertEquals("the notice", viewModel().uiState.value.notice)
     }
 
+    // When the splash ends
+
     @Test
-    fun itHasEndedAfter5000ms() = runTest(mainDispatcherRule.dispatcher) {
+    fun itEndsAfter5000ms() = runTest(mainDispatcherRule.dispatcher) {
         val viewModel = viewModel()
         advanceTimeBy(5_000.milliseconds)
         runCurrent()
-        assertTrue(viewModel.uiState.value.hasEnded)
+        assertEquals(Route.Game(STANDARD), viewModel.uiState.value.next)
     }
 
     @Test
     fun itHasNotEndedAt4999ms() = runTest(mainDispatcherRule.dispatcher) {
         val viewModel = viewModelAdvancedTo4999ms()
-        assertFalse(viewModel.uiState.value.hasEnded)
+        assertNull(viewModel.uiState.value.next)
     }
 
     @Test
@@ -60,13 +63,46 @@ class SplashViewModelTest {
         val viewModel = viewModelAdvancedTo4999ms()
         viewModel.onTap()
         runCurrent() // nothing else due at 4,999ms could have ended it
-        assertTrue(viewModel.uiState.value.hasEnded)
+        assertEquals(Route.Game(STANDARD), viewModel.uiState.value.next)
+    }
+
+    @Test
+    fun aTapWaitsForTheLayouts() = runTest(mainDispatcherRule.dispatcher) {
+        val layouts = FakeLayoutRepository(listOf(layout(STANDARD)), held = true)
+        val viewModel = viewModel(layouts)
+        viewModel.onTap()
+        assertNull(viewModel.uiState.value.next)
+        layouts.release()
+        assertEquals(Route.Game(STANDARD), viewModel.uiState.value.next)
+    }
+
+    // What follows the splash
+
+    @Test
+    fun theOnlyLayoutIsPlayed() = runTest(mainDispatcherRule.dispatcher) {
+        assertEquals(Route.Game(STANDARD), nextAfterTap(layout(STANDARD)))
+    }
+
+    @Test
+    fun theOnlyLayoutGoesToThePickerWhenItCantBePicked() = runTest(mainDispatcherRule.dispatcher) {
+        assertEquals(Route.LayoutPicker, nextAfterTap(layout(STANDARD, canPick = false)))
+    }
+
+    @Test
+    fun severalLayoutsGoToThePicker() = runTest(mainDispatcherRule.dispatcher) {
+        assertEquals(Route.LayoutPicker, nextAfterTap(layout(STANDARD), layout("Another")))
+    }
+
+    @Test
+    fun noLayoutsGoToThePicker() = runTest(mainDispatcherRule.dispatcher) {
+        assertEquals(Route.LayoutPicker, nextAfterTap())
     }
 
     // Private functions
 
-    /** A view model whose fake repository gives it the notice */
-    private fun viewModel(notice: String = "the notice") = SplashViewModel(FakeCopyrightRepository(notice))
+    /** A view model whose fake repositories give it the notice and the layouts */
+    private fun viewModel(layouts: FakeLayoutRepository = FakeLayoutRepository(listOf(layout(STANDARD)))) =
+        SplashViewModel(FakeCopyrightRepository("the notice"), layouts)
 
     /** A view model advanced to 4.999ms with all events drained */
     private fun TestScope.viewModelAdvancedTo4999ms(): SplashViewModel {
@@ -74,5 +110,19 @@ class SplashViewModelTest {
         advanceTimeBy(4_999.milliseconds)
         runCurrent() // Drain any pending events at this time
         return viewModel
+    }
+
+    /** The route that follows the splash over the layouts, once it is tapped */
+    private fun nextAfterTap(vararg layouts: Layout): Route? {
+        val viewModel = viewModel(FakeLayoutRepository(layouts.toList()))
+        viewModel.onTap()
+        return viewModel.uiState.value.next
+    }
+
+    /** A layout with the name, which can be picked unless [canPick] says otherwise */
+    private fun layout(name: String, canPick: Boolean = true) = Layout(name, label = name, canPick)
+
+    private companion object {
+        const val STANDARD = "Standard 9x9"
     }
 }
