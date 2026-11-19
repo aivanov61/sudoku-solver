@@ -65,11 +65,11 @@ class SudokuViewModel(private val repository: GameRepository) : ViewModel(), Sud
     }
 
     companion object {
-        /** Makes the view model over the app's one game repository, from the app's container */
-        val Factory = viewModelFactory {
+        /** Makes the view model over the game on the [layout] named, from the app's container */
+        fun factory(layout: String) = viewModelFactory {
             initializer {
                 val application = checkNotNull(this[APPLICATION_KEY]) as SudokuApplication
-                SudokuViewModel(application.container.gameRepository)
+                SudokuViewModel(application.container.gameRepository(layout))
             }
         }
     }

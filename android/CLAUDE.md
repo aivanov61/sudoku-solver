@@ -89,9 +89,12 @@ The Kotlin code, in three packages, wired together by the app's container:
 - **Dependency injection by hand** (Google's manual DI). `SudokuApplication`, which the manifest names, is made
   once per process before any screen, and makes the one `AppContainer` (`DefaultAppContainer`).
 
-  The container owns the app-long coroutine scope, and the `GameRepository` of the game in play. It makes the
-  game with the `newGame` it is given (`{ PythonGame(this) }`), when first asked for, and makes a new one once the
-  game is over, so the app never reopens on a finished game.
+  The container owns the app-long coroutine scope, and the `GameRepository` of the game in play, through
+  `gameRepository(layout)`. It makes the game with the `newGame` it is given (`{ layout -> PythonGame(this,
+  layout) }`), when first asked for, and makes a new one for another layout or once the game is over, so the app
+  never reopens on a finished game.
+
+  It also makes the `LayoutRepository` (`{ PythonLayoutRepository(this) }`), when first asked for.
 
   It also makes the `CopyrightRepository`, with the `newCopyrightRepository` it is given
   (`{ AssetCopyrightRepository(assets) }`), when first asked for. Taking ways to make things, rather than Android
@@ -102,9 +105,13 @@ The Kotlin code, in three packages, wired together by the app's container:
 - **`game/` is the data source**: the game as the app sees it. `Game` is an interface whose `events` is a `Flow`
   of typed `GameEvent`s, and which takes typed `GameAction`s.
 
-  `PythonGame` implements it, and is the only code that knows Chaquopy. Collecting `events` starts Python and the
-  game on the game thread (off the UI thread, as the first start takes seconds), and `callbackFlow` turns the
-  game's reports into the flow, which ends when the game is over.
+  `PythonGame` implements it, on the board of a layout it is given by name. Collecting `events` starts the game on
+  the game thread (off the UI thread), and `callbackFlow` turns the game's reports into the flow, which ends when
+  the game is over.
+
+  Only `game/` knows Chaquopy: `PythonGame`, `PythonLayoutRepository` (the layouts, from
+  `ui/android/catalog.py`'s `Catalog`, which also makes a layout's board) and `AppPython`, which starts Python
+  once for both, on first use (slow the first time after an install).
 
   `PythonScreen` implements the adapter's `Screen` (`ui/android/screen.py`), turning each call into a
   `GameEvent`. `GameNames.kt` maps the game's names (Action values, cell kinds, edges, message kinds) to Kotlin
@@ -219,11 +226,16 @@ Branches are named `mvp<n>-phase<m>-<topic>`, e.g. `mvp1-phase1-data-layer`.
 
 ### How a phase goes
 
-1. Explain its concept, and plan it with Tony.
-2. Write failing tests first, then build it.
-3. Try it on the emulator (and, once the app is far enough along, on the phone).
-4. Commit once Tony has tried it and says so.
-5. Fast-forward main and push only on his word, then delete the branch.
+1. Explain its concept, and plan it with Tony. **The architecture is a deliverable of planning:** as much of it as
+   can be planned is drawn before coding starts, and planning isn't done until it is.
+2. **Update `docs/architecture.md` first**, before any code: the phase's new and changed parts in green and amber,
+   those not written yet marked `*`. Take each `*` off as its part gets written; none is left when the phase ends.
+
+   Architecture comes first unless it isn't clear yet; then TDD lets it emerge, and the doc follows as it does.
+3. Write failing tests first, then build it.
+4. Try it on the emulator (and, once the app is far enough along, on the phone).
+5. Commit once Tony has tried it and says so.
+6. Fast-forward main and push only on his word, then delete the branch.
 
 Every phase that touches `game/` keeps the terminal working: its tests pass and Tony checks it by hand.
 
@@ -323,5 +335,7 @@ In short:
 - Commit messages are one descriptive sentence, ending with the Co-Authored-By line.
 - Working files use CRLF, except `gradlew`, which must stay LF (see `.gitattributes`).
 - He approves many commands by hand, so a command that times out may only be waiting for him.
+- Temporary code, in the app or its tests, says so in its comment: "Temporary, deleted in phase N: ...", and why
+  it shouldn't stay. Code that stays never reads as temporary.
 - In Markdown, a list item longer than about two lines gets a paragraph break (a blank line, then indented text)
   at each change of idea, so no paragraph asks the reader to take in too much at once.

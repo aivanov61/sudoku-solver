@@ -19,6 +19,7 @@ package io.github.aivanov61.sudoku
 
 import io.github.aivanov61.sudoku.data.CopyrightRepository
 import io.github.aivanov61.sudoku.data.GameRepository
+import io.github.aivanov61.sudoku.data.LayoutRepository
 import io.github.aivanov61.sudoku.game.Game
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -30,17 +31,22 @@ import kotlinx.coroutines.SupervisorJob
  * need, instead of making it themselves.
  */
 interface AppContainer {
-    val gameRepository: GameRepository
+    /** The repository of the game in play on the layout with the name, starting a game when there is none */
+    fun gameRepository(layout: String): GameRepository
+
+    val layoutRepository: LayoutRepository
     val copyrightRepository: CopyrightRepository
 }
 
 /**
- * The real dependencies.  It makes each game with [newGame] (SudokuApplication gives it the game written in Python)
- * and the copyright notice's repository with [newCopyrightRepository] (SudokuApplication gives it one over the app's
- * assets), and keeps the app-long work in [applicationScope].
+ * The real dependencies.  It makes each game, on the layout named, with [newGame] (SudokuApplication gives it the
+ * game written in Python), the layouts' repository with [newLayoutRepository] (SudokuApplication gives it the game's
+ * catalog) and the copyright notice's repository with [newCopyrightRepository] (SudokuApplication gives it one over
+ * the app's assets), and keeps the app-long work in [applicationScope].
  */
 class DefaultAppContainer(
-    private val newGame: () -> Game,
+    private val newGame: (layout: String) -> Game,
+    private val newLayoutRepository: () -> LayoutRepository,
     private val newCopyrightRepository: () -> CopyrightRepository,
 
     /**
@@ -50,19 +56,27 @@ class DefaultAppContainer(
     private val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) : AppContainer {
     private var current: GameRepository? = null
+    private var currentLayout: String? = null
 
     /**
-     * The repository of the game in play: made when first asked for, which starts the game, and made anew once that
-     * game is over, so a screen opened after quitting gets a new game rather than the finished one.  Only ViewModel
-     * factories ask for it, on the UI thread, so it needs no locking.
+     * Made when first asked for, which starts the game, and made anew for another layout or once that game is over, so
+     * a screen opened after quitting gets a new game rather than the finished one.  Only ViewModel factories ask for
+     * it, on the UI thread, so it needs no locking.
      */
-    override val gameRepository: GameRepository
-        get() = current?.takeUnless { it.state.value.isOver } ?: newRepository()
+    override fun gameRepository(layout: String): GameRepository =
+        current?.takeUnless { layout != currentLayout || it.state.value.isOver } ?: newRepository(layout)
+
+    /** The layouts' repository, made when first asked for */
+    override val layoutRepository: LayoutRepository by lazy { newLayoutRepository() }
 
     /** The notice's repository, made when first asked for */
     override val copyrightRepository: CopyrightRepository by lazy { newCopyrightRepository() }
 
     // Private functions
 
-    private fun newRepository(): GameRepository = GameRepository(newGame(), applicationScope).also { current = it }
+    private fun newRepository(layout: String): GameRepository =
+        GameRepository(newGame(layout), applicationScope).also {
+            current = it
+            currentLayout = layout
+        }
 }

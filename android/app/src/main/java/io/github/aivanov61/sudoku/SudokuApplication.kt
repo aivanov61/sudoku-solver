@@ -20,6 +20,7 @@ package io.github.aivanov61.sudoku
 import android.app.Application
 import io.github.aivanov61.sudoku.data.AssetCopyrightRepository
 import io.github.aivanov61.sudoku.game.PythonGame
+import io.github.aivanov61.sudoku.game.PythonLayoutRepository
 
 /**
  * The app itself: Android makes one, before any screen, and keeps it for as long as the app's process runs, which
@@ -32,7 +33,8 @@ class SudokuApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         container = DefaultAppContainer(
-            newGame = { PythonGame(this) },
+            newGame = { layout -> PythonGame(this, layout) },
+            newLayoutRepository = { PythonLayoutRepository(this) },
             newCopyrightRepository = { AssetCopyrightRepository(assets) },
         )
     }

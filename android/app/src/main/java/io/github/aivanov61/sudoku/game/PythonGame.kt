@@ -21,8 +21,6 @@ import android.app.Application
 import com.chaquo.python.Kwarg
 import com.chaquo.python.PyException
 import com.chaquo.python.PyObject
-import com.chaquo.python.Python
-import com.chaquo.python.android.AndroidPlatform
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
@@ -30,10 +28,11 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlin.concurrent.thread
 
 /**
- * The game written in Python (the repository's game/ and ui/android/), run through Chaquopy: AndroidUI.play()
- * runs on the game's own thread, reporting through a PythonScreen, and takes the player's actions from a queue.
+ * The game written in Python (the repository's game/ and ui/android/), run through Chaquopy, on the board of the
+ * [layout] named: AndroidUI.play() runs on the game's own thread, reporting through a PythonScreen, and takes the
+ * player's actions from a queue.
  */
-class PythonGame(private val application: Application) : Game {
+class PythonGame(private val application: Application, private val layout: String) : Game {
     @Volatile
     private var ui: PyObject? = null  // the game's AndroidUI, once Python has started
 
@@ -64,16 +63,11 @@ class PythonGame(private val application: Application) : Game {
 
     // Private functions
 
-    /**
-     * Start Python (slow the first time, as it unpacks), set up the standard board, then play until the game is over
-     */
+    /** Set up the layout's board (starting Python, if the layouts haven't yet), then play until the game is over */
     private fun play(onEvent: (GameEvent) -> Unit) {
         try {
-            if (!Python.isStarted()) {
-                Python.start(AndroidPlatform(application))
-            }
-            val python = Python.getInstance()
-            val board = python.getModule("game.puzzles.board_3x3").callAttr("Board3x3")
+            val python = AppPython.of(application)
+            val board = python.getModule("ui.android.catalog")["Catalog"]!!.callAttr("board", layout)
             val gameUi = python.getModule("ui.android.android_ui").callAttr("AndroidUI", PythonScreen(onEvent))
             val puzzle = python.getModule("game.puzzle").callAttr("Puzzle", board, gameUi)
             onEvent(GameEvent.Started(BoardSize(board["v_cells"]!!.toInt(), board["h_cells"]!!.toInt())))

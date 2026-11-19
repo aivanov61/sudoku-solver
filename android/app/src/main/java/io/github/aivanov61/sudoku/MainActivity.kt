@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
         val splashState by splash.uiState.collectAsStateWithLifecycle()
 
         // Made now, not after the splash, so the game (and Python's slow first start) gets started behind the splash
-        val game: SudokuViewModel = viewModel(factory = SudokuViewModel.Factory)
+        val game: SudokuViewModel = viewModel(factory = SudokuViewModel.factory(STANDARD_LAYOUT))
         val gameState by game.uiState.collectAsStateWithLifecycle()
 
         if (!splashState.hasEnded) {
@@ -67,5 +67,13 @@ class MainActivity : ComponentActivity() {
             }
             SudokuScreen(gameState, game)
         }
+    }
+
+    private companion object {
+        /**
+         * Temporary, deleted in phase 4b: the layout played until navigation takes the layouts from the game's catalog.
+         * It repeats Board3x3.NAME from the Python code, which only the catalog should give.
+         */
+        const val STANDARD_LAYOUT = "Standard 9x9"
     }
 }

@@ -31,6 +31,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class AppContainerTest {
     private val games = mutableListOf<FakeGame>()  // every game the container made, in order
+    private val layouts = mutableListOf<String>()  // the layout of each game the container made, in order
 
     @Test
     fun noGameIsMadeUntilOneIsAskedFor() = runTest {
@@ -41,26 +42,40 @@ class AppContainerTest {
     @Test
     fun theSameRepositoryIsHandedOutWhileTheGameIsOn() = runTest {
         val container = container()
-        assertSame(container.gameRepository, container.gameRepository)
-        assertEquals(1, games.size)
+        assertSame(container.gameRepository(LAYOUT), container.gameRepository(LAYOUT))
+        assertEquals(listOf(LAYOUT), layouts)
+    }
+
+    @Test
+    fun aNewGameIsMadeForAnotherLayout() = runTest {
+        val container = container()
+        val first = container.gameRepository(LAYOUT)
+        assertNotSame(first, container.gameRepository("Another layout"))
+        assertEquals(listOf(LAYOUT, "Another layout"), layouts)
     }
 
     @Test
     fun aNewGameIsHandedOutOnceTheGameIsOver() = runTest {
         val container = container()
-        val first = container.gameRepository
+        val first = container.gameRepository(LAYOUT)
         games.single().report(GameEvent.Over)
         runCurrent()  // let the repository take in the event
-        assertNotSame(first, container.gameRepository)
-        assertEquals(2, games.size)
+        assertNotSame(first, container.gameRepository(LAYOUT))
+        assertEquals(listOf(LAYOUT, LAYOUT), layouts)
     }
 
     // Private functions
 
-    /** A container that makes fake games, its work living as long as the test */
+    /** A container that makes fake games, noting each one's layout, its work living as long as the test */
     private fun TestScope.container() = DefaultAppContainer(
-        newGame = { FakeGame().also { games += it } },
+        newGame = { layout -> FakeGame().also { games += it; layouts += layout } },
+        newLayoutRepository = { error("not used in these tests") },
         newCopyrightRepository = { error("not used in these tests") },
         applicationScope = backgroundScope,
     )
+
+    private companion object {
+        /** Any name will do: the container only passes it on to newGame, and compares it with the last one */
+        const val LAYOUT = "A layout"
+    }
 }
