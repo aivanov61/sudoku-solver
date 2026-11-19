@@ -75,6 +75,33 @@ tasks.matching { it.name.startsWith("merge") && it.name.endsWith("PythonSources"
     dependsOn(syncAppPython)
 }
 
+// The repository's files the app shows as they are, packaged as assets (read with context.assets), so there is one
+// copy of each: the GNU GPL notice (ui/copyright.txt), which the terminal shows as its splash too.
+abstract class SyncSharedAssets : DefaultTask() {
+    @get:InputFiles
+    abstract val sources: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun sync() {
+        val target = outputDir.get().asFile
+        target.deleteRecursively()
+        target.mkdirs()
+        sources.forEach { it.copyTo(target.resolve(it.name)) }
+    }
+}
+val syncSharedAssets = tasks.register<SyncSharedAssets>("syncSharedAssets") {
+    sources.from(rootDir.resolve("../ui/copyright.txt"))
+}
+androidComponents {
+    onVariants { variant ->
+        // The Variant API: the task's output is an assets folder, so every step that needs the assets runs it first
+        variant.sources.assets?.addGeneratedSourceDirectory(syncSharedAssets, SyncSharedAssets::outputDir)
+    }
+}
+
 chaquopy {
     defaultConfig {
         version = "3.15"  // the game needs 3.14 or later; matching the PC's Python lets the build compile it

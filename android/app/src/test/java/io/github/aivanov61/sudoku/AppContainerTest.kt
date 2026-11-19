@@ -19,6 +19,7 @@ package io.github.aivanov61.sudoku
 
 import io.github.aivanov61.sudoku.game.FakeGame
 import io.github.aivanov61.sudoku.game.GameEvent
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -27,6 +28,7 @@ import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertSame
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class AppContainerTest {
     private val games = mutableListOf<FakeGame>()  // every game the container made, in order
 
@@ -56,5 +58,9 @@ class AppContainerTest {
     // Private functions
 
     /** A container that makes fake games, its work living as long as the test */
-    private fun TestScope.container() = DefaultAppContainer({ FakeGame().also { games += it } }, backgroundScope)
+    private fun TestScope.container() = DefaultAppContainer(
+        newGame = { FakeGame().also { games += it } },
+        newCopyrightRepository = { error("not used in these tests") },
+        applicationScope = backgroundScope,
+    )
 }

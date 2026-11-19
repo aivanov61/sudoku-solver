@@ -24,15 +24,18 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.aivanov61.sudoku.ui.SplashScreen
+import io.github.aivanov61.sudoku.ui.SplashViewModel
 import io.github.aivanov61.sudoku.ui.SudokuScreen
 import io.github.aivanov61.sudoku.ui.SudokuViewModel
 
-/** The app's one screen: the game's state (SudokuViewModel) shown by SudokuScreen, closing once the game is over */
+/** The app's one startup activity: it hosts [SudokuApp] */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,14 +43,29 @@ class MainActivity : ComponentActivity() {
         setContent {
             MaterialTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    val viewModel: SudokuViewModel = viewModel(factory = SudokuViewModel.Factory)
-                    val state by viewModel.uiState.collectAsStateWithLifecycle()
-                    if (state.game.isOver) {
-                        LaunchedEffect(Unit) { finish() }
-                    }
-                    SudokuScreen(state, viewModel)
+                    SudokuApp()
                 }
             }
+        }
+    }
+
+    /** The Sudoku app: copyright splash screen followed by the game, and then close when the game is over */
+    @Composable
+    private fun SudokuApp() {
+        val splash: SplashViewModel = viewModel(factory = SplashViewModel.Factory)
+        val splashState by splash.uiState.collectAsStateWithLifecycle()
+
+        // Made now, not after the splash, so the game (and Python's slow first start) gets started behind the splash
+        val game: SudokuViewModel = viewModel(factory = SudokuViewModel.Factory)
+        val gameState by game.uiState.collectAsStateWithLifecycle()
+
+        if (!splashState.hasEnded) {
+            SplashScreen(splashState.notice, splash::onTap)
+        } else {
+            if (gameState.game.isOver) {
+                LaunchedEffect(Unit) { finish() }
+            }
+            SudokuScreen(gameState, game)
         }
     }
 }

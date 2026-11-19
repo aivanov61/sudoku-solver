@@ -17,6 +17,7 @@
 
 package io.github.aivanov61.sudoku
 
+import io.github.aivanov61.sudoku.data.CopyrightRepository
 import io.github.aivanov61.sudoku.data.GameRepository
 import io.github.aivanov61.sudoku.game.Game
 import kotlinx.coroutines.CoroutineScope
@@ -30,17 +31,21 @@ import kotlinx.coroutines.SupervisorJob
  */
 interface AppContainer {
     val gameRepository: GameRepository
+    val copyrightRepository: CopyrightRepository
 }
 
 /**
- * The real dependencies.  It makes each game with newGame (SudokuApplication gives it the game written in Python),
- * and keeps the app-long work in applicationScope.
+ * The real dependencies.  It makes each game with [newGame] (SudokuApplication gives it the game written in Python)
+ * and the copyright notice's repository with [newCopyrightRepository] (SudokuApplication gives it one over the app's
+ * assets), and keeps the app-long work in [applicationScope].
  */
 class DefaultAppContainer(
     private val newGame: () -> Game,
+    private val newCopyrightRepository: () -> CopyrightRepository,
+
     /**
-     * Where the app-long work runs, such as the repository folding the game's events: it is never cancelled, and
-     * SupervisorJob keeps one failing coroutine from cancelling the others
+     * Where the app-long work runs, such as the repository folding the game's events: it is never canceled, and
+     * [SupervisorJob] keeps one failing coroutine from canceling the others
      */
     private val applicationScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
 ) : AppContainer {
@@ -54,8 +59,10 @@ class DefaultAppContainer(
     override val gameRepository: GameRepository
         get() = current?.takeUnless { it.state.value.isOver } ?: newRepository()
 
+    /** The notice's repository, made when first asked for */
+    override val copyrightRepository: CopyrightRepository by lazy { newCopyrightRepository() }
+
     // Private functions
 
-    private fun newRepository(): GameRepository =
-        GameRepository(newGame(), applicationScope).also { current = it }
+    private fun newRepository(): GameRepository = GameRepository(newGame(), applicationScope).also { current = it }
 }

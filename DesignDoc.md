@@ -67,7 +67,7 @@ Supporting modules:
 | `game/history.py` | `History`, `Entry` | The undo stack |
 | `game/moves.py` | `Moves` | Enters values, records them in its own `History` for undo and rewind, and keeps the guess shading |
 | `game/save_file.py` | `SaveFile`, `SavedPuzzle`, `SaveFileError` | Writes and reads the versioned save file |
-| `ui/terminal/copyright.py` | `Copyright` | The GPL splash text |
+| `ui/terminal/copyright.py` | `Copyright` | Shows the GPL notice as the splash; the text is in `ui/copyright.txt`, shared with the Android app |
 | `ui/error_log.py` | `ErrorLog` | Appends the traceback of each error the program survives to `sudoku.log`, for any user interface |
 | `game/puzzle.py` | `Puzzle` | The game, played on a board: commands, modes, cursor and screen. Hands work to the helpers below |
 | `game/board.py` | `Board` | The grid of cells: finds cells through the blocks and answers questions about them; an abstract base class for layouts |

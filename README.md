@@ -178,13 +178,14 @@ some guidance.  Each folder of code also has a `tests/` folder beside it (see Te
     - combined_rule.py - the last resort, using what all the rules rule out together; `CombinedRule` class
 - ui/ - the ways of showing the game
   - error_log.py - keeps the details of errors the program survives, in sudoku.log; `ErrorLog` class
+  - copyright.txt - the GNU GPL notice, shown by both the terminal and the Android app
   - terminal/ - shows the game in a terminal, using Blessed
     - terminal_ui.py - the terminal's user interface: runs the play loop, draws the board and panel, shows messages and asks questions; `TerminalUI` class
     - display.py - manages the terminal display; `Display` class
     - display_attrs.py - turns cell attributes into terminal colors; `DisplayAttrs` class
     - input.py - manages keyboard input and decodes into a valid command; `Input` class
     - commands.py - the terminal's key bindings, command panel and help text; `Commands` class
-    - copyright.py - the GNU GPL splash text; `Copyright` class
+    - copyright.py - shows the GNU GPL notice (../copyright.txt) as the splash; `Copyright` class
     - menu.py - a full-screen menu, used to choose a layout and to configure; `Menu` class
     - menu_item.py - the base class of menu lines; `MenuItem` class
     - menu_entry.py - a menu line that ENTER picks; `MenuEntry` class

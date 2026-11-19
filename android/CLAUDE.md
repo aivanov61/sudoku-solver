@@ -77,8 +77,12 @@ no dead code, DRY, open/closed) apply to the Kotlin code as much as to the Pytho
 
 ### Where the code is now
 
-`docs/architecture.md` draws it as Mermaid diagrams: the layers, and one tap end to end. Update it at the end of
-each phase, marking what the phase added and changed.
+`docs/architecture.md` draws it as Mermaid diagrams: an overview, then each feature (today the splash and the game)
+through the layers, with a sequence diagram for each. Update it at the end of each phase, marking what the phase
+added and changed.
+
+`MainActivity` hosts the screens in its composable `SudokuApp`: the splash until it has ended, then the game. It
+makes both features' ViewModels at once, so the game, and Python's slow first start, get going behind the splash.
 
 The Kotlin code, in three packages, wired together by the app's container:
 
@@ -88,6 +92,10 @@ The Kotlin code, in three packages, wired together by the app's container:
   The container owns the app-long coroutine scope, and the `GameRepository` of the game in play. It makes the
   game with the `newGame` it is given (`{ PythonGame(this) }`), when first asked for, and makes a new one once the
   game is over, so the app never reopens on a finished game.
+
+  It also makes the `CopyrightRepository`, with the `newCopyrightRepository` it is given
+  (`{ AssetCopyrightRepository(assets) }`), when first asked for. Taking ways to make things, rather than Android
+  objects, keeps the container testable.
 
   ViewModel factories ask the container for what their ViewModels need, rather than making it themselves.
 
@@ -110,16 +118,29 @@ The Kotlin code, in three packages, wired together by the app's container:
 
   `GameState.after(event)` works out each event's effect; `GameState` holds only what the game reported.
 
-- **`ui/` holds the ViewModel and the view.** `SudokuViewModel` turns the repository's state into one immutable
-  `SudokuUiState` (the game's state plus what the screen works out, such as the mode switch) as a `StateFlow`.
+  `CopyrightRepository` is the one way to the GNU GPL notice. `AssetCopyrightRepository` reads it from the app's
+  assets (`copyright.txt`, packaged from the repository's `ui/copyright.txt`) on `Dispatchers.IO`.
+
+- **`ui/` holds the ViewModels and the screens.** `SudokuViewModel` turns the repository's state into one
+  immutable `SudokuUiState` (the game's state plus what the screen works out, such as the mode switch) as a
+  `StateFlow`.
 
   It implements `SudokuIntents` (`onDigit()`, `onCellTapped()`, ...), each launched in `viewModelScope`.
   `SudokuScreen` is stateless.
 
-- **Unit tests** (`app/src/test`, `gradle :app:testDebugUnitTest`) cover `GameState`, the repository, the
-  ViewModel and the container over `FakeGame`, and `PythonScreen`; Python doesn't run in them.
+  `SplashViewModel` reads the notice and starts a 5-second timer, each in its own coroutine in `viewModelScope`;
+  the timer or `onTap()` ends the splash (`SplashUiState.hasEnded`). `SplashScreen` is stateless: the title at the
+  top, and the notice centred below it.
 
-  They use `kotlinx-coroutines-test`, and `MainDispatcherRule` stands in for the UI thread.
+- **Unit tests** (`app/src/test`, `gradle :app:testDebugUnitTest`) cover `GameState`, the repository, both
+  ViewModels and the container, over `FakeGame` and `FakeCopyrightRepository`, and `PythonScreen`; Python doesn't
+  run in them.
+
+  They use `kotlinx-coroutines-test`, and `MainDispatcherRule` stands in for the UI thread. The splash's timing
+  is tested on virtual time (`advanceTimeBy`, `runCurrent`).
+
+  Composables have no unit tests: Compose UI tests (`createComposeRule`) are planned for the redesigned game
+  screen.
 
 On the Python side, `ui/android/android_ui.py`'s `AndroidUI` is the port's adapter. `play()` runs on the game
 thread, taking actions from a queue that `act()` fills.
@@ -183,7 +204,7 @@ Each phase is one Android concept. **Pair** marks the phases Tony writes himself
 |---|---|---|
 | 1 | Coroutines and `Flow`; the data layer (a repository) | `GameRepository` in front of the game; calls into Python off the UI thread |
 | 2 | Dependency injection by hand (Google's manual DI); Hilt may follow later | An app container that builds the repository and the ViewModels |
-| 3 | A second screen and its state (**pair**) | The splash screen with the copyright, shared with the terminal from `ui/copyright.py` |
+| 3 | A second screen and its state (**pair**) | The splash screen with the copyright, shared with the terminal from `ui/copyright.txt` |
 | 4 | Navigation 3 | Splash, the layout picker (shown only with several layouts) and the game, through a Python entry point in `ui/android/` |
 | 5 | Lifecycle, app storage and process death | Auto-save and resume |
 | 6 | Top app bar and menus | New puzzle |
@@ -277,6 +298,10 @@ looks tagged, and `CellState` will carry them.
 
   Chaquopy packages them from there, so the app always runs the same game code as the terminal. Never edit the
   copy.
+
+- The `syncSharedAssets` task copies the repository's files the app shows as they are into its assets (read with
+  `context.assets`): today the GNU GPL notice, `ui/copyright.txt`, which the terminal shows too. It is wired in
+  with the Variant API (`addGeneratedSourceDirectory`), so every step that needs the assets runs it first.
 
 - The emulator is `Pixel_5` (x86_64). The first start after an install takes several seconds, while Chaquopy
   unpacks Python.

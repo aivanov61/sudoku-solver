@@ -18,6 +18,7 @@
 package io.github.aivanov61.sudoku
 
 import android.app.Application
+import io.github.aivanov61.sudoku.data.AssetCopyrightRepository
 import io.github.aivanov61.sudoku.game.PythonGame
 
 /**
@@ -30,6 +31,9 @@ class SudokuApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        container = DefaultAppContainer(newGame = { PythonGame(this) })
+        container = DefaultAppContainer(
+            newGame = { PythonGame(this) },
+            newCopyrightRepository = { AssetCopyrightRepository(assets) },
+        )
     }
 }
