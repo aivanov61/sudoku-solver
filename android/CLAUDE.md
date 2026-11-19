@@ -119,7 +119,9 @@ The Kotlin code, in three packages, wired together by the app's container:
   `GameState.after(event)` works out each event's effect; `GameState` holds only what the game reported.
 
   `CopyrightRepository` is the one way to the GNU GPL notice. `AssetCopyrightRepository` reads it from the app's
-  assets (`copyright.txt`, packaged from the repository's `ui/copyright.txt`) on `Dispatchers.IO`.
+  assets (`copyright.txt`, packaged from the repository's `ui/copyright.txt`) on `Dispatchers.IO`, and reflows it
+  (`String.reflow()` in `Reflow.kt`): the file breaks its lines for the terminal, so each paragraph's lines are joined,
+  for the screen to wrap to its own width.
 
 - **`ui/` holds the ViewModels and the screens.** `SudokuViewModel` turns the repository's state into one
   immutable `SudokuUiState` (the game's state plus what the screen works out, such as the mode switch) as a

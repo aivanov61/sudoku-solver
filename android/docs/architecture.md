@@ -90,7 +90,7 @@ The notice's one copy is the repository's `ui/copyright.txt`: the build packages
 | ViewModel | `SplashViewModel` | Reads the notice from the `CopyrightRepository` and starts a 5-second timer, both in `viewModelScope`; `onTap()` ends the splash at once; its state lives in a `MutableStateFlow`; its `Factory` gets the repository from the app's container |
 | ViewModel | `SplashUiState` | The notice (empty until read), and whether the splash has ended (`hasEnded`) |
 | Data layer | `CopyrightRepository` | The interface: the one way to the GNU GPL notice, `suspend fun notice(): String` |
-| Data layer | `AssetCopyrightRepository` | The real one: reads `copyright.txt` from the app's assets on `Dispatchers.IO`, turning Windows line endings into `\n` |
+| Data layer | `AssetCopyrightRepository` | The real one: reads `copyright.txt` from the app's assets on `Dispatchers.IO`, and reflows it (`String.reflow()`): the file breaks its lines for the terminal, so each paragraph's lines are joined, for the screen to wrap to its own width |
 | Data layer | `FakeCopyrightRepository` | A true fake for tests: returns the text it was given |
 | Data source | app assets | `copyright.txt`, packaged from the repository's `ui/copyright.txt` by the build |
 

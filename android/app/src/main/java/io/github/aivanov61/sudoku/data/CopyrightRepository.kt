@@ -29,12 +29,13 @@ interface CopyrightRepository {
 }
 
 /**
- * This reads the notice from the app [assets].
+ * This reads the notice from the app [assets], reflowed with [String.reflow]: the file breaks its lines for the
+ * terminal, and a screen wraps each paragraph to its own width.
  */
 class AssetCopyrightRepository(private val assets: AssetManager) : CopyrightRepository {
     override suspend fun notice(): String = withContext(Dispatchers.IO) {
         assets.open("copyright.txt").bufferedReader().use {
-            it.readText().replace("\r\n", "\n")
+            it.readText().reflow()
         }
     }
 }
