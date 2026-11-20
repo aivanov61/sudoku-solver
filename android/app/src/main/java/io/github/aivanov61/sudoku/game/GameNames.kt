@@ -33,7 +33,7 @@ enum class GameAction(override val gameName: String) : GameNamed {
     VALUE("value"),
     SELECT("select"),
     DEL("del"),
-    QUIT("quit"),
+    FORCE_QUIT("force_quit"),  // stop at once, without the game's own "Really quit?"
 }
 
 /**

@@ -24,7 +24,6 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import io.github.aivanov61.sudoku.SudokuApplication
 import io.github.aivanov61.sudoku.data.CopyrightRepository
-import io.github.aivanov61.sudoku.data.Layout
 import io.github.aivanov61.sudoku.data.LayoutRepository
 import io.github.aivanov61.sudoku.data.SavedGameRepository
 import kotlinx.coroutines.delay
@@ -66,7 +65,7 @@ class SplashViewModel(
 
         // The route that follows, from the layouts and the saved game: one after the other, as both go through Python
         viewModelScope.launch {
-            following = next(layoutRepository.layouts(), savedGameRepository.savedLayout())
+            following = Route.toStart(layoutRepository.layouts(), savedGameRepository.savedLayout())
             showNextOnceKnown()
         }
 
@@ -104,16 +103,6 @@ class SplashViewModel(
                 val container = (checkNotNull(this[APPLICATION_KEY]) as SudokuApplication).container
                 SplashViewModel(container.copyrightRepository, container.layoutRepository, container.savedGameRepository)
             }
-        }
-
-        /**
-         * The game on the [savedLayout], resuming it, when that layout can be picked; else the game when there is
-         * exactly one layout and it can be picked, as the terminal plays it; else the picker
-         */
-        private fun next(layouts: List<Layout>, savedLayout: String?): Route {
-            val saved = layouts.find { it.name == savedLayout }
-            val layout = saved?.takeIf { it.canPick } ?: layouts.singleOrNull()?.takeIf { it.canPick }
-            return layout?.let { Route.Game(it.name) } ?: Route.LayoutPicker
         }
     }
 }

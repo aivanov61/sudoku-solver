@@ -69,6 +69,10 @@ Modern Android App Architecture, as Google's guide describes it:
 - **Unidirectional data flow.** State flows down as an immutable UI state (`StateFlow`); the player's intents flow
   up as calls on the ViewModel. Composables are stateless: they show the state and pass taps on.
 
+  The one exception is UI element state with no logic behind it, which Google's guide on state hoisting lets a
+  composable keep with `remember`: today, whether the overflow menu is open (`GameTopBar`). A dialog that asks
+  something the app acts on, such as New puzzle's, is the ViewModel's.
+
 - **Recommended practices.** Kotlin coroutines and `Flow`, lifecycle-aware collection, dependency injection, and
   unit tests for each layer with fakes in place of the real data sources.
 
@@ -87,7 +91,15 @@ the phase added and changed.
 Each entry gets its own ViewModels (`rememberViewModelStoreNavEntryDecorator()`). `SudokuApp` does the navigating,
 replacing each route with the next, so Back leaves the app: the splash, then the game on the saved game's layout,
 or else when there is exactly one layout that can be picked, else the layout picker, then the game on the layout
-picked.
+picked. `Route.toStart()` works out that choice, for the splash and for New puzzle.
+
+New puzzle, in the game's top app bar menu, asks first when the board has values, then ends the game (the game's
+`FORCE_QUIT`, after which the auto-save is deleted), and the game is replaced by the route `Route.toStart()` gives
+without a saved game: a new game on the only layout, or the picker. Each `Route.Game` has an `id` of its own, so a
+new game on the same layout gets a new entry, with new ViewModels, rather than the ended game's.
+
+The app's name, "Sudoku Solver", is in one place, `app_name` (`res/values/strings.xml`): the launcher shows it,
+and the splash and the top app bar read it with `stringResource()`. "Sudoku" still names the puzzle.
 
 The game in progress is auto-saved to the app's own storage (`filesDir/autosave.json`, an ordinary save file):
 the `Game` entry saves it whenever the app is stopped (`LifecycleEventEffect(ON_STOP)`), since Android may then end
@@ -159,8 +171,11 @@ The Kotlin code, in three packages, wired together by the app's container:
   `StateFlow`.
 
   It implements `SudokuIntents` (`onDigit()`, `onCellTapped()`, ...), each launched in `viewModelScope`, and
-  `onStopped()`, which the activity calls when the app is stopped, to have the game saved. `SudokuScreen` is
-  stateless.
+  `onStopped()`, which the activity calls when the app is stopped, to have the game saved.
+
+  It also holds New puzzle's own state (whether it is asking, and `next`, the route that replaces the game), with
+  the layouts from the `LayoutRepository` to work `next` out once the game has ended. `SudokuScreen` is stateless:
+  a Material 3 `Scaffold` with the top app bar (`GameTopBar`, the overflow menu with New puzzle) above the game.
 
   `SplashViewModel` reads the notice; the layouts, then the saved game's layout (which starts Python behind the
   splash); and starts a 5-second timer, each in its own coroutine in `viewModelScope`; the timer or `onTap()` ends

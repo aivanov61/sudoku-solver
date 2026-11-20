@@ -28,11 +28,11 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -58,13 +58,29 @@ import io.github.aivanov61.sudoku.game.MessageKind
 import io.github.aivanov61.sudoku.game.Position
 
 /**
- * The game's screen, a first try: the mode, the board, the status line, a digit pad and a few commands, and the
- * game's yes/no questions as dialogs.  It only shows the state, and passes what the player does on to the intents.
+ * The game's screen, a first try: the top app bar, then the mode, the board, the status line, a digit pad and a few
+ * commands; and the game's yes/no questions, and New puzzle's, as dialogs.  It only shows the state, and passes what
+ * the player does on to the intents.  The Material 3 Scaffold places the top app bar, and pads the content clear of
+ * it and of the system bars.
  */
 @Composable
 fun SudokuScreen(state: SudokuUiState, intents: SudokuIntents) {
+    Scaffold(topBar = { GameTopBar(state.canStartNew, intents::onNewPuzzle) }) { padding ->
+        GameContent(state, intents, Modifier.padding(padding))
+    }
+    state.game.question?.let { question -> Confirm(question, intents::onAnswer) }
+    if (state.askingNewPuzzle) {
+        NewPuzzleDialog(intents::onNewPuzzleAnswer)
+    }
+}
+
+// Private functions
+
+/** The game itself, below the top app bar */
+@Composable
+private fun GameContent(state: SudokuUiState, intents: SudokuIntents, modifier: Modifier) {
     Column(
-        modifier = Modifier.fillMaxSize().safeDrawingPadding().padding(8.dp),
+        modifier = modifier.fillMaxSize().padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -83,10 +99,7 @@ fun SudokuScreen(state: SudokuUiState, intents: SudokuIntents) {
             }
         }
     }
-    state.game.question?.let { question -> Confirm(question, intents::onAnswer) }
 }
-
-// Private functions
 
 @Composable
 private fun Board(size: BoardSize, cells: Map<Position, CellState>, selected: Position, onTap: (Position) -> Unit) {
@@ -191,7 +204,7 @@ private fun DigitPad(onDigit: (Int) -> Unit) {
     }
 }
 
-/** Clear, the switch between setup and play, and quit */
+/** Clear, and the switch between setup and play */
 @Composable
 private fun Commands(modeSwitch: GameAction, intents: SudokuIntents) {
     val switchLabel = if (modeSwitch == GameAction.PLAY) "Play" else "Setup"
@@ -199,7 +212,6 @@ private fun Commands(modeSwitch: GameAction, intents: SudokuIntents) {
         val commands = listOf(
             "Clear" to intents::onClear,
             switchLabel to intents::onSwitchMode,
-            "Quit" to intents::onQuit,
         )
         for ((label, onClick) in commands) {
             OutlinedButton(onClick = onClick, modifier = Modifier.weight(1f)) {
@@ -216,6 +228,18 @@ private fun Confirm(question: String, onAnswer: (Boolean) -> Unit) {
         text = { Text(question) },
         confirmButton = { TextButton(onClick = { onAnswer(true) }) { Text("Yes") } },
         dismissButton = { TextButton(onClick = { onAnswer(false) }) { Text("No") } },
+    )
+}
+
+/** New puzzle's question, asked when the board has values: [onAnswer] gets whether to start new */
+@Composable
+private fun NewPuzzleDialog(onAnswer: (Boolean) -> Unit) {
+    AlertDialog(
+        onDismissRequest = { onAnswer(false) },
+        title = { Text("Start a new puzzle?") },
+        text = { Text("The one in progress will be lost.") },
+        confirmButton = { TextButton(onClick = { onAnswer(true) }) { Text("Start new") } },
+        dismissButton = { TextButton(onClick = { onAnswer(false) }) { Text("Cancel") } },
     )
 }
 
@@ -246,8 +270,9 @@ private object PreviewIntents : SudokuIntents {
     override fun onDigit(digit: Int) {}
     override fun onClear() {}
     override fun onSwitchMode() {}
-    override fun onQuit() {}
     override fun onAnswer(yes: Boolean) {}
+    override fun onNewPuzzle() {}
+    override fun onNewPuzzleAnswer(yes: Boolean) {}
 }
 
 /** The screen's own colors */

@@ -18,8 +18,12 @@
 package io.github.aivanov61.sudoku.ui
 
 import io.github.aivanov61.sudoku.MainDispatcherRule
+import io.github.aivanov61.sudoku.data.FakeLayoutRepository
 import io.github.aivanov61.sudoku.data.GameRepository
+import io.github.aivanov61.sudoku.data.Layout
 import io.github.aivanov61.sudoku.game.BoardSize
+import io.github.aivanov61.sudoku.game.CellKind
+import io.github.aivanov61.sudoku.game.CellState
 import io.github.aivanov61.sudoku.game.FakeGame
 import io.github.aivanov61.sudoku.game.FakeGame.Act
 import io.github.aivanov61.sudoku.game.GameAction
@@ -30,6 +34,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -78,12 +85,6 @@ class SudokuViewModelTest {
     }
 
     @Test
-    fun quitAsksTheGameToQuit() = runTest(mainDispatcherRule.dispatcher) {
-        viewModel().onQuit()
-        assertEquals(listOf(Act(GameAction.QUIT)), game.acts)
-    }
-
-    @Test
     fun anAnswerGoesToTheGame() = runTest(mainDispatcherRule.dispatcher) {
         viewModel().onAnswer(false)
         assertEquals(listOf(false), game.answers)
@@ -97,12 +98,115 @@ class SudokuViewModelTest {
         assertEquals(1, game.saves)
     }
 
+    // New puzzle
+
+    @Test
+    fun newPuzzleCanStartOnlyOnceTheGameHasStarted() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = viewModel()
+        assertFalse(viewModel.uiState.value.canStartNew)  // it would restore the saved game, then delete it unasked
+        game.report(GameEvent.Started(BoardSize(9, 9)))
+        assertTrue(viewModel.uiState.value.canStartNew)
+    }
+
+    @Test
+    fun newPuzzleCanStartOnceTheGameHasFailed() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = viewModel()
+        game.report(GameEvent.Failed("no such layout"))
+        assertTrue(viewModel.uiState.value.canStartNew)
+    }
+
+    @Test
+    fun newPuzzleAsksFirstWhenTheBoardHasValues() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = startedViewModel(cellWith(5))
+        viewModel.onNewPuzzle()
+        assertTrue(viewModel.uiState.value.askingNewPuzzle)
+        assertEquals(emptyList<Act>(), game.acts)
+    }
+
+    @Test
+    fun newPuzzleOnAnEmptyBoardEndsTheGameWithoutAsking() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = startedViewModel(cellWith(null))
+        viewModel.onNewPuzzle()
+        assertFalse(viewModel.uiState.value.askingNewPuzzle)
+        assertEquals(listOf(Act(GameAction.FORCE_QUIT)), game.acts)
+    }
+
+    @Test
+    fun startingNewEndsTheGame() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = startedViewModel(cellWith(5))
+        viewModel.onNewPuzzle()
+        viewModel.onNewPuzzleAnswer(true)
+        assertFalse(viewModel.uiState.value.askingNewPuzzle)
+        assertEquals(listOf(Act(GameAction.FORCE_QUIT)), game.acts)
+    }
+
+    @Test
+    fun cancelLeavesTheGameAsItWas() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = startedViewModel(cellWith(5))
+        viewModel.onNewPuzzle()
+        viewModel.onNewPuzzleAnswer(false)
+        assertFalse(viewModel.uiState.value.askingNewPuzzle)
+        assertEquals(emptyList<Act>(), game.acts)
+        assertNull(viewModel.uiState.value.next)
+    }
+
+    @Test
+    fun theNewPuzzleFollowsOnceTheGameIsOver() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = startedViewModel(cellWith(null))
+        viewModel.onNewPuzzle()
+        assertNull(viewModel.uiState.value.next)  // the game hasn't deleted its saved game yet
+        game.report(GameEvent.Over)
+        assertEquals(STANDARD, viewModel.uiState.value.next.gameLayout)
+    }
+
+    @Test
+    fun withSeveralLayoutsTheNewPuzzleIsPicked() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = startedViewModel(cellWith(null), layouts = listOf(layout(STANDARD), layout(ANOTHER)))
+        viewModel.onNewPuzzle()
+        game.report(GameEvent.Over)
+        assertEquals(Route.LayoutPicker, viewModel.uiState.value.next)
+    }
+
+    @Test
+    fun aFailedGameGoesStraightToTheNewPuzzle() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = viewModel()
+        game.report(GameEvent.Failed("no such layout"))
+        viewModel.onNewPuzzle()
+        assertEquals(emptyList<Act>(), game.acts)  // it has already ended
+        assertEquals(STANDARD, viewModel.uiState.value.next.gameLayout)
+    }
+
     // Private functions
 
-    /** A view model over a repository of the fake game, everything running at once on the test's dispatcher */
-    private fun TestScope.viewModel(): SudokuViewModel {
-        val viewModel = SudokuViewModel(GameRepository(game, backgroundScope, mainDispatcherRule.dispatcher))
+    /**
+     * A view model over a repository of the fake game, and over the layouts, everything running at once on the test's
+     * dispatcher
+     */
+    private fun TestScope.viewModel(layouts: List<Layout> = listOf(layout(STANDARD))): SudokuViewModel {
+        val repository = GameRepository(game, backgroundScope, mainDispatcherRule.dispatcher)
+        val viewModel = SudokuViewModel(repository, FakeLayoutRepository(layouts))
         backgroundScope.launch { viewModel.uiState.collect() }  // for as long as the test runs, as the screen would
         return viewModel
+    }
+
+    /** A view model whose game has started, on a board of the one cell given */
+    private fun TestScope.startedViewModel(
+        cell: CellState,
+        layouts: List<Layout> = listOf(layout(STANDARD)),
+    ): SudokuViewModel {
+        val viewModel = viewModel(layouts)
+        game.report(GameEvent.Started(BoardSize(1, 1)), GameEvent.CellChanged(Position(0, 0), cell))
+        return viewModel
+    }
+
+    /** A cell with the value, or none */
+    private fun cellWith(value: Int?) = CellState(value, CellKind.TYPED, false, 0, emptySet(), emptySet())
+
+    /** A layout with the name, which can be picked */
+    private fun layout(name: String) = Layout(name, label = name, canPick = true)
+
+    private companion object {
+        const val STANDARD = "Standard 9x9"
+        const val ANOTHER = "Another"
     }
 }

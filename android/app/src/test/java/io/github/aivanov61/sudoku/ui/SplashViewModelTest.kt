@@ -50,7 +50,7 @@ class SplashViewModelTest {
         val viewModel = viewModel()
         advanceTimeBy(5_000.milliseconds)
         runCurrent()
-        assertEquals(Route.Game(STANDARD), viewModel.uiState.value.next)
+        assertEquals(STANDARD, viewModel.uiState.value.next.gameLayout)
     }
 
     @Test
@@ -64,7 +64,7 @@ class SplashViewModelTest {
         val viewModel = viewModelAdvancedTo4999ms()
         viewModel.onTap()
         runCurrent() // nothing else due at 4,999ms could have ended it
-        assertEquals(Route.Game(STANDARD), viewModel.uiState.value.next)
+        assertEquals(STANDARD, viewModel.uiState.value.next.gameLayout)
     }
 
     @Test
@@ -74,20 +74,10 @@ class SplashViewModelTest {
         viewModel.onTap()
         assertNull(viewModel.uiState.value.next)
         layouts.release()
-        assertEquals(Route.Game(STANDARD), viewModel.uiState.value.next)
+        assertEquals(STANDARD, viewModel.uiState.value.next.gameLayout)
     }
 
-    // What follows the splash
-
-    @Test
-    fun theOnlyLayoutIsPlayed() = runTest(mainDispatcherRule.dispatcher) {
-        assertEquals(Route.Game(STANDARD), nextAfterTap(layout(STANDARD)))
-    }
-
-    @Test
-    fun theOnlyLayoutGoesToThePickerWhenItCantBePicked() = runTest(mainDispatcherRule.dispatcher) {
-        assertEquals(Route.LayoutPicker, nextAfterTap(layout(STANDARD, canPick = false)))
-    }
+    // What follows the splash (Route.toStart, tested in KeysTest, works out which)
 
     @Test
     fun severalLayoutsGoToThePicker() = runTest(mainDispatcherRule.dispatcher) {
@@ -95,26 +85,8 @@ class SplashViewModelTest {
     }
 
     @Test
-    fun noLayoutsGoToThePicker() = runTest(mainDispatcherRule.dispatcher) {
-        assertEquals(Route.LayoutPicker, nextAfterTap())
-    }
-
-    // Resuming the saved game
-
-    @Test
     fun theSavedGamesLayoutIsPlayed() = runTest(mainDispatcherRule.dispatcher) {
-        assertEquals(Route.Game(ANOTHER), nextAfterTap(layout(STANDARD), layout(ANOTHER), saved = ANOTHER))
-    }
-
-    @Test
-    fun aSavedGameOnALayoutThatCantBePickedGoesToThePicker() = runTest(mainDispatcherRule.dispatcher) {
-        val layouts = arrayOf(layout(STANDARD), layout(ANOTHER, canPick = false))
-        assertEquals(Route.LayoutPicker, nextAfterTap(*layouts, saved = ANOTHER))
-    }
-
-    @Test
-    fun aSavedGameOnALayoutNoLongerThereLeavesTheOnlyLayoutPlayed() = runTest(mainDispatcherRule.dispatcher) {
-        assertEquals(Route.Game(STANDARD), nextAfterTap(layout(STANDARD), saved = ANOTHER))
+        assertEquals(ANOTHER, nextAfterTap(layout(STANDARD), layout(ANOTHER), saved = ANOTHER).gameLayout)
     }
 
     // Private functions

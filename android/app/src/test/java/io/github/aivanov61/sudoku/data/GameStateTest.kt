@@ -81,7 +81,7 @@ class GameStateTest {
     fun aFailureGivesItsReasonButDoesNotEndTheGameAsOver() {
         val state = start.after(GameEvent.Failed("no such layout"))
         assertEquals("no such layout", state.failure)
-        assertFalse(state.isOver)  // that would close the app before the player sees why
+        assertFalse(state.isOver)  // the game didn't end as the player asked, so the screen says why
     }
 
     @Test

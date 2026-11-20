@@ -25,6 +25,7 @@ interface SudokuIntents {
     fun onDigit(digit: Int)
     fun onClear()
     fun onSwitchMode()
-    fun onQuit()
     fun onAnswer(yes: Boolean)
+    fun onNewPuzzle()
+    fun onNewPuzzleAnswer(yes: Boolean)
 }

@@ -81,6 +81,13 @@ class TestAndroidUI(TestCase):
             self.__play(game)
         game.force_quit_.assert_called_once()
 
+    def test_a_forced_quit_ends_the_game_without_asking_and_forgets_the_saved_game(self):
+        self.ui.act("force_quit")
+        self.ui.play(Puzzle(Board3x3(), self.ui))
+        self.screen.askConfirm.assert_not_called()
+        self.auto_save.forget.assert_called_once()
+        self.screen.gameOver.assert_called_once()
+
     # Auto-save
 
     def test_the_game_is_auto_saved_to_the_file_given(self):

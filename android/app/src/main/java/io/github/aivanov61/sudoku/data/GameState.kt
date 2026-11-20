@@ -34,7 +34,7 @@ data class GameState(
     val mode: String = "",
     val offered: Set<GameAction> = emptySet(),
     val isOver: Boolean = false,
-    val failure: String? = null,  // why the game stopped on an error; kept apart from isOver, which closes the app
+    val failure: String? = null,  // why the game stopped on an error, which the screen shows; kept apart from isOver
 ) {
     /** Whether the game has ended, over or failed, so no more is coming from it */
     val hasEnded: Boolean get() = isOver || failure != null

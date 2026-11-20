@@ -63,8 +63,8 @@ class MainActivity : ComponentActivity() {
 
     /**
      * The Sudoku app: the copyright splash screen, then the layout picker when there isn't exactly one layout to play,
-     * then the game, closing when the game is over.  Navigation 3 shows the last route on the back stack; each step
-     * replaces the route before it, so Back leaves the app.  Each route's entry gets its own view models, which live
+     * then the game, and after New puzzle the picker or the game again.  Navigation 3 shows the last route on the back
+     * stack; each step replaces the route before it, so Back leaves the app.  Each route's entry gets its own view models, which live
      * as long as the route is on the back stack.
      */
     @Composable
@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity() {
             entryProvider = entryProvider {
                 entry<Route.Splash> { Splash(onEnded = backStack::replaceLast) }
                 entry<Route.LayoutPicker> { LayoutPicker(onPick = { backStack.replaceLast(Route.Game(it)) }) }
-                entry<Route.Game> { route -> Game(route.layout) }
+                entry<Route.Game> { route -> Game(route.layout, onEnded = backStack::replaceLast) }
             },
         )
     }
@@ -90,10 +90,7 @@ class MainActivity : ComponentActivity() {
     private fun Splash(onEnded: (Route) -> Unit) {
         val splash: SplashViewModel = viewModel(factory = SplashViewModel.Factory)
         val state by splash.uiState.collectAsStateWithLifecycle()
-        val next = state.next
-        if (next != null) {
-            LaunchedEffect(next) { onEnded(next) }
-        }
+        GoOnOnceKnown(state.next, onEnded)
         SplashScreen(state.notice, splash::onTap)
     }
 
@@ -107,17 +104,27 @@ class MainActivity : ComponentActivity() {
 
     /**
      * The game on the [layout] named, saved whenever the app is stopped (Home, Back, another app, a rotation), as
-     * Android may then end the app's process without calling it; and closing the app once the game is over
+     * Android may then end the app's process without calling it; once the player has started a new puzzle and the
+     * game has ended, [onEnded] is given the route that follows it
      */
     @Composable
-    private fun Game(layout: String) {
+    private fun Game(layout: String, onEnded: (Route) -> Unit) {
         val game: SudokuViewModel = viewModel(factory = SudokuViewModel.factory(layout))
         LifecycleEventEffect(Lifecycle.Event.ON_STOP) { game.onStopped() }
         val state by game.uiState.collectAsStateWithLifecycle()
-        if (state.game.isOver) {
-            LaunchedEffect(Unit) { finish() }
-        }
+        GoOnOnceKnown(state.next, onEnded)
         SudokuScreen(state, game)
+    }
+
+    /**
+     * Give [onEnded] the [next] route once there is one, as an effect: navigating is not drawing, so it is run once,
+     * after the composition, rather than on every recomposition
+     */
+    @Composable
+    private fun GoOnOnceKnown(next: Route?, onEnded: (Route) -> Unit) {
+        if (next != null) {
+            LaunchedEffect(next) { onEnded(next) }
+        }
     }
 }
 
