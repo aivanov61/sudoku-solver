@@ -27,6 +27,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -35,7 +36,7 @@ import kotlinx.coroutines.withContext
  */
 class GameRepository(
     private val game: Game,
-    scope: CoroutineScope,
+    private val scope: CoroutineScope,
     private val inOrder: CoroutineDispatcher = OFF_UI_THREAD_IN_ORDER,  // runs calls one at a time, first in first out
 ) {
     /** The game as it last reported itself; the game starts as soon as the repository is made */
@@ -47,6 +48,15 @@ class GameRepository(
         withContext(inOrder) { game.act(action, digit, position) }
 
     suspend fun answer(yes: Boolean) = withContext(inOrder) { game.answer(yes) }
+
+    /**
+     * Have the game saved, after the actions already made.  It returns at once, and the save runs in the
+     * repository's own scope, not the caller's: when the player leaves with Back, the screen's ViewModel is cleared
+     * right after the app is stopped, which would cancel a save running in its viewModelScope.
+     */
+    fun save() {
+        scope.launch(inOrder) { game.save() }
+    }
 
     private companion object {
         /**

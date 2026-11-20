@@ -26,6 +26,7 @@ import io.github.aivanov61.sudoku.SudokuApplication
 import io.github.aivanov61.sudoku.data.CopyrightRepository
 import io.github.aivanov61.sudoku.data.Layout
 import io.github.aivanov61.sudoku.data.LayoutRepository
+import io.github.aivanov61.sudoku.data.SavedGameRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,17 +40,18 @@ data class SplashUiState(val notice: String = "", val next: Route? = null)
 
 /**
  * The splash screen's state holder: it reads the GNU GPL notice from the [CopyrightRepository] for the screen to
- * show, and the layouts from the [LayoutRepository] (which starts Python behind the splash).  It ends the splash
- * after five seconds, or as soon as the player taps the screen ([onTap]); once it has ended and the layouts are
- * known, it gives the route that follows.
+ * show, and the layouts from the [LayoutRepository] and the saved game's layout from the [SavedGameRepository]
+ * (which start Python behind the splash).  It ends the splash after five seconds, or as soon as the player taps the
+ * screen ([onTap]); once it has ended and the route that follows is known, it gives that route.
  */
 class SplashViewModel(
     private val copyright: CopyrightRepository,
     private val layoutRepository: LayoutRepository,
+    private val savedGameRepository: SavedGameRepository,
 ) : ViewModel() {
     private val state = MutableStateFlow(SplashUiState())
     private var hasEnded = false
-    private var layouts: List<Layout>? = null  // null until read
+    private var following: Route? = null  // null until the layouts and the saved game are read
 
     /** The screen's state while it is shown */
     val uiState: StateFlow<SplashUiState> = state.asStateFlow()
@@ -62,9 +64,9 @@ class SplashViewModel(
             state.update { it.copy(notice = notice) }
         }
 
-        // The layouts
+        // The route that follows, from the layouts and the saved game: one after the other, as both go through Python
         viewModelScope.launch {
-            layouts = layoutRepository.layouts()
+            following = next(layoutRepository.layouts(), savedGameRepository.savedLayout())
             showNextOnceKnown()
         }
 
@@ -84,11 +86,11 @@ class SplashViewModel(
         showNextOnceKnown()
     }
 
-    /** Give the route that follows, once the splash has ended and the layouts are known */
+    /** Give the route that follows, once the splash has ended and the route is known */
     private fun showNextOnceKnown() {
-        val known = layouts
+        val known = following
         if (hasEnded && known != null) {
-            state.update { it.copy(next = next(known)) }
+            state.update { it.copy(next = known) }
         }
     }
 
@@ -96,16 +98,22 @@ class SplashViewModel(
         /** How long the splash screen is shown if the screen is never tapped */
         private val SHOWN_FOR = 5.seconds
 
-        /** Makes the splash screen view model over the copyright and layout repositories, from the app's container */
+        /** Makes the splash screen view model over its repositories, from the app's container */
         val Factory = viewModelFactory {
             initializer {
-                val application = checkNotNull(this[APPLICATION_KEY]) as SudokuApplication
-                SplashViewModel(application.container.copyrightRepository, application.container.layoutRepository)
+                val container = (checkNotNull(this[APPLICATION_KEY]) as SudokuApplication).container
+                SplashViewModel(container.copyrightRepository, container.layoutRepository, container.savedGameRepository)
             }
         }
 
-        /** The game when there is exactly one layout and it can be picked, as the terminal plays it; else the picker */
-        private fun next(layouts: List<Layout>): Route =
-            layouts.singleOrNull()?.takeIf { it.canPick }?.let { Route.Game(it.name) } ?: Route.LayoutPicker
+        /**
+         * The game on the [savedLayout], resuming it, when that layout can be picked; else the game when there is
+         * exactly one layout and it can be picked, as the terminal plays it; else the picker
+         */
+        private fun next(layouts: List<Layout>, savedLayout: String?): Route {
+            val saved = layouts.find { it.name == savedLayout }
+            val layout = saved?.takeIf { it.canPick } ?: layouts.singleOrNull()?.takeIf { it.canPick }
+            return layout?.let { Route.Game(it.name) } ?: Route.LayoutPicker
+        }
     }
 }

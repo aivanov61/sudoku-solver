@@ -28,9 +28,15 @@ from ui.android.android_ui import AndroidUI
 
 
 class TestAndroidUI(TestCase):
+    AUTO_SAVE_PATH = "files/autosave.json"
+
     def setUp(self):
         self.screen = MagicMock()
-        self.ui = AndroidUI(self.screen)
+        auto_save_patcher = patch("ui.android.android_ui.AutoSave")
+        self.AutoSave = auto_save_patcher.start()
+        self.addCleanup(auto_save_patcher.stop)
+        self.auto_save = self.AutoSave.return_value
+        self.ui = AndroidUI(self.screen, self.AUTO_SAVE_PATH)
         return super().setUp()
 
     # Playing
@@ -74,6 +80,34 @@ class TestAndroidUI(TestCase):
         with patch("ui.android.android_ui.ErrorLog.report_broken", return_value="it broke"):
             self.__play(game)
         game.force_quit_.assert_called_once()
+
+    # Auto-save
+
+    def test_the_game_is_auto_saved_to_the_file_given(self):
+        self.AutoSave.assert_called_once_with(self.AUTO_SAVE_PATH, self.ui)
+
+    def test_play_restores_the_saved_game_once_the_game_is_shown(self):
+        game = self.__game()
+        game.render.side_effect = lambda: self.auto_save.restore.assert_not_called()
+        self.__play(game)
+        self.auto_save.restore.assert_called_once_with(game)
+
+    def test_a_save_is_carried_out_in_turn_with_the_actions(self):
+        game = self.__game()
+        done = []
+        game.handle.side_effect = self.__recording(game.handle.side_effect, done)
+        self.auto_save.save.side_effect = lambda saved: done.append("save")
+        self.ui.act("up")
+        self.ui.save()
+        self.ui.act("down")
+        self.__play(game)
+        self.assertEqual(done, [Action.UP, "save", Action.DOWN, Action.QUIT])
+        self.auto_save.save.assert_called_once_with(game)
+
+    def test_the_saved_game_is_forgotten_once_the_game_is_over_before_the_screen_hears_so(self):
+        self.screen.gameOver.side_effect = lambda: self.auto_save.forget.assert_called_once()
+        self.__play(self.__game())
+        self.screen.gameOver.assert_called_once()
 
     # Showing the game
 
@@ -166,6 +200,16 @@ class TestAndroidUI(TestCase):
         game.handle.side_effect = handle
         game.force_quit_.side_effect = stop
         return game
+
+    @staticmethod
+    def __recording(handle, done):
+        """Wrap the stand-in game's handling of actions so that each action is also recorded in done"""
+
+        def recorded(action, digit, position):
+            done.append(action)
+            handle(action, digit, position)
+
+        return recorded
 
     def __play(self, game):
         """Play the actions queued so far, then quit"""

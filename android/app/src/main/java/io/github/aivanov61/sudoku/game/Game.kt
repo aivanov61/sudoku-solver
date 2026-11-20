@@ -32,4 +32,7 @@ interface Game {
 
     /** Answer the question the game asked (GameEvent.Asked) */
     fun answer(yes: Boolean)
+
+    /** Save the game in progress, once the actions before it are carried out, so it can be restored when it starts */
+    fun save()
 }

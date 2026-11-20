@@ -20,6 +20,7 @@ package io.github.aivanov61.sudoku
 import io.github.aivanov61.sudoku.data.CopyrightRepository
 import io.github.aivanov61.sudoku.data.GameRepository
 import io.github.aivanov61.sudoku.data.LayoutRepository
+import io.github.aivanov61.sudoku.data.SavedGameRepository
 import io.github.aivanov61.sudoku.game.Game
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,18 +37,21 @@ interface AppContainer {
 
     val layoutRepository: LayoutRepository
     val copyrightRepository: CopyrightRepository
+    val savedGameRepository: SavedGameRepository
 }
 
 /**
  * The real dependencies.  It makes each game, on the layout named, with [newGame] (SudokuApplication gives it the
  * game written in Python), the layouts' repository with [newLayoutRepository] (SudokuApplication gives it the game's
- * catalog) and the copyright notice's repository with [newCopyrightRepository] (SudokuApplication gives it one over
- * the app's assets), and keeps the app-long work in [applicationScope].
+ * catalog), the copyright notice's repository with [newCopyrightRepository] (SudokuApplication gives it one over
+ * the app's assets) and the saved game's repository with [newSavedGameRepository] (SudokuApplication gives it one
+ * over the auto-save file), and keeps the app-long work in [applicationScope].
  */
 class DefaultAppContainer(
     private val newGame: (layout: String) -> Game,
     private val newLayoutRepository: () -> LayoutRepository,
     private val newCopyrightRepository: () -> CopyrightRepository,
+    private val newSavedGameRepository: () -> SavedGameRepository,
 
     /**
      * Where the app-long work runs, such as the repository folding the game's events: it is never canceled, and
@@ -72,6 +76,9 @@ class DefaultAppContainer(
 
     /** The notice's repository, made when first asked for */
     override val copyrightRepository: CopyrightRepository by lazy { newCopyrightRepository() }
+
+    /** The saved game's repository, made when first asked for */
+    override val savedGameRepository: SavedGameRepository by lazy { newSavedGameRepository() }
 
     // Private functions
 

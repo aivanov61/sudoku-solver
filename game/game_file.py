@@ -72,19 +72,22 @@ class GameFile:
         self.__remember(name)
         self.__puzzle.restore(saved)
         if saved.ignored:
-            self.__warn_ignored(saved.ignored)
+            self.__ui.inform(GameFile.ignored_warning(saved.ignored))
+
+    # Interface required for the Android auto-save
+
+    @staticmethod
+    def ignored_warning(ignored: tuple[str, ...]) -> Message:
+        """The warning that a file's entries were ignored: it names them, or only counts them where the names don't fit"""
+        entries = "entry" if len(ignored) == 1 else "entries"
+        text = f"Ignored {entries} from a newer sudoku: {', '.join(ignored)}. "
+        short = f"Ignored {len(ignored)} {entries} from a newer sudoku. "
+        return Message(text, MessageKind.WARNING, short=short)
 
     # Private functions
 
     def __warn(self, text: str) -> None:
         self.__ui.inform(Message(text, MessageKind.WARNING))
-
-    def __warn_ignored(self, ignored: tuple[str, ...]) -> None:
-        """Name the entries ignored, or only count them where the names don't fit"""
-        entries = "entry" if len(ignored) == 1 else "entries"
-        text = f"Ignored {entries} from a newer sudoku: {', '.join(ignored)}. "
-        short = f"Ignored {len(ignored)} {entries} from a newer sudoku. "
-        self.__ui.inform(Message(text, MessageKind.WARNING, short=short))
 
     def __remember(self, name: str) -> None:
         """Offer the name next time, without its extension"""

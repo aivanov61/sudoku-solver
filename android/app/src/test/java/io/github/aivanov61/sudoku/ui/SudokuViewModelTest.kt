@@ -89,6 +89,14 @@ class SudokuViewModelTest {
         assertEquals(listOf(false), game.answers)
     }
 
+    // The app's lifecycle
+
+    @Test
+    fun theGameIsSavedWhenTheAppIsStopped() = runTest(mainDispatcherRule.dispatcher) {
+        viewModel().onStopped()
+        assertEquals(1, game.saves)
+    }
+
     // Private functions
 
     /** A view model over a repository of the fake game, everything running at once on the test's dispatcher */

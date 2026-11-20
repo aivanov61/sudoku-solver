@@ -58,6 +58,11 @@ class SudokuViewModel(private val repository: GameRepository) : ViewModel(), Sud
         viewModelScope.launch { repository.answer(yes) }
     }
 
+    // Interface required for the activity
+
+    /** Have the game saved when the app is stopped, since Android may then end it without warning */
+    fun onStopped() = repository.save()
+
     // Private functions
 
     private fun act(action: GameAction, digit: Int? = null, position: Position? = null) {

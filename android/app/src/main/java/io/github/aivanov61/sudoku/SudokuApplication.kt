@@ -21,6 +21,8 @@ import android.app.Application
 import io.github.aivanov61.sudoku.data.AssetCopyrightRepository
 import io.github.aivanov61.sudoku.game.PythonGame
 import io.github.aivanov61.sudoku.game.PythonLayoutRepository
+import io.github.aivanov61.sudoku.game.PythonSavedGameRepository
+import java.io.File
 
 /**
  * The app itself: Android makes one, before any screen, and keeps it for as long as the app's process runs, which
@@ -32,10 +34,20 @@ class SudokuApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        val autoSave = File(filesDir, AUTO_SAVE_FILE)
         container = DefaultAppContainer(
-            newGame = { layout -> PythonGame(this, layout) },
+            newGame = { layout -> PythonGame(this, layout, autoSave) },
             newLayoutRepository = { PythonLayoutRepository(this) },
             newCopyrightRepository = { AssetCopyrightRepository(assets) },
+            newSavedGameRepository = { PythonSavedGameRepository(this, autoSave) },
         )
+    }
+
+    private companion object {
+        /**
+         * The game in progress, an ordinary save file in the app's own storage (filesDir): private to the app,
+         * needing no permission, and deleted when the app is uninstalled
+         */
+        const val AUTO_SAVE_FILE = "autosave.json"
     }
 }

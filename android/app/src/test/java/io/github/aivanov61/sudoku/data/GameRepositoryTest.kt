@@ -23,6 +23,7 @@ import io.github.aivanov61.sudoku.game.GameAction
 import io.github.aivanov61.sudoku.game.GameEvent
 import io.github.aivanov61.sudoku.game.Position
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runCurrent
@@ -59,6 +60,21 @@ class GameRepositoryTest {
     fun anAnswerIsPassedOnToTheGame() = runTest {
         repository().answer(false)
         assertEquals(listOf(false), game.answers)
+    }
+
+    @Test
+    fun aSaveIsPassedOnToTheGame() = runTest {
+        repository().save()
+        assertEquals(1, game.saves)
+    }
+
+    @Test
+    fun aSaveIsCarriedOutInTheRepositorysOwnScopeAfterTheCallHasReturned() = runTest {
+        val repository = GameRepository(game, backgroundScope, StandardTestDispatcher(testScheduler))
+        repository.save()  // returns at once, so no screen's scope can cancel it
+        assertEquals(0, game.saves)
+        runCurrent()  // let the repository's scope carry it out
+        assertEquals(1, game.saves)
     }
 
     // Private functions

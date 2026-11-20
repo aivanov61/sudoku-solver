@@ -15,6 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
+from collections.abc import Callable
 from queue import Queue
 
 from game.actions import Action, Mode
@@ -24,6 +25,7 @@ from game.cell_attrs import CellAttrs
 from game.config_option import ConfigOption
 from game.puzzle import Puzzle
 from game.user_interface import Message, MessageKind, Step
+from ui.android.auto_save import AutoSave
 from ui.android.screen import Screen
 from ui.error_log import ErrorLog
 
@@ -31,37 +33,49 @@ from ui.error_log import ErrorLog
 class AndroidUI:
     """
     The user interface on Android: the game's side of the app.  The game runs on its own thread in play(), taking
-    the player's actions from a queue that the screen (see Screen) fills through act(), and everything the game
-    shows is passed on to the screen as plain values.  A question blocks the game's thread until the screen gives
-    the player's answer through answer(); the screen's own thread never waits.
+    requests from a queue that the screen (see Screen) fills: the player's actions through act(), and saves through
+    save(), so a save never lands in the middle of an action.  Everything the game shows is passed on to the screen
+    as plain values.  A question blocks the game's thread until the screen gives the player's answer through
+    answer(); the screen's own thread never waits.
 
-    For now, while the app is a first try: inform() doesn't wait, and saving, restoring, configuring and walking
-    through steps are not offered.
+    The game is auto-saved to the file given (see AutoSave): restored from it when play starts, and saved to it when
+    the app asks.
+
+    For now, while the app is a first try: inform() doesn't wait, and saving to a file the player names, restoring
+    one, configuring and walking through steps are not offered.
     """
 
-    def __init__(self, screen: Screen) -> None:
+    def __init__(self, screen: Screen, auto_save_path: str) -> None:
         self.__screen = screen
-        self.__actions: Queue[tuple[Action, int | None, tuple[int, int] | None]] = Queue()
+        self.__auto_save = AutoSave(auto_save_path, self)
+        self.__requests: Queue[Callable[[Puzzle], None]] = Queue()  # each carried out on the game, in turn
         self.__answers: Queue[bool] = Queue()
 
     # Interface required for the screen
 
     def play(self, game: Puzzle) -> None:
         """
-        Show the game, then hand it each action the player takes, showing the selected cell after each, until the
-        game is over; runs on the game's thread
+        Show the game, restored from the auto-save if there is one, then carry out each request, showing the selected
+        cell after each, until the game is over, and then forget the auto-save; runs on the game's thread
         """
         game.render()
+        self.__auto_save.restore(game)
         self.__screen.showSelected(*game.selected_cell)
         while game.is_playing:
-            self.__carry_out(game, *self.__actions.get())
+            self.__requests.get()(game)
             self.__screen.showSelected(*game.selected_cell)
+        self.__auto_save.forget()
         self.__screen.gameOver()
 
     def act(self, name: str, digit: int | None = None, row: int | None = None, col: int | None = None) -> None:
         """Pass the player's action on to the game: its name (an Action's value), with its digit or the cell it points at"""
+        action = Action(name)
         position = None if row is None or col is None else (row, col)
-        self.__actions.put((Action(name), digit, position))
+        self.__requests.put(lambda game: self.__carry_out(game, action, digit, position))
+
+    def save(self) -> None:
+        """Have the game auto-saved, once the requests before it are carried out"""
+        self.__requests.put(self.__auto_save.save)
 
     def answer(self, yes: bool) -> None:
         """Give the game the player's answer to the question it is waiting on"""

@@ -85,8 +85,14 @@ the phase added and changed.
 `Route`s (`ui/Keys.kt`), saved through rotation and process death, and `NavDisplay` shows the last one.
 
 Each entry gets its own ViewModels (`rememberViewModelStoreNavEntryDecorator()`). `SudokuApp` does the navigating,
-replacing each route with the next, so Back leaves the app: the splash, then the game when there is exactly one
-layout that can be picked, else the layout picker, then the game on the layout picked.
+replacing each route with the next, so Back leaves the app: the splash, then the game on the saved game's layout,
+or else when there is exactly one layout that can be picked, else the layout picker, then the game on the layout
+picked.
+
+The game in progress is auto-saved to the app's own storage (`filesDir/autosave.json`, an ordinary save file):
+the `Game` entry saves it whenever the app is stopped (`LifecycleEventEffect(ON_STOP)`), since Android may then end
+the process without calling it, and the game restores itself from it when it starts. So a game survives Home, Back,
+and process death, after which Nav 3 reopens straight on `Route.Game`.
 
 The Kotlin code, in three packages, wired together by the app's container:
 
@@ -95,10 +101,12 @@ The Kotlin code, in three packages, wired together by the app's container:
 
   The container owns the app-long coroutine scope, and the `GameRepository` of the game in play, through
   `gameRepository(layout)`. It makes the game with the `newGame` it is given (`{ layout -> PythonGame(this,
-  layout) }`), when first asked for, and makes a new one for another layout or once the game is over, so the app
+  layout, autoSave) }`), when first asked for, and makes a new one for another layout or once the game is over, so the app
   never reopens on a finished game.
 
-  It also makes the `LayoutRepository` (`{ PythonLayoutRepository(this) }`), when first asked for.
+  It also makes the `LayoutRepository` (`{ PythonLayoutRepository(this) }`) and the `SavedGameRepository`
+  (`{ PythonSavedGameRepository(this, autoSave) }`), each when first asked for. `SudokuApplication` names the
+  auto-save file and gives it to both.
 
   It also makes the `CopyrightRepository`, with the `newCopyrightRepository` it is given
   (`{ AssetCopyrightRepository(assets) }`), when first asked for. Taking ways to make things, rather than Android
@@ -109,7 +117,8 @@ The Kotlin code, in three packages, wired together by the app's container:
 - **`game/` is the data source**: the game as the app sees it. `Game` is an interface whose `events` is a `Flow`
   of typed `GameEvent`s, and which takes typed `GameAction`s.
 
-  `PythonGame` implements it, on the board of a layout it is given by name. Collecting `events` starts the game on
+  `PythonGame` implements it, on the board of a layout it is given by name, auto-saved to the file it is given.
+  Collecting `events` starts the game on
   the game thread (off the UI thread), and `callbackFlow` turns the game's reports into the flow, which ends when
   the game is over.
 
@@ -118,8 +127,9 @@ The Kotlin code, in three packages, wired together by the app's container:
   player's actions doesn't reach it: `AndroidUI` shows it as a warning, and play goes on.
 
   Only `game/` knows Chaquopy: `PythonGame`, `PythonLayoutRepository` (the layouts, from
-  `ui/android/catalog.py`'s `Catalog`, which also makes a layout's board) and `AppPython`, which starts Python
-  once for both, on first use (slow the first time after an install).
+  `ui/android/catalog.py`'s `Catalog`, which also makes a layout's board), `PythonSavedGameRepository` (the saved
+  game's layout, from `ui/android/auto_save.py`'s `AutoSave`) and `AppPython`, which starts Python once for all of
+  them, on first use (slow the first time after an install).
 
   `PythonScreen` implements the adapter's `Screen` (`ui/android/screen.py`), turning each call into a
   `GameEvent`. `GameNames.kt` maps the game's names (Action values, cell kinds, edges, message kinds) to Kotlin
@@ -131,6 +141,9 @@ The Kotlin code, in three packages, wired together by the app's container:
   It runs `act()` and `answer()` on `Dispatchers.IO`, off the UI thread, one at a time
   (`limitedParallelism(1)`), so the game gets the player's actions in the order they were made.
 
+  `save()` returns at once and launches the save in the app-long scope, on the same one-at-a-time dispatcher: Back
+  clears the game's ViewModel right after `ON_STOP`, which would cancel a save in its `viewModelScope`.
+
   `GameState.after(event)` works out each event's effect; `GameState` holds only what the game reported.
 
   `CopyrightRepository` is the one way to the GNU GPL notice. `AssetCopyrightRepository` reads it from the app's
@@ -138,25 +151,30 @@ The Kotlin code, in three packages, wired together by the app's container:
   (`String.reflow()` in `Reflow.kt`): the file breaks its lines for the terminal, so each paragraph's lines are joined,
   for the screen to wrap to its own width.
 
+  `SavedGameRepository` is the one way to the saved game before a game is started: `savedLayout()`, the layout it is
+  on, or null when there is none or it can't be read (the game then says why).
+
 - **`ui/` holds the ViewModels and the screens.** `SudokuViewModel` turns the repository's state into one
   immutable `SudokuUiState` (the game's state plus what the screen works out, such as the mode switch) as a
   `StateFlow`.
 
-  It implements `SudokuIntents` (`onDigit()`, `onCellTapped()`, ...), each launched in `viewModelScope`.
-  `SudokuScreen` is stateless.
+  It implements `SudokuIntents` (`onDigit()`, `onCellTapped()`, ...), each launched in `viewModelScope`, and
+  `onStopped()`, which the activity calls when the app is stopped, to have the game saved. `SudokuScreen` is
+  stateless.
 
-  `SplashViewModel` reads the notice and the layouts (which starts Python behind the splash) and starts a
-  5-second timer, each in its own coroutine in `viewModelScope`; the timer or `onTap()` ends the splash. Once it
-  has ended and the layouts are known, `SplashUiState.next` is the route that follows. `SplashScreen` is stateless:
+  `SplashViewModel` reads the notice; the layouts, then the saved game's layout (which starts Python behind the
+  splash); and starts a 5-second timer, each in its own coroutine in `viewModelScope`; the timer or `onTap()` ends
+  the splash. Once it has ended and the layouts and saved game are known, `SplashUiState.next` is the route that
+  follows. `SplashScreen` is stateless:
   the title at the top, and the notice centred below it.
 
   `LayoutPickerViewModel` reads the layouts for the stateless `LayoutPickerScreen`, which says so when none can be
   picked. A pick is navigation, so it goes up to `SudokuApp` as a lambda, not to the ViewModel.
 
 - **Unit tests** (`app/src/test`, `gradle :app:testDebugUnitTest`) cover `GameState`, the repository, the
-  ViewModels and the container, over `FakeGame`, `FakeCopyrightRepository` and `FakeLayoutRepository` (which can
-  hold the layouts back, as a slow start of Python would), and `PythonScreen`; Python doesn't
-  run in them.
+  ViewModels and the container, over `FakeGame`, `FakeCopyrightRepository`, `FakeLayoutRepository` (which can
+  hold the layouts back, as a slow start of Python would) and `FakeSavedGameRepository`, and `PythonScreen`;
+  Python doesn't run in them.
 
   They use `kotlinx-coroutines-test`, and `MainDispatcherRule` stands in for the UI thread. The splash's timing
   is tested on virtual time (`advanceTimeBy`, `runCurrent`).
@@ -165,7 +183,13 @@ The Kotlin code, in three packages, wired together by the app's container:
   screen.
 
 On the Python side, `ui/android/android_ui.py`'s `AndroidUI` is the port's adapter. `play()` runs on the game
-thread, taking actions from a queue that `act()` fills.
+thread, taking requests from one queue: the actions that `act()` puts there, and the saves that `save()` puts
+there, so a save never lands in the middle of a move.
+
+`ui/android/auto_save.py`'s `AutoSave` keeps the game in the auto-save file, through `SaveFile`: `play()` has it
+restore the game first, and forget (delete) it once the game is over. A file it can't restore (damaged, from a
+newer version, or on another layout) gets a warning, and is kept until the player has something to save, so they
+can still install a newer version or keep the file.
 
 `confirm()` waits on a second queue that `answer()` fills, then reports `questionAnswered()`.
 
@@ -308,6 +332,17 @@ scanned by position.
 
 For this, `showCell()` (`ui/android/screen.py`) will also pass the cell's marks, its removed values and whether it
 looks tagged, and `CellState` will carry them.
+
+### Choosing a saved game to restore (decided 2026-11-19, built in MVP 3)
+
+Restoring shows the saved files that can be restored, as a list, with a search field above it. Typing filters the
+list the way VS Code's file picker does: a file matches when the letters typed appear in its name in order, not
+necessarily side by side (`frs` matches `first-try`).
+
+The matching letters are highlighted, and names whose matches form longer runs of letters, or start a word, come
+first.
+
+This takes the place of `ask_file_name()`'s typed name, which the terminal keeps.
 
 ## Save files and configuration
 

@@ -25,14 +25,20 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import java.io.File
 import kotlin.concurrent.thread
 
 /**
  * The game written in Python (the repository's game/ and ui/android/), run through Chaquopy, on the board of the
- * [layout] named: AndroidUI.play() runs on the game's own thread, reporting through a PythonScreen, and takes the
- * player's actions from a queue.
+ * [layout] named, auto-saved to the [autoSave] file: AndroidUI.play() runs on the game's own thread, reporting
+ * through a PythonScreen, and takes the player's actions and the saves from a queue.  The game restores itself from
+ * the file when it starts.
  */
-class PythonGame(private val application: Application, private val layout: String) : Game {
+class PythonGame(
+    private val application: Application,
+    private val layout: String,
+    private val autoSave: File,
+) : Game {
     @Volatile
     private var ui: PyObject? = null  // the game's AndroidUI, once Python has started
 
@@ -61,6 +67,10 @@ class PythonGame(private val application: Application, private val layout: Strin
         ui?.callAttr("answer", yes)
     }
 
+    override fun save() {
+        ui?.callAttr("save")
+    }
+
     // Private functions
 
     /**
@@ -73,7 +83,7 @@ class PythonGame(private val application: Application, private val layout: Strin
         try {
             val python = AppPython.of(application)
             val board = python.getModule("ui.android.catalog")["Catalog"]!!.callAttr("board", layout)
-            val gameUi = python.getModule("ui.android.android_ui").callAttr("AndroidUI", PythonScreen(onEvent))
+            val gameUi = python.getModule("ui.android.android_ui").callAttr("AndroidUI", PythonScreen(onEvent), autoSave.path)
             val puzzle = python.getModule("game.puzzle").callAttr("Puzzle", board, gameUi)
             onEvent(GameEvent.Started(BoardSize(board["v_cells"]!!.toInt(), board["h_cells"]!!.toInt())))
             ui = gameUi

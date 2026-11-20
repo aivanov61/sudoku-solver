@@ -28,6 +28,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -103,10 +105,14 @@ class MainActivity : ComponentActivity() {
         LayoutPickerScreen(state, onPick = { onPick(it.name) })
     }
 
-    /** The game on the [layout] named, closing the app once it is over */
+    /**
+     * The game on the [layout] named, saved whenever the app is stopped (Home, Back, another app, a rotation), as
+     * Android may then end the app's process without calling it; and closing the app once the game is over
+     */
     @Composable
     private fun Game(layout: String) {
         val game: SudokuViewModel = viewModel(factory = SudokuViewModel.factory(layout))
+        LifecycleEventEffect(Lifecycle.Event.ON_STOP) { game.onStopped() }
         val state by game.uiState.collectAsStateWithLifecycle()
         if (state.game.isOver) {
             LaunchedEffect(Unit) { finish() }

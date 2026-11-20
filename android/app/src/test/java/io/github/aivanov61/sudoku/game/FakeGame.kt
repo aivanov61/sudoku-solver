@@ -26,7 +26,8 @@ import kotlinx.coroutines.flow.receiveAsFlow
  * FakeGame anyway, as Android's testing guides call such stand-ins fakes, and that is the name developers look for.
  *
  * - Stub: it reports exactly the events a test gives it (report()), and nothing else.
- * - Spy: it records the actions and answers it is asked for (acts, answers), and does nothing with them.
+ * - Spy: it records the actions and answers it is asked for (acts, answers), and counts the saves (saves), and does
+ *   nothing with them.
  *
  * It has no game logic: an action changes nothing and reports nothing, so a test that needs the game's response
  * must report it itself.  Keep it that way: don't make it work out events, moves or rules.  A test that needs real
@@ -35,6 +36,8 @@ import kotlinx.coroutines.flow.receiveAsFlow
 class FakeGame : Game {
     val acts = mutableListOf<Act>()
     val answers = mutableListOf<Boolean>()
+    var saves = 0
+        private set
     private val reported = Channel<GameEvent>(Channel.UNLIMITED)  // kept until collected, so none is lost
 
     override val events: Flow<GameEvent> = reported.receiveAsFlow()
@@ -45,6 +48,10 @@ class FakeGame : Game {
 
     override fun answer(yes: Boolean) {
         answers += yes
+    }
+
+    override fun save() {
+        saves++
     }
 
     fun report(vararg events: GameEvent) = events.forEach { reported.trySend(it) }

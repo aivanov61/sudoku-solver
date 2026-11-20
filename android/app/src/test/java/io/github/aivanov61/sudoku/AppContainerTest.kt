@@ -17,6 +17,7 @@
 
 package io.github.aivanov61.sudoku
 
+import io.github.aivanov61.sudoku.data.FakeSavedGameRepository
 import io.github.aivanov61.sudoku.game.FakeGame
 import io.github.aivanov61.sudoku.game.GameEvent
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -32,6 +33,7 @@ import org.junit.Test
 class AppContainerTest {
     private val games = mutableListOf<FakeGame>()  // every game the container made, in order
     private val layouts = mutableListOf<String>()  // the layout of each game the container made, in order
+    private var savedGameRepositories = 0  // how many saved game repositories the container made
 
     @Test
     fun noGameIsMadeUntilOneIsAskedFor() = runTest {
@@ -74,6 +76,14 @@ class AppContainerTest {
         assertEquals(listOf(LAYOUT, LAYOUT), layouts)
     }
 
+    @Test
+    fun theSavedGameRepositoryIsMadeOnceWhenFirstAskedFor() = runTest {
+        val container = container()
+        assertEquals(0, savedGameRepositories)
+        assertSame(container.savedGameRepository, container.savedGameRepository)
+        assertEquals(1, savedGameRepositories)
+    }
+
     // Private functions
 
     /** A container that makes fake games, noting each one's layout, its work living as long as the test */
@@ -81,6 +91,7 @@ class AppContainerTest {
         newGame = { layout -> FakeGame().also { games += it; layouts += layout } },
         newLayoutRepository = { error("not used in these tests") },
         newCopyrightRepository = { error("not used in these tests") },
+        newSavedGameRepository = { FakeSavedGameRepository().also { savedGameRepositories++ } },
         applicationScope = backgroundScope,
     )
 

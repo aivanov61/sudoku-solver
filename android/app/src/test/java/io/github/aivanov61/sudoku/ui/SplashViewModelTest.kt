@@ -20,6 +20,7 @@ package io.github.aivanov61.sudoku.ui
 import io.github.aivanov61.sudoku.MainDispatcherRule
 import io.github.aivanov61.sudoku.data.FakeCopyrightRepository
 import io.github.aivanov61.sudoku.data.FakeLayoutRepository
+import io.github.aivanov61.sudoku.data.FakeSavedGameRepository
 import io.github.aivanov61.sudoku.data.Layout
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.TestScope
@@ -90,7 +91,7 @@ class SplashViewModelTest {
 
     @Test
     fun severalLayoutsGoToThePicker() = runTest(mainDispatcherRule.dispatcher) {
-        assertEquals(Route.LayoutPicker, nextAfterTap(layout(STANDARD), layout("Another")))
+        assertEquals(Route.LayoutPicker, nextAfterTap(layout(STANDARD), layout(ANOTHER)))
     }
 
     @Test
@@ -98,11 +99,31 @@ class SplashViewModelTest {
         assertEquals(Route.LayoutPicker, nextAfterTap())
     }
 
+    // Resuming the saved game
+
+    @Test
+    fun theSavedGamesLayoutIsPlayed() = runTest(mainDispatcherRule.dispatcher) {
+        assertEquals(Route.Game(ANOTHER), nextAfterTap(layout(STANDARD), layout(ANOTHER), saved = ANOTHER))
+    }
+
+    @Test
+    fun aSavedGameOnALayoutThatCantBePickedGoesToThePicker() = runTest(mainDispatcherRule.dispatcher) {
+        val layouts = arrayOf(layout(STANDARD), layout(ANOTHER, canPick = false))
+        assertEquals(Route.LayoutPicker, nextAfterTap(*layouts, saved = ANOTHER))
+    }
+
+    @Test
+    fun aSavedGameOnALayoutNoLongerThereLeavesTheOnlyLayoutPlayed() = runTest(mainDispatcherRule.dispatcher) {
+        assertEquals(Route.Game(STANDARD), nextAfterTap(layout(STANDARD), saved = ANOTHER))
+    }
+
     // Private functions
 
-    /** A view model whose fake repositories give it the notice and the layouts */
-    private fun viewModel(layouts: FakeLayoutRepository = FakeLayoutRepository(listOf(layout(STANDARD)))) =
-        SplashViewModel(FakeCopyrightRepository("the notice"), layouts)
+    /** A view model whose fake repositories give it the notice, the layouts and the saved game's layout ([saved]) */
+    private fun viewModel(
+        layouts: FakeLayoutRepository = FakeLayoutRepository(listOf(layout(STANDARD))),
+        saved: String? = null,
+    ) = SplashViewModel(FakeCopyrightRepository("the notice"), layouts, FakeSavedGameRepository(saved))
 
     /** A view model advanced to 4.999ms with all events drained */
     private fun TestScope.viewModelAdvancedTo4999ms(): SplashViewModel {
@@ -112,9 +133,9 @@ class SplashViewModelTest {
         return viewModel
     }
 
-    /** The route that follows the splash over the layouts, once it is tapped */
-    private fun nextAfterTap(vararg layouts: Layout): Route? {
-        val viewModel = viewModel(FakeLayoutRepository(layouts.toList()))
+    /** The route that follows the splash over the layouts and the saved game's layout, once it is tapped */
+    private fun nextAfterTap(vararg layouts: Layout, saved: String? = null): Route? {
+        val viewModel = viewModel(FakeLayoutRepository(layouts.toList()), saved)
         viewModel.onTap()
         return viewModel.uiState.value.next
     }
@@ -124,5 +145,6 @@ class SplashViewModelTest {
 
     private companion object {
         const val STANDARD = "Standard 9x9"
+        const val ANOTHER = "Another"
     }
 }
