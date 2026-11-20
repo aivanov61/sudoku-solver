@@ -71,13 +71,16 @@ fun SudokuScreen(state: SudokuUiState, intents: SudokuIntents) {
         val game = state.game
         Text(game.mode, style = MaterialTheme.typography.titleMedium)
         val size = game.size
-        if (size == null) {
-            Text("Starting the game…")
-        } else {
-            Board(size, game.cells, game.selected, intents::onCellTapped)
-            StatusLine(game.message)
-            DigitPad(intents::onDigit)
-            Commands(state.modeSwitch, intents)
+        val failure = game.failure
+        when {
+            failure != null -> Text("The game stopped: $failure", color = MaterialTheme.colorScheme.error)
+            size == null -> Text("Starting the game…")
+            else -> {
+                Board(size, game.cells, game.selected, intents::onCellTapped)
+                StatusLine(game.message)
+                DigitPad(intents::onDigit)
+                Commands(state.modeSwitch, intents)
+            }
         }
     }
     state.game.question?.let { question -> Confirm(question, intents::onAnswer) }

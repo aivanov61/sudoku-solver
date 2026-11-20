@@ -63,7 +63,12 @@ class PythonGame(private val application: Application, private val layout: Strin
 
     // Private functions
 
-    /** Set up the layout's board (starting Python, if the layouts haven't yet), then play until the game is over */
+    /**
+     * Set up the layout's board (starting Python, if the layouts haven't yet), then play until the game is over.  An
+     * error that reaches here, in setting up or in play, stops the game: it is reported as Failed, so the app never
+     * waits on a game that can't start or no longer answers.  (An error in one of the player's actions doesn't reach
+     * here: AndroidUI reports it as a warning, and play goes on.)
+     */
     private fun play(onEvent: (GameEvent) -> Unit) {
         try {
             val python = AppPython.of(application)
@@ -74,7 +79,7 @@ class PythonGame(private val application: Application, private val layout: Strin
             ui = gameUi
             gameUi.callAttr("play", puzzle)
         } catch (error: PyException) {
-            onEvent(GameEvent.StatusChanged(GameMessage("The game stopped: ${error.message}", MessageKind.WARNING)))
+            onEvent(GameEvent.Failed(error.message.orEmpty()))
         }
     }
 }

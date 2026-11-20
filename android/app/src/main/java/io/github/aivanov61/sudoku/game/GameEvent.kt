@@ -42,6 +42,9 @@ sealed interface GameEvent {
 
     /** The game is over */
     data object Over : GameEvent
+
+    /** The game has stopped on an error, while starting or later, for the reason given; no events follow */
+    data class Failed(val reason: String) : GameEvent
 }
 
 /** A cell's place on the board, counted from 0 at the top left */

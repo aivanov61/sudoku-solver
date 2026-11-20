@@ -64,6 +64,16 @@ class AppContainerTest {
         assertEquals(listOf(LAYOUT, LAYOUT), layouts)
     }
 
+    @Test
+    fun aNewGameIsHandedOutOnceTheGameHasFailed() = runTest {
+        val container = container()
+        val first = container.gameRepository(LAYOUT)
+        games.single().report(GameEvent.Failed("no such layout"))
+        runCurrent()  // let the repository take in the event
+        assertNotSame(first, container.gameRepository(LAYOUT))
+        assertEquals(listOf(LAYOUT, LAYOUT), layouts)
+    }
+
     // Private functions
 
     /** A container that makes fake games, noting each one's layout, its work living as long as the test */

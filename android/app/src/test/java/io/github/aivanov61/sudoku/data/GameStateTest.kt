@@ -27,6 +27,7 @@ import io.github.aivanov61.sudoku.game.GameMessage
 import io.github.aivanov61.sudoku.game.MessageKind
 import io.github.aivanov61.sudoku.game.Position
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -74,6 +75,20 @@ class GameStateTest {
     @Test
     fun theGameCanBeOver() {
         assertTrue(start.after(GameEvent.Over).isOver)
+    }
+
+    @Test
+    fun aFailureGivesItsReasonButDoesNotEndTheGameAsOver() {
+        val state = start.after(GameEvent.Failed("no such layout"))
+        assertEquals("no such layout", state.failure)
+        assertFalse(state.isOver)  // that would close the app before the player sees why
+    }
+
+    @Test
+    fun itHasEndedOnceOverOrFailed() {
+        assertFalse(start.hasEnded)
+        assertTrue(start.after(GameEvent.Over).hasEnded)
+        assertTrue(start.after(GameEvent.Failed("no such layout")).hasEnded)
     }
 
     private companion object {

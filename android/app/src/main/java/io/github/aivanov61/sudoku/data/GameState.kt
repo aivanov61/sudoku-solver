@@ -34,7 +34,11 @@ data class GameState(
     val mode: String = "",
     val offered: Set<GameAction> = emptySet(),
     val isOver: Boolean = false,
+    val failure: String? = null,  // why the game stopped on an error; kept apart from isOver, which closes the app
 ) {
+    /** Whether the game has ended, over or failed, so no more is coming from it */
+    val hasEnded: Boolean get() = isOver || failure != null
+
     /** The state once the event has happened */
     fun after(event: GameEvent): GameState = when (event) {
         is GameEvent.Started -> copy(size = event.size)
@@ -45,5 +49,6 @@ data class GameState(
         GameEvent.Answered -> copy(question = null)
         is GameEvent.ModeChanged -> copy(mode = event.mode, offered = event.offered)
         GameEvent.Over -> copy(isOver = true)
+        is GameEvent.Failed -> copy(failure = event.reason)
     }
 }

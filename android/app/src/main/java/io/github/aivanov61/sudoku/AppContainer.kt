@@ -59,12 +59,13 @@ class DefaultAppContainer(
     private var currentLayout: String? = null
 
     /**
-     * Made when first asked for, which starts the game, and made anew for another layout or once that game is over, so
-     * a screen opened after quitting gets a new game rather than the finished one.  Only ViewModel factories ask for
+     * Made when first asked for, which starts the game, and made anew for another layout or once that game has ended
+     * (over, or failed), so a screen opened after quitting gets a new game rather than the finished one, and one
+     * opened after a failure tries again.  Only ViewModel factories ask for
      * it, on the UI thread, so it needs no locking.
      */
     override fun gameRepository(layout: String): GameRepository =
-        current?.takeUnless { layout != currentLayout || it.state.value.isOver } ?: newRepository(layout)
+        current?.takeUnless { layout != currentLayout || it.state.value.hasEnded } ?: newRepository(layout)
 
     /** The layouts' repository, made when first asked for */
     override val layoutRepository: LayoutRepository by lazy { newLayoutRepository() }

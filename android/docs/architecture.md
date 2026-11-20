@@ -2,11 +2,10 @@
 
 How the app's code maps onto MVVM and Modern Android App Architecture, and how the parts talk to each other.
 Updated at the start of each phase and as it goes; this is **MVP 1, phase 4** (Navigation 3), while it is being
-built; the marks below show what isn't written yet.
+built.
 
-Phase 4 is built in three steps: 4a (done) lists the layouts through the Python `Catalog` and starts each game on a
-layout named; 4b brings Navigation 3, with the splash choosing what follows it and the layout picker; 4c reports a
-game that can't start (`GameEvent.Failed`).
+Phase 4 is built in three steps: 4a lists the layouts through the Python `Catalog` and starts each game on a layout
+named; 4b brings Navigation 3, with the splash choosing what follows it and the layout picker; 4c reports a game that fails, whether it can't start or stops later (`GameEvent.Failed`).
 
 The app is drawn as an overview, then one section per feature (a screen with its ViewModel and data), each
 through the same layers. Features share only the app's container and the activity that hosts their screens.
@@ -14,8 +13,8 @@ through the same layers. Features share only the app's container and the activit
 Colors: green is new in phase 4, amber is changed in phase 4, uncolored is unchanged. The colors cover the whole
 phase, through all its steps, so 4a's parts stay colored.
 
-Marks: * is planned for the step being built (today 4b) but not written yet; *(4c) is planned for a later step of
-the phase.
+Marks: none are left, as all three steps are written. While a phase is built, * marks what the step being built
+adds but hasn't written yet, and *(4c) what a later step does.
 
 Arrows: solid arrows are calls; dotted arrows are data flowing back, or a class implementing an interface.
 
@@ -62,7 +61,7 @@ flowchart TB
 | Class | What it does |
 |---|---|
 | `SudokuApplication` | Made by Android once per process, before any screen (the manifest names it); makes the one `AppContainer`, giving it `newGame` (a `PythonGame` on the layout named), `newLayoutRepository` and `newCopyrightRepository` |
-| `AppContainer` | The app's dependencies (`DefaultAppContainer`): the app-long scope; `gameRepository(layout)`, the game in play, made when first asked for and anew for another layout or once the game is over; and the `LayoutRepository` and `CopyrightRepository`, each made when first asked for |
+| `AppContainer` | The app's dependencies (`DefaultAppContainer`): the app-long scope; `gameRepository(layout)`, the game in play, made when first asked for and anew for another layout or once the game has ended (over, or failed: `GameState.hasEnded`, so reopening the app tries again); and the `LayoutRepository` and `CopyrightRepository`, each made when first asked for |
 | `MainActivity` | Its composable `SudokuApp` holds the back stack (`rememberNavBackStack(Route.Splash)`, kept through rotation and process death) and shows it with `NavDisplay`; `rememberViewModelStoreNavEntryDecorator()` gives each entry its own ViewModels, which live as long as its route is on the stack. Each entry is a small composable (`Splash`, `LayoutPicker`, `Game`) that gets its ViewModel and shows its screen. `SudokuApp` does the navigating (`replaceLast`): it replaces the splash with the splash's `next` route once there is one, and the picker with `Route.Game(layout)` when the player picks one; the game's entry closes the app once the game is over |
 | `Route` | `ui/Keys.kt`: Navigation 3's keys, one per screen, in a sealed interface (so `Route.Game` doesn't clash with the `Game` interface): `Route.Splash`, `Route.LayoutPicker` and `Route.Game(layout)`, each a `@Serializable` `NavKey`. Each step replaces the route before it, so Back from the picker or the game leaves the app. After process death the stack comes back as it was, so the app reopens on `Route.Game(layout)` without the splash |
 
@@ -210,7 +209,7 @@ flowchart TB
 ```mermaid
 flowchart TB
     subgraph View["View · Compose · UI thread"]
-        SudokuScreen["SudokuScreen *(4c)"]
+        SudokuScreen
     end
 
     subgraph VM["ViewModel"]
@@ -220,12 +219,13 @@ flowchart TB
 
     subgraph DataLayer["Model · data layer · data/"]
         direction LR
-        GameRepository --- GameState["GameState *(4c)"]
+        GameRepository --- GameState
     end
 
     subgraph DataSource["Model · data source · game/"]
         direction LR
-        PythonGame["PythonGame *(4c)"] -. implements .-> Game["«interface» Game"]
+        PythonGame -. implements .-> Game["«interface» Game"]
+        GameEvent
         FakeGame["FakeGame (tests)"] -. implements .-> Game
         PythonScreen
     end
@@ -247,7 +247,7 @@ flowchart TB
     PythonGame -- "Catalog.board(layout), see the layouts feature" --> AndroidUI
 
     classDef changed fill:#b45309,stroke:#fcd34d,stroke-width:2px,color:#ffffff
-    class SudokuViewModel,PythonGame,SudokuScreen,GameState changed
+    class SudokuViewModel,PythonGame,SudokuScreen,GameState,GameEvent changed
 ```
 
 Everything from `GameRepository` down is MVVM's **Model**, which Google's guide splits into the data layer and
@@ -255,13 +255,14 @@ its data sources. The Python game is at the bottom, as the source of truth for t
 
 | Layer | Class | What it does |
 |---|---|---|
-| View | `SudokuScreen` | Stateless composables: draws the state, and passes taps on as intents (`SudokuIntents`); *(4c) shows why the game couldn't start, in place of "Starting the game…", when it failed |
+| View | `SudokuScreen` | Stateless composables: draws the state, and passes taps on as intents (`SudokuIntents`); when the game has failed, shows why ("The game stopped: …") in place of the board, or of "Starting the game…" |
 | ViewModel | `SudokuViewModel` | `uiState = repository.state.map { SudokuUiState(it) }.stateIn(viewModelScope, WhileSubscribed(5 s))`; each intent is `viewModelScope.launch { repository.act(...) }`; `factory(layout)` gets the game on that layout from the app's container |
 | ViewModel | `SudokuUiState` | The game's state, plus what the screen works out from it (the mode switch) |
 | Data layer | `GameRepository` | The one way to the game, in an app-long scope: `state = events.runningFold(GameState()) { s, e -> s.after(e) }.stateIn(scope, Eagerly)`; `act()` and `answer()` run on `Dispatchers.IO`, one at a time, so they keep their order |
-| Data layer | `GameState` | Only what the game reported; `after(event)` works out each event's effect; *(4c) including `GameEvent.Failed`, the reason the game couldn't start |
+| Data layer | `GameState` | Only what the game reported; `after(event)` works out each event's effect; including `GameEvent.Failed`, which sets `failure`, the reason the game stopped. `failure` is kept apart from `isOver`, since `isOver` closes the app and the player would never see why; `hasEnded` is either |
 | Data source | `Game` | The interface: `events: Flow<GameEvent>`, `act()`, `answer()` |
-| Data source | `PythonGame` | The real game, on the layout named: `events = callbackFlow { ... }` starts the game thread, on the board from `Catalog.board(layout)` (with Python started by `AppPython`), and ends when the game is over; `act()` calls `AndroidUI.act()` through Chaquopy. *(4c) Setting up and playing are caught separately: a setup failure reports `GameEvent.Failed`, so the app never waits on a game that can't start; a failure in play stays a status warning |
+| Data source | `GameEvent` | What the game reports (`Started`, `CellChanged`, `Over`, ...), and `Failed(reason)`: the game has stopped on an error, while starting or later, and its flow ends |
+| Data source | `PythonGame` | The real game, on the layout named: `events = callbackFlow { ... }` starts the game thread, on the board from `Catalog.board(layout)` (with Python started by `AppPython`), and ends when the game is over; `act()` calls `AndroidUI.act()` through Chaquopy. Any error that reaches it, in setting up or in play, is reported as `GameEvent.Failed`, so the app never waits on a game that can't start or no longer answers (an error in one of the player's actions doesn't reach it: `AndroidUI` catches that, and play goes on) |
 | Data source | `PythonScreen` | What Python calls (`showCell()`, `askConfirm()`, `questionAnswered()`, ...), turned into `GameEvent`s |
 | Data source | `FakeGame` | A stand-in for tests: reports the events it is given, records the actions |
 | Python | `AndroidUI` | The port's adapter (`ui/android/`): `act()` → actions queue → `play()` → `puzzle.handle()`; `confirm()` waits for `answer()` |
@@ -298,3 +299,37 @@ sequenceDiagram
 
 The intent and the result travel separate paths: `act()` returns as soon as the action is queued, and the 5
 comes back later as events (unidirectional data flow). The UI thread never waits on Python.
+
+### When the game fails
+
+For example, after process death the back stack reopens `Route.Game(layout)`, but that layout has since been
+removed from `game/puzzles/`, or broken. Any other error that reaches `PythonGame`, while starting or later, goes
+the same way.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant S as SudokuScreen<br/>(UI thread)
+    participant C as AppContainer
+    participant R as GameRepository<br/>(app-long scope)
+    participant PG as PythonGame<br/>(game thread)
+
+    C->>R: made by gameRepository(layout)
+    R->>PG: collects events: starts the game thread
+    PG->>PG: Catalog.board(layout) raises
+    PG-->>R: GameEvent.Failed(reason), then the flow ends
+    Note over R: state = state.after(Failed): failure = reason
+    R-->>S: StateFlow, through the ViewModel
+    Note over S: shows "The game stopped: reason"<br/>in place of "Starting the game…" (or of the board)
+    Note over S: the player leaves with Back
+    Note over C: on reopening, gameRepository(layout) sees<br/>state.hasEnded, and makes a new game that tries again
+```
+
+The cases, side by side:
+
+| What happens | `GameState` | What the player sees |
+|---|---|---|
+| Python is still starting | `size` null, `failure` null | "Starting the game…" |
+| An action fails (`AndroidUI` catches it, as the terminal does) | `message`, a warning | The board, with the warning in the status line; play goes on |
+| Anything else fails, while starting or later (`PythonGame` catches it) | `failure` set | "The game stopped: …" in place of the board; Back leaves; reopening tries again |
+| The player quits | `isOver` | The app closes; reopening starts a new game |

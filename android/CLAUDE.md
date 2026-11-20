@@ -113,6 +113,10 @@ The Kotlin code, in three packages, wired together by the app's container:
   the game thread (off the UI thread), and `callbackFlow` turns the game's reports into the flow, which ends when
   the game is over.
 
+  An error that reaches `PythonGame`, while starting or later, ends the flow with `GameEvent.Failed`: the screen
+  shows why in place of the board, and the container makes a new game when next asked. An error in one of the
+  player's actions doesn't reach it: `AndroidUI` shows it as a warning, and play goes on.
+
   Only `game/` knows Chaquopy: `PythonGame`, `PythonLayoutRepository` (the layouts, from
   `ui/android/catalog.py`'s `Catalog`, which also makes a layout's board) and `AppPython`, which starts Python
   once for both, on first use (slow the first time after an install).
