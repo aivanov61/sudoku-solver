@@ -377,7 +377,7 @@ This takes the place of `ask_file_name()`'s typed name, which the terminal keeps
 
 ## Building
 
-- The project was copied from the setup of Tony's BowlingPots project: AGP 9.5.1 with its built-in Kotlin,
+- The project was copied from the setup of Tony's BowlingPots project: AGP 9.5.2 with its built-in Kotlin,
   Kotlin 2.4.21, Compose BOM 2026.09.00, Gradle 9.9.0, compileSdk and targetSdk 37, minSdk 24.
 
 - The `syncAppPython` task in `app/build.gradle.kts` copies `../game` and, of `../ui`, only `__init__.py`,
