@@ -15,7 +15,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 # -----------------------------------------------------------------------------
 
-from collections.abc import Callable
+from collections import deque
 from queue import Queue
 
 from game.actions import Action, Mode
@@ -26,6 +26,7 @@ from game.config_option import ConfigOption
 from game.puzzle import Puzzle
 from game.user_interface import Message, MessageKind, Step
 from ui.android.auto_save import AutoSave
+from ui.android.requests import Act, Answer, Request, Save
 from ui.android.screen import Screen
 from ui.error_log import ErrorLog
 
@@ -33,10 +34,11 @@ from ui.error_log import ErrorLog
 class AndroidUI:
     """
     The user interface on Android: the game's side of the app.  The game runs on its own thread in play(), taking
-    requests from a queue that the screen (see Screen) fills: the player's actions through act(), and saves through
-    save(), so a save never lands in the middle of an action.  Everything the game shows is passed on to the screen
-    as plain values.  A question, or a message the player must see, blocks the game's thread until the screen gives
-    the player's answer through answer(); the screen's own thread never waits.
+    requests from a queue that the screen (see Screen) fills: the player's actions through act(), saves through
+    save(), and answers through answer(), so a save never lands in the middle of an action.  Everything the game
+    shows is passed on to the screen as plain values.  A question, or a message the player must see, blocks the
+    game's thread until the screen gives the player's answer; the screen's own thread never waits.  While it waits,
+    a save is carried out at once, and the player's actions are held until the dialog is over (see Request).
 
     The game is auto-saved to the file given (see AutoSave): restored from it when play starts, and saved to it when
     the app asks.
@@ -48,8 +50,9 @@ class AndroidUI:
     def __init__(self, screen: Screen, auto_save_path: str) -> None:
         self.__screen = screen
         self.__auto_save = AutoSave(auto_save_path, self)
-        self.__requests: Queue[Callable[[Puzzle], None]] = Queue()  # each carried out on the game, in turn
-        self.__answers: Queue[bool] = Queue()
+        self.__requests: Queue[Request] = Queue()  # each carried out on the game, in turn
+        self.__held: deque[Request] = deque()  # the actions held while a dialog waited, carried out first
+        self.__game: Puzzle | None = None  # the game play() plays, which a dialog's wait saves
 
     # Interface required for the screen
 
@@ -58,11 +61,12 @@ class AndroidUI:
         Show the game, restored from the auto-save if there is one, then carry out each request, showing the selected
         cell after each, until the game is over, and then forget the auto-save; runs on the game's thread
         """
+        self.__game = game
         game.render()
         self.__auto_save.restore(game)
         self.__screen.showSelected(*game.selected_cell)
         while game.is_playing:
-            self.__requests.get()(game)
+            self.__next_request().in_play(game)
             self.__screen.showSelected(*game.selected_cell)
         self.__auto_save.forget()
         self.__screen.gameOver()
@@ -71,15 +75,15 @@ class AndroidUI:
         """Pass the player's action on to the game: its name (an Action's value), with its digit or the cell it points at"""
         action = Action(name)
         position = None if row is None or col is None else (row, col)
-        self.__requests.put(lambda game: self.__carry_out(game, action, digit, position))
+        self.__requests.put(Act(lambda game: self.__carry_out(game, action, digit, position)))
 
     def save(self) -> None:
-        """Have the game auto-saved, once the requests before it are carried out"""
-        self.__requests.put(self.__auto_save.save)
+        """Have the game auto-saved, once the requests before it are carried out, or at once while a dialog waits"""
+        self.__requests.put(Save(self.__auto_save))
 
     def answer(self, yes: bool) -> None:
-        """Give the game the player's answer to the question it is waiting on"""
-        self.__answers.put(yes)
+        """Give the game the player's answer to the dialog it is waiting on"""
+        self.__requests.put(Answer(yes))
 
     # Interface required for the game
 
@@ -130,6 +134,10 @@ class AndroidUI:
 
     # Private functions
 
+    def __next_request(self) -> Request:
+        """The first of the actions held while a dialog waited, else the next request"""
+        return self.__held.popleft() if self.__held else self.__requests.get()
+
     def __carry_out(self, game: Puzzle, action: Action, digit: int | None, position: tuple[int, int] | None) -> None:
         """Hand the action to the game, surviving an action that breaks: say so, and stop the game if it was a quit"""
         try:
@@ -140,8 +148,15 @@ class AndroidUI:
                 game.force_quit_()
 
     def __wait_for_answer(self) -> bool:
-        """Wait for the player's answer to what the screen shows, then tell the screen it has been answered"""
-        yes = self.__answers.get()
+        """
+        Take the requests that come while the screen shows a dialog, until the player's answer, then tell the screen
+        it has been answered
+        """
+        game = self.__game
+        assert game is not None, "the game asks and informs only while play() plays it"
+        yes = None
+        while yes is None:
+            yes = self.__requests.get().while_waiting(game, self.__held)
         self.__screen.questionAnswered()
         return yes
 

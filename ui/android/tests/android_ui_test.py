@@ -37,6 +37,7 @@ class TestAndroidUI(TestCase):
         self.addCleanup(auto_save_patcher.stop)
         self.auto_save = self.AutoSave.return_value
         self.ui = AndroidUI(self.screen, self.AUTO_SAVE_PATH)
+        self.done = []  # what a game whose UP opens a dialog did, in order (see __open_in_play)
         return super().setUp()
 
     # Playing
@@ -68,7 +69,7 @@ class TestAndroidUI(TestCase):
     def test_a_broken_action_is_reported_as_a_warning_to_be_seen_and_play_goes_on(self):
         game = self.__game(broken=Action.UP)
         self.ui.act("up")
-        self.ui.answer(True)
+        self.ui.answer(True)  # the OK to the warning
         with patch("ui.android.android_ui.ErrorLog.report_broken", return_value="it broke") as report:
             self.__play(game)
         self.assertEqual(report.call_args.args[0], "up")
@@ -79,9 +80,10 @@ class TestAndroidUI(TestCase):
 
     def test_a_broken_quit_forces_the_game_to_stop(self):
         game = self.__game(broken=Action.QUIT)
-        self.ui.answer(True)
+        self.ui.act("quit")
+        self.ui.answer(True)  # the OK to the warning
         with patch("ui.android.android_ui.ErrorLog.report_broken", return_value="it broke"):
-            self.__play(game)
+            self.ui.play(game)
         game.force_quit_.assert_called_once()
 
     def test_a_forced_quit_ends_the_game_without_asking_and_forgets_the_saved_game(self):
@@ -164,23 +166,37 @@ class TestAndroidUI(TestCase):
     # Dialogs
 
     def test_inform_has_the_screen_show_the_message_and_waits_until_the_player_has_seen_it(self):
-        self.ui.answer(True)
-        self.ui.inform(Message("Cannot change an initial value", MessageKind.WARNING))
-        self.assertEqual(self.screen.method_calls, [call.showInform("Cannot change an initial value", "warning"), call.questionAnswered()])
+        self.__open_in_play(lambda: self.ui.inform(Message("Cannot change an initial value", MessageKind.WARNING)), lambda: self.ui.answer(True))
+        self.assertEqual(self.__dialog_calls(), [call.showInform("Cannot change an initial value", "warning"), call.questionAnswered()])
 
     def test_confirm_asks_the_screen_and_returns_the_players_answer(self):
-        self.ui.answer(True)
-        self.assertTrue(self.ui.confirm("Really quit?"))
+        self.assertTrue(self.__open_in_play(self.__confirm, lambda: self.ui.answer(True)))
         self.screen.askConfirm.assert_called_once_with("Really quit?")
 
     def test_confirm_tells_the_screen_once_the_question_is_answered(self):
-        self.ui.answer(True)
-        self.ui.confirm("Really quit?")
-        self.assertEqual(self.screen.method_calls, [call.askConfirm("Really quit?"), call.questionAnswered()])
+        self.__open_in_play(self.__confirm, lambda: self.ui.answer(True))
+        self.assertEqual(self.__dialog_calls(), [call.askConfirm("Really quit?"), call.questionAnswered()])
 
     def test_confirm_returns_no_when_the_player_says_no(self):
-        self.ui.answer(False)
-        self.assertFalse(self.ui.confirm("Really quit?"))
+        self.assertFalse(self.__open_in_play(self.__confirm, lambda: self.ui.answer(False)))
+
+    def test_a_save_while_a_dialog_waits_is_carried_out_at_once(self):
+        self.auto_save.save.side_effect = lambda game: self.done.append("save")
+        self.__open_in_play(self.__confirm, self.ui.save, lambda: self.ui.answer(True))
+        self.assertEqual(self.done, [Action.UP, "save", "answered", Action.QUIT])
+
+    def test_actions_while_a_dialog_waits_are_carried_out_in_order_once_it_is_answered(self):
+        self.__open_in_play(self.__confirm, lambda: self.ui.act("down"), lambda: self.ui.act("left"), lambda: self.ui.answer(True))
+        self.assertEqual(self.done, [Action.UP, "answered", Action.DOWN, Action.LEFT, Action.QUIT])
+
+    def test_an_answer_no_dialog_waits_for_is_dropped(self):
+        self.ui.answer(True)
+        self.assertFalse(self.__open_in_play(self.__confirm, lambda: self.ui.answer(False)))
+
+    def test_a_dialog_opened_while_another_waits_is_answered_first(self):
+        self.auto_save.save.side_effect = lambda game: self.ui.inform(Message("Cannot save", MessageKind.WARNING))
+        self.assertFalse(self.__open_in_play(self.__confirm, self.ui.save, lambda: self.ui.answer(True), lambda: self.ui.answer(False)))
+        self.assertEqual(self.__dialog_calls(), [call.askConfirm("Really quit?"), call.showInform("Cannot save", "warning"), call.questionAnswered(), call.questionAnswered()])
 
     def test_asking_for_a_file_name_cancels_for_now(self):
         self.assertIsNone(self.ui.ask_file_name("Save as", "puzzle", ".sudoku"))
@@ -226,6 +242,36 @@ class TestAndroidUI(TestCase):
         """Play the actions queued so far, then quit"""
         self.ui.act("quit")
         self.ui.play(game)
+
+    def __open_in_play(self, dialog, *requests):
+        """
+        Play a game whose UP opens the dialog, with the requests made after UP, then quit, recording in done each
+        action as it starts and each answered dialog; return what the dialog returned
+        """
+        game = self.__game()
+        returned = []
+        handle = game.handle.side_effect
+
+        def opening(action, digit, position):
+            self.done.append(action)
+            if action is Action.UP:
+                returned.append(dialog())
+            handle(action, digit, position)
+
+        game.handle.side_effect = opening
+        self.screen.questionAnswered.side_effect = lambda: self.done.append("answered")
+        self.ui.act("up")
+        for request in requests:
+            request()
+        self.__play(game)
+        return returned[0]
+
+    def __confirm(self):
+        return self.ui.confirm("Really quit?")
+
+    def __dialog_calls(self):
+        """The screen's calls that open or end a dialog, in order"""
+        return [made for made in self.screen.method_calls if made[0] in ("showInform", "askConfirm", "questionAnswered")]
 
 
 if __name__ == "__main__":

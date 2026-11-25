@@ -30,8 +30,7 @@ through the same layers. Features share only the app's container and the activit
 
 Colors: green is new in phase 7, amber is changed in phase 7, uncolored is unchanged.
 
-Marks: * marks what step 7a adds or changes but hasn't written yet, and *(7b) and *(7c) what the later steps do;
-each comes off as its part gets written.
+Marks: *(7c) marks what step 7c adds or changes but hasn't written yet; each comes off as its part gets written.
 
 Arrows: solid arrows are calls; dotted arrows are data flowing back, or a class implementing an interface.
 
@@ -293,6 +292,7 @@ flowchart TB
     subgraph Python["Python · game thread"]
         direction LR
         AndroidUI["AndroidUI"] --> Puzzle["Puzzle, Board, Cell"]
+        AndroidUI --> Requests["Request: Act, Save, Answer"]
         AndroidUI --> AutoSave["AutoSave"]
         AutoSave --> SaveFile["SaveFile (game/)"]
     end
@@ -318,7 +318,7 @@ flowchart TB
 
     classDef new fill:#2e7d32,stroke:#a5d6a7,stroke-width:2px,color:#ffffff
     classDef changed fill:#b45309,stroke:#fcd34d,stroke-width:2px,color:#ffffff
-    class InformDialog,Controls new
+    class InformDialog,Controls,Requests new
     class SudokuScreen,GameContent,ConfirmDialog,SudokuViewModel,GameState,GameEvent,PythonScreen,AndroidUI changed
 ```
 
@@ -348,7 +348,8 @@ its data sources. The Python game is at the bottom, as the source of truth for t
 | Data source | `PythonScreen` | What Python calls (`showCell()`, `askConfirm()`, `questionAnswered()`, ...), turned into `GameEvent`s; `showInform(text, kind)` is new, as `GameEvent.Informed` |
 | Data source | `FakeGame` | A stand-in for tests: reports the events it is given, records the actions and the saves |
 | Python | `Screen` | `ui/android/screen.py`: the screen as `AndroidUI` sees it, which `PythonScreen` implements. `showInform(text, kind)` is new, and `questionAnswered()` now also ends an `inform()` |
-| Python | `AndroidUI` | The port's adapter (`ui/android/`): `act()` and `save()` → one requests queue → `play()`, so a save never lands in the middle of a move; an action goes to `puzzle.handle()`, a save to `AutoSave`. `play()` has `AutoSave` restore the game first, and forget it once the game is over; `confirm()` waits for `answer()`, then reports `questionAnswered()`. `inform()` now does the same: it has the screen show the message (`showInform()`), waits for the OK, then reports `questionAnswered()`. A broken action is reported through `inform()`, as the terminal waits for a key, not on the status line. From 7b, the answers come through the requests queue too *(7b): a dialog's wait carries out a save at once, holds an action to carry out after the dialog, in order, and ends on an answer; `play()` drops an answer no dialog is waiting for (a second tap on OK). This is safe because the game asks and informs only before or after a change to the puzzle, never in the middle of one |
+| Python | `AndroidUI` | The port's adapter (`ui/android/`): `act()` and `save()` → one requests queue → `play()`, so a save never lands in the middle of a move; an action goes to `puzzle.handle()`, a save to `AutoSave`. `play()` has `AutoSave` restore the game first, and forget it once the game is over; `confirm()` waits for `answer()`, then reports `questionAnswered()`. `inform()` now does the same: it has the screen show the message (`showInform()`), waits for the OK, then reports `questionAnswered()`. A broken action is reported through `inform()`, as the terminal waits for a key, not on the status line. Changed: `answer()` puts an `Answer` on the one requests queue, in place of the second queue, and a dialog's wait takes requests off it, as `play()` does, until one ends it; the actions it holds are kept for `play()`, which carries them out first, in order. `play()` keeps the game it plays, so a wait can save it |
+| Python | `Request`, `Act`, `Save`, `Answer` | New: `ui/android/requests.py`, what the requests queue holds. Each says what it does in play (`in_play(game)`) and while a dialog waits (`while_waiting(game, held)`, which returns the answer once one ends the wait, else None). `Act` (the player's action) is carried out in play, and held while a dialog waits. `Save` is carried out at once either way, so a save at `ON_STOP` isn't lost behind an open dialog. `Answer(yes)` ends the wait with the player's answer; in play it is dropped, as no dialog waits for it (a second tap on OK), where the old second queue kept it to answer the next dialog. A new kind of request is a new class, with `play()` and the wait unchanged. Saving in a wait is safe because the game asks and informs only before or after a change to the puzzle, never in the middle of one |
 | Python | `AutoSave` | `ui/android/auto_save.py`: the game in progress, in the file it is given, read and written through `SaveFile`. `restore()` restores the file's puzzle into the game, or warns why it can't (damaged, from a newer version, or on another layout) and leaves the file alone; `save()` writes the game when the board has values; `forget()` deletes the file once the game is over. A file it couldn't read is overwritten only once the player has something to save, and is never deleted, so the player can still install a newer version or keep the file |
 | Python | `SaveFile` | The game's save files (`game/save_file.py`), the same format as on the PC |
 | Python | `Puzzle`, `Board`, `Cell`, ... | The game itself (`game/`): the single source of truth for the puzzle; `saved_state()` and `restore()` |
@@ -433,15 +434,15 @@ sequenceDiagram
     Note over UI: inform() or confirm() waits on the requests queue
     Note over E: the player presses Home, with the dialog open
     E->>R: ON_STOP: save(), through the ViewModel
-    R->>UI: save(): queued
-    UI->>A: the wait takes the save, and carries it out at once
+    R->>UI: save(): a Save is queued
+    UI->>A: the wait takes the Save, and carries it out at once
     A->>F: SaveFile.write(puzzle.saved_state())
     alt Android ends the process
         Note over E,F: the app reopens on the game as it was when the dialog opened, without the dialog
     else the player comes back
         Note over E: the dialog shows again, from GameState
-        E->>UI: OK: answer(True), queued
-        Note over UI: the wait ends, and then the actions that came in meanwhile<br/>(a tap made just before the dialog showed) are carried out, in order
+        E->>UI: OK: answer(True), an Answer is queued
+        Note over UI: the wait ends on the Answer, and play() carries out the Acts it held<br/>(a tap made just before the dialog showed) first, in order
     end
 ```
 

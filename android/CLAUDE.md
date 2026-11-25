@@ -198,15 +198,21 @@ The Kotlin code, in three packages, wired together by the app's container:
   screen.
 
 On the Python side, `ui/android/android_ui.py`'s `AndroidUI` is the port's adapter. `play()` runs on the game
-thread, taking requests from one queue: the actions that `act()` puts there, and the saves that `save()` puts
-there, so a save never lands in the middle of a move.
+thread, taking requests from one queue: the actions that `act()` puts there, the saves that `save()` puts there,
+and the answers that `answer()` puts there, so a save never lands in the middle of a move.
+
+Each request is a `Request` (`ui/android/requests.py`: `Act`, `Save`, `Answer`), which says what it does in play
+and while a dialog waits.
 
 `ui/android/auto_save.py`'s `AutoSave` keeps the game in the auto-save file, through `SaveFile`: `play()` has it
 restore the game first, and forget (delete) it once the game is over. A file it can't restore (damaged, from a
 newer version, or on another layout) gets a warning, and is kept until the player has something to save, so they
 can still install a newer version or keep the file.
 
-`confirm()` waits on a second queue that `answer()` fills, then reports `questionAnswered()`.
+`confirm()` and `inform()` wait on the same queue, until an `Answer`, then report `questionAnswered()`. A save that
+comes meanwhile is carried out at once, as Android may end the app before the dialog is answered, and an action is
+held for `play()` to carry out first once the dialog is over. An answer that comes in play is dropped (a second tap
+on OK).
 
 Gaps against the guide, to close in the phases that need them:
 
