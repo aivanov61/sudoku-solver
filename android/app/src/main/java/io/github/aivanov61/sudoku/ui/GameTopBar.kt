@@ -18,6 +18,7 @@
 package io.github.aivanov61.sudoku.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -34,12 +35,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import io.github.aivanov61.sudoku.R
 
 /**
  * The game screen's Material 3 top app bar: the app's name, and the app-level menu behind the overflow button (⋮).
  * New puzzle is enabled once a new puzzle [canStartNew]; choosing it calls [onNewPuzzle].  Material 3 still marks
- * its app bars experimental, though they are its standard ones.
+ * its app bars experimental, though they are its standard ones.  It goes inside content the screen has already
+ * padded clear of the system bars (it may be beside the board), so it adds no insets of its own.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +50,7 @@ fun GameTopBar(canStartNew: Boolean, onNewPuzzle: () -> Unit) {
     TopAppBar(
         title = { Text(stringResource(R.string.app_name)) },
         actions = { OverflowMenu(canStartNew, onNewPuzzle) },
+        windowInsets = WindowInsets(0.dp),
     )
 }
 

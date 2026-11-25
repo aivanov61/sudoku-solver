@@ -19,8 +19,9 @@ Phase 7 makes the game's messages fit a phone, in three steps:
 - **7c, the screen's layout.** The status line becomes a message area of fixed height, so a long message no longer
   moves the pad and the buttons.
 
-  The board is sized to fit both the width and the height. When the screen is wider than it is tall, the message
-  area, the pad and the commands go beside the board instead of below it.
+  The board is sized to fit both the width and the height. When the screen is wide enough, the board takes its full
+  height, and the top app bar, the mode, the message area, the pad and the commands go beside it instead of above
+  and below it.
 
 The mode's name above the board and the two command buttons stay as they are: phase 8 replaces them with the
 command palette.
@@ -29,8 +30,6 @@ The app is drawn as an overview, then one section per feature (a screen with its
 through the same layers. Features share only the app's container and the activity that hosts their screens.
 
 Colors: green is new in phase 7, amber is changed in phase 7, uncolored is unchanged.
-
-Marks: *(7c) marks what step 7c adds or changes but hasn't written yet; each comes off as its part gets written.
 
 Arrows: solid arrows are calls; dotted arrows are data flowing back, or a class implementing an interface.
 
@@ -261,10 +260,10 @@ flowchart TB
 
     subgraph View["View · Compose · UI thread"]
         direction LR
-        SudokuScreen["SudokuScreen · Scaffold"] --> GameTopBar["GameTopBar · TopAppBar, overflow menu"]
-        SudokuScreen --> GameContent["GameContent · BoxWithConstraints *(7c)"]
-        GameContent --> Board
-        GameContent --> Controls["Controls: MessageArea, pad, commands *(7c)"]
+        SudokuScreen["SudokuScreen · Scaffold"] --> GameContent["GameContent · BoxWithConstraints"]
+        GameContent --> Board["Stacked, or SideBySide"]
+        Board --> GameTopBar["GameTopBar · TopAppBar, overflow menu"]
+        Board --> Controls["Controls: MessageArea, pad, commands"]
         SudokuScreen --> ConfirmDialog["ConfirmDialog"]
         SudokuScreen --> InformDialog["InformDialog"]
         SudokuScreen --> NewPuzzleDialog
@@ -318,8 +317,8 @@ flowchart TB
 
     classDef new fill:#2e7d32,stroke:#a5d6a7,stroke-width:2px,color:#ffffff
     classDef changed fill:#b45309,stroke:#fcd34d,stroke-width:2px,color:#ffffff
-    class InformDialog,Controls,Requests new
-    class SudokuScreen,GameContent,ConfirmDialog,SudokuViewModel,GameState,GameEvent,PythonScreen,AndroidUI changed
+    class InformDialog,Board,Controls,Requests new
+    class SudokuScreen,GameContent,GameTopBar,ConfirmDialog,SudokuViewModel,GameState,GameEvent,PythonScreen,AndroidUI changed
 ```
 
 Everything from `GameRepository` down is MVVM's **Model**, which Google's guide splits into the data layer and
@@ -328,11 +327,13 @@ its data sources. The Python game is at the bottom, as the source of truth for t
 | Layer | Class | What it does |
 |---|---|---|
 | View | `MainActivity`'s `Game` entry | Gets the ViewModel and shows the screen; calls `onStopped()` whenever the app is stopped, with `LifecycleEventEffect(Lifecycle.Event.ON_STOP)`, which runs only while the entry is on screen. Once the state has a `next` route, it gives it to `onEnded`, as the splash's entry does, and `SudokuApp` replaces the game with it |
-| View | `SudokuScreen` | Stateless composables: draws the state, and passes taps on as intents (`SudokuIntents`). A Material 3 `Scaffold` places the top app bar, and pads `GameContent` clear of it and of the system bars. Over them, the dialog the game is waiting on, the newest (`GameState.dialog`): `ConfirmDialog` for a question, `InformDialog` for a message; and New puzzle's |
-| View | `GameContent` | Changed *(7c): `BoxWithConstraints` measures the space the screen is given, and lays out the board and the `Controls` in a `Column` when it is taller than wide, else in a `Row`, the board first. It goes by the space, not by the device's orientation, as Google's adaptive guide asks: a split screen or a large screen can be wide in portrait. The board is as large as fits both ways (`aspectRatio(cols / rows)`, with `matchHeightConstraintsFirst` in a `Row`), so it no longer runs off the bottom in landscape. The mode's name stays above the board until phase 8. When the game has failed, or is starting, it says so in place of the board, as before |
-| View | `Controls` | New *(7c): what goes under or beside the board: the `MessageArea`, the digit pad and the commands (which phase 8 makes the command palette) |
-| View | `MessageArea` | New *(7c), in place of the status line: the status message in a Material 3 tonal `Surface`, colored by its kind as before, always three lines tall (`minLines = 3`, so a blank status keeps its room). A longer message scrolls inside it (`verticalScroll`), rather than push the pad down or be cut off |
-| View | `GameTopBar` | A Material 3 `TopAppBar`, titled with the app's name (`R.string.app_name`, "Sudoku Solver", as on the splash and under the app's icon), whose one action is the overflow button (⋮, a Material Symbols vector drawable in `res/drawable`) opening a `DropdownMenu` with New puzzle, enabled once the game has started or failed. Whether the menu is open is kept in the composable (`remember`), as Google's guide on state hoisting allows for UI element state with no logic behind it; it closes on a rotation, as menus do |
+| View | `SudokuScreen` | Stateless composables: draws the state, and passes taps on as intents (`SudokuIntents`). Changed: a Material 3 `Scaffold` pads `GameContent` clear of the system bars, and no longer places the top app bar, since where it goes depends on the space (see `GameContent`). Over them, the dialog the game is waiting on, the newest (`GameState.dialog`): `ConfirmDialog` for a question, `InformDialog` for a message; and New puzzle's |
+| View | `GameContent` | Changed: its `BoxWithConstraints` measures the space the screen is given. While the game is being played, and there is room beside a board as tall as the space for the `Controls` (`MIN_CONTROLS_WIDTH`, the pad's nine buttons), it shows them `SideBySide`; otherwise `Stacked`. It goes by the space, not by the device's orientation, as Google's adaptive guide asks: a split screen or a large screen can be wide in portrait |
+| View | `Stacked` | New: a `Column`, the top app bar first, then the mode's name (until phase 8) and the board (`ModeAndBoard`), and the `Controls` at the bottom, within thumb reach. When the game has failed, or is starting, a `Notice` says so in place of the board and the controls, as before. `ModeAndBoard` makes the board as large as fits both ways: the `Controls` are measured first, and the board gets at most the rest (`weight(1f, fill = false)`), at its own ratio (`aspectRatio(cols / rows)`, which takes the largest size of that ratio within the constraints) |
+| View | `SideBySide` | New: a `Row`: the board as tall as the space (`fillMaxHeight().aspectRatio(cols / rows, matchHeightConstraintsFirst = true)`), and beside it the top app bar, the mode's name and the `Controls`, so the board gets the rows a top app bar above it would take |
+| View | `Controls` | New: what goes under or beside the board: the `MessageArea`, the digit pad and the commands (which phase 8 makes the command palette) |
+| View | `MessageArea` | New, in place of the status line: the status message in a Material 3 tonal `Surface`, colored by its kind as before, always three lines of text tall (the text style's line height, so it follows the player's font size), so neither a blank message nor a long one moves the pad. A longer message scrolls inside it (`verticalScroll(rememberScrollState())`), from its top for each new message |
+| View | `GameTopBar` | A Material 3 `TopAppBar`, titled with the app's name (`R.string.app_name`, "Sudoku Solver", as on the splash and under the app's icon), whose one action is the overflow button (⋮, a Material Symbols vector drawable in `res/drawable`) opening a `DropdownMenu` with New puzzle, enabled once the game has started or failed. Whether the menu is open is kept in the composable (`remember`), as Google's guide on state hoisting allows for UI element state with no logic behind it; it closes on a rotation, as menus do. Changed: it is placed in the content, above the board or beside it, so it adds no window insets of its own (`windowInsets = WindowInsets(0.dp)`): the `Scaffold` has already padded the content clear of the system bars |
 | View | `ConfirmDialog` | Renamed from `Confirm`, to match the other dialogs: the game's yes/no question, an `AlertDialog` with Yes and No |
 | View | `InformDialog` | New: an `AlertDialog` with the game's message and one button, OK. A warning is titled "Warning", and the text has its kind's color, as on the status line. Tapping outside the dialog, or Back, counts as OK, since the game only waits until the message has been seen |
 | View | `NewPuzzleDialog` | An `AlertDialog`, "Start a new puzzle? The one in progress will be lost.", with Start new and Cancel; shown while `SudokuUiState.askingNewPuzzle` |

@@ -175,7 +175,13 @@ The Kotlin code, in three packages, wired together by the app's container:
 
   It also holds New puzzle's own state (whether it is asking, and `next`, the route that replaces the game), with
   the layouts from the `LayoutRepository` to work `next` out once the game has ended. `SudokuScreen` is stateless:
-  a Material 3 `Scaffold` with the top app bar (`GameTopBar`, the overflow menu with New puzzle) above the game.
+  a Material 3 `Scaffold` around the game and its top app bar (`GameTopBar`, the overflow menu with New puzzle).
+
+  The game adapts to the space it is given (`BoxWithConstraints`), not to the device's orientation: the top app bar
+  above the board and the controls (the message area of fixed height, the pad and the commands) below it, the board as
+  large as fits; or, when there is room beside it for the controls, the board as tall as the space, and the top app
+  bar, the mode and the controls beside it. The orientation isn't locked, since Android ignores that on
+  large screens.
 
   `SplashViewModel` reads the notice; the layouts, then the saved game's layout (which starts Python behind the
   splash); and starts a 5-second timer, each in its own coroutine in `viewModelScope`; the timer or `onTap()` ends
@@ -214,20 +220,7 @@ comes meanwhile is carried out at once, as Android may end the app before the di
 held for `play()` to carry out first once the dialog is over. An answer that comes in play is dropped (a second tap
 on OK).
 
-Gaps against the guide, to close in the phases that need them:
-
-- `inform()` doesn't wait yet, so a warning flashes and vanishes.
-
-  The status line has no fixed height, so a wrapped message moves the buttons.
-
-  Both are left for the MVP 1 screen redesign.
-
-- The game screen doesn't adapt to the window: the board is sized to the full width, so in landscape it is taller
-  than the screen, and the pad and buttons fall off the bottom.
-
-  Left for the screen redesign (phases 7 and 8): the board sized to the smaller of width and height, and in
-  landscape the message area, command palette and pad beside it. The orientation isn't locked, since Android
-  ignores that on large screens.
+Gaps against the guide, to close in the phases that need them: none known today.
 
 ## Stages and phases
 
