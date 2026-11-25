@@ -90,6 +90,12 @@ class SudokuViewModelTest {
         assertEquals(listOf(false), game.answers)
     }
 
+    @Test
+    fun okOnAMessageTellsTheGameItHasBeenSeen() = runTest(mainDispatcherRule.dispatcher) {
+        viewModel().onInformed()
+        assertEquals(listOf(true), game.answers)
+    }
+
     // The app's lifecycle
 
     @Test

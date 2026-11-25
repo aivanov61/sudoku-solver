@@ -45,8 +45,9 @@ class PythonScreen(private val onEvent: (GameEvent) -> Unit) {
 
     fun showSelected(row: Int, col: Int) = onEvent(GameEvent.Selected(Position(row, col)))
 
-    fun showStatus(text: String, kind: String) =
-        onEvent(GameEvent.StatusChanged(GameMessage(text, fromGameName<MessageKind>(kind) ?: MessageKind.NONE)))
+    fun showStatus(text: String, kind: String) = onEvent(GameEvent.StatusChanged(message(text, kind)))
+
+    fun showInform(text: String, kind: String) = onEvent(GameEvent.Informed(message(text, kind)))
 
     fun askConfirm(question: String) = onEvent(GameEvent.Asked(question))
 
@@ -56,4 +57,10 @@ class PythonScreen(private val onEvent: (GameEvent) -> Unit) {
         onEvent(GameEvent.ModeChanged(mode, actions.mapNotNull { fromGameName<GameAction>(it) }.toSet()))
 
     fun gameOver() = onEvent(GameEvent.Over)
+
+    // Private functions
+
+    /** The game's message, of a MessageKind's value, with no kind when the app doesn't know it */
+    private fun message(text: String, kind: String) =
+        GameMessage(text, fromGameName<MessageKind>(kind) ?: MessageKind.NONE)
 }

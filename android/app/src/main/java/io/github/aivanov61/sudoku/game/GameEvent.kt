@@ -31,10 +31,13 @@ sealed interface GameEvent {
     /** The status line now shows the message */
     data class StatusChanged(val message: GameMessage) : GameEvent
 
+    /** The game shows the message, and waits for Game.answer() once the player has seen it */
+    data class Informed(val message: GameMessage) : GameEvent
+
     /** The game asks a yes/no question, and waits for Game.answer() */
     data class Asked(val question: String) : GameEvent
 
-    /** The question asked has been answered */
+    /** The newest question asked, or message shown until seen, has been answered */
     data object Answered : GameEvent
 
     /** The game is now in the mode (its name for the player), which offers these actions */

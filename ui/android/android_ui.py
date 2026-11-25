@@ -35,14 +35,14 @@ class AndroidUI:
     The user interface on Android: the game's side of the app.  The game runs on its own thread in play(), taking
     requests from a queue that the screen (see Screen) fills: the player's actions through act(), and saves through
     save(), so a save never lands in the middle of an action.  Everything the game shows is passed on to the screen
-    as plain values.  A question blocks the game's thread until the screen gives the player's answer through
-    answer(); the screen's own thread never waits.
+    as plain values.  A question, or a message the player must see, blocks the game's thread until the screen gives
+    the player's answer through answer(); the screen's own thread never waits.
 
     The game is auto-saved to the file given (see AutoSave): restored from it when play starts, and saved to it when
     the app asks.
 
-    For now, while the app is a first try: inform() doesn't wait, and saving to a file the player names, restoring
-    one, configuring and walking through steps are not offered.
+    For now, while the app is a first try: saving to a file the player names, restoring one, configuring and walking
+    through steps are not offered.
     """
 
     def __init__(self, screen: Screen, auto_save_path: str) -> None:
@@ -90,15 +90,14 @@ class AndroidUI:
             self.__screen.showStatus("", "")
 
     def inform(self, message: Message) -> None:
-        """Show the message on the status line, for now without waiting until the player has seen it"""
-        self.status(message)
+        """Have the screen show the message, wait until the player has seen it, then tell the screen it is over"""
+        self.__screen.showInform(message.text, message.kind.value)
+        self.__wait_for_answer()
 
     def confirm(self, question: str) -> bool:
         """Have the screen ask the question, wait for the player's answer, then tell the screen the question is over"""
         self.__screen.askConfirm(question)
-        yes = self.__answers.get()
-        self.__screen.questionAnswered()
-        return yes
+        return self.__wait_for_answer()
 
     def ask_file_name(self, prompt: str, default: str, extension: str) -> str | None:
         """Cancel, as saving and restoring are not offered yet"""
@@ -136,9 +135,15 @@ class AndroidUI:
         try:
             game.handle(action, digit, position)
         except Exception as error:
-            self.__screen.showStatus(ErrorLog.report_broken(action.value, error), MessageKind.WARNING.value)
+            self.inform(Message(ErrorLog.report_broken(action.value, error), MessageKind.WARNING))
             if action in (Action.QUIT, Action.FORCE_QUIT):
                 game.force_quit_()
+
+    def __wait_for_answer(self) -> bool:
+        """Wait for the player's answer to what the screen shows, then tell the screen it has been answered"""
+        yes = self.__answers.get()
+        self.__screen.questionAnswered()
+        return yes
 
     @staticmethod
     def __edges(borders: Border) -> list[str]:

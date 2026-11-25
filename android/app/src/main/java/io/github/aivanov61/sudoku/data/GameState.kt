@@ -30,7 +30,7 @@ data class GameState(
     val cells: Map<Position, CellState> = emptyMap(),
     val selected: Position = Position(0, 0),
     val message: GameMessage = GameMessage.NONE,
-    val question: String? = null,  // the question asked, until it is answered
+    val dialogs: List<GameDialog> = emptyList(),  // the dialogs the game is waiting on, the newest last
     val mode: String = "",
     val offered: Set<GameAction> = emptySet(),
     val isOver: Boolean = false,
@@ -39,16 +39,29 @@ data class GameState(
     /** Whether the game has ended, over or failed, so no more is coming from it */
     val hasEnded: Boolean get() = isOver || failure != null
 
+    /** The dialog the game is waiting on now, the newest, or null for none */
+    val dialog: GameDialog? get() = dialogs.lastOrNull()
+
     /** The state once the event has happened */
     fun after(event: GameEvent): GameState = when (event) {
         is GameEvent.Started -> copy(size = event.size)
         is GameEvent.CellChanged -> copy(cells = cells + (event.position to event.cell))
         is GameEvent.Selected -> copy(selected = event.position)
         is GameEvent.StatusChanged -> copy(message = event.message)
-        is GameEvent.Asked -> copy(question = event.question)
-        GameEvent.Answered -> copy(question = null)
+        is GameEvent.Informed -> copy(dialogs = dialogs + GameDialog.Inform(event.message))
+        is GameEvent.Asked -> copy(dialogs = dialogs + GameDialog.Confirm(event.question))
+        GameEvent.Answered -> copy(dialogs = dialogs.dropLast(1))
         is GameEvent.ModeChanged -> copy(mode = event.mode, offered = event.offered)
         GameEvent.Over -> copy(isOver = true)
         is GameEvent.Failed -> copy(failure = event.reason)
     }
+}
+
+/** A dialog the game is waiting on, until the player answers it */
+sealed interface GameDialog {
+    /** A message the player must see, answered with OK */
+    data class Inform(val message: GameMessage) : GameDialog
+
+    /** A yes/no question */
+    data class Confirm(val question: String) : GameDialog
 }

@@ -66,6 +66,9 @@ class SudokuViewModel(
         viewModelScope.launch { repository.answer(yes) }
     }
 
+    /** Tell the game the player has seen its message: the OK is the answer it waits for */
+    override fun onInformed() = onAnswer(true)
+
     /** Ask the player first when the board has values, which a new puzzle would lose; else start it at once */
     override fun onNewPuzzle() {
         if (repository.state.value.hasValues) {

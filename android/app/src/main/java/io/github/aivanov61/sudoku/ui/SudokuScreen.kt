@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.aivanov61.sudoku.data.GameDialog
 import io.github.aivanov61.sudoku.data.GameState
 import io.github.aivanov61.sudoku.game.BoardSize
 import io.github.aivanov61.sudoku.game.CellKind
@@ -59,7 +60,7 @@ import io.github.aivanov61.sudoku.game.Position
 
 /**
  * The game's screen, a first try: the top app bar, then the mode, the board, the status line, a digit pad and a few
- * commands; and the game's yes/no questions, and New puzzle's, as dialogs.  It only shows the state, and passes what
+ * commands; and the game's yes/no questions and messages to be seen, and New puzzle's question, as dialogs.  It only shows the state, and passes what
  * the player does on to the intents.  The Material 3 Scaffold places the top app bar, and pads the content clear of
  * it and of the system bars.
  */
@@ -68,7 +69,11 @@ fun SudokuScreen(state: SudokuUiState, intents: SudokuIntents) {
     Scaffold(topBar = { GameTopBar(state.canStartNew, intents::onNewPuzzle) }) { padding ->
         GameContent(state, intents, Modifier.padding(padding))
     }
-    state.game.question?.let { question -> Confirm(question, intents::onAnswer) }
+    when (val dialog = state.game.dialog) {
+        is GameDialog.Confirm -> ConfirmDialog(dialog.question, intents::onAnswer)
+        is GameDialog.Inform -> InformDialog(dialog.message, intents::onInformed)
+        null -> {}
+    }
     if (state.askingNewPuzzle) {
         NewPuzzleDialog(intents::onNewPuzzleAnswer)
     }
@@ -181,12 +186,15 @@ private fun PossibleValues(possible: Set<Int>) {
 
 @Composable
 private fun StatusLine(status: GameMessage) {
-    val color = when (status.kind) {
-        MessageKind.WARNING -> Palette.WARNING
-        MessageKind.SUCCESS, MessageKind.HINT -> Palette.SOLVED
-        else -> MaterialTheme.colorScheme.onSurface
-    }
-    Text(status.text, color = color, modifier = Modifier.fillMaxWidth())
+    Text(status.text, color = messageColor(status.kind), modifier = Modifier.fillMaxWidth())
+}
+
+/** The color of a message of the kind, the same on the status line and in a dialog */
+@Composable
+private fun messageColor(kind: MessageKind): Color = when (kind) {
+    MessageKind.WARNING -> Palette.WARNING
+    MessageKind.SUCCESS, MessageKind.HINT -> Palette.SOLVED
+    else -> MaterialTheme.colorScheme.onSurface
 }
 
 @Composable
@@ -221,13 +229,28 @@ private fun Commands(modeSwitch: GameAction, intents: SudokuIntents) {
     }
 }
 
+/** The game's yes/no question: [onAnswer] gets the player's answer, and Back or a tap outside is No */
 @Composable
-private fun Confirm(question: String, onAnswer: (Boolean) -> Unit) {
+private fun ConfirmDialog(question: String, onAnswer: (Boolean) -> Unit) {
     AlertDialog(
         onDismissRequest = { onAnswer(false) },
         text = { Text(question) },
         confirmButton = { TextButton(onClick = { onAnswer(true) }) { Text("Yes") } },
         dismissButton = { TextButton(onClick = { onAnswer(false) }) { Text("No") } },
+    )
+}
+
+/**
+ * The game's message, until the player has seen it: [onSeen] is called on OK, and on Back or a tap outside, since
+ * the game only waits until the message has been seen.  A warning is titled so.
+ */
+@Composable
+private fun InformDialog(message: GameMessage, onSeen: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onSeen,
+        title = if (message.kind == MessageKind.WARNING) { { Text("Warning") } } else null,
+        text = { Text(message.text, color = messageColor(message.kind)) },
+        confirmButton = { TextButton(onClick = onSeen) { Text("OK") } },
     )
 }
 
@@ -271,6 +294,7 @@ private object PreviewIntents : SudokuIntents {
     override fun onClear() {}
     override fun onSwitchMode() {}
     override fun onAnswer(yes: Boolean) {}
+    override fun onInformed() {}
     override fun onNewPuzzle() {}
     override fun onNewPuzzleAnswer(yes: Boolean) {}
 }

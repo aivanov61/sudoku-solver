@@ -42,12 +42,16 @@ class Screen(Protocol):
         """Show the text, of the MessageKind's value, on the status line; "" for both blanks it"""
         ...
 
+    def showInform(self, text: str, kind: str) -> None:
+        """Show the text, of the MessageKind's value, until the player has seen it, and give AndroidUI.answer() the OK"""
+        ...
+
     def askConfirm(self, question: str) -> None:
         """Ask the yes/no question, and give the answer to AndroidUI.answer()"""
         ...
 
     def questionAnswered(self) -> None:
-        """Hear that the question asked has been answered, so it no longer shows"""
+        """Hear that the question asked, or the message shown until seen, has been answered, so it no longer shows"""
         ...
 
     def modeChanged(self, mode: str, actions: list[str]) -> None:

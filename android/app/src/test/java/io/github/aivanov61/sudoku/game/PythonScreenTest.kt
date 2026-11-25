@@ -75,6 +75,13 @@ class PythonScreenTest {
     }
 
     @Test
+    fun aMessageToBeSeenComesWithItsKind() {
+        screen.showInform("Cannot change an initial value while playing.", "warning")
+        val warning = GameMessage("Cannot change an initial value while playing.", MessageKind.WARNING)
+        assertEquals(listOf(GameEvent.Informed(warning)), events)
+    }
+
+    @Test
     fun aQuestionIsAsked() {
         screen.askConfirm("Really quit?")
         assertEquals(listOf(GameEvent.Asked("Really quit?")), events)

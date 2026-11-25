@@ -26,6 +26,7 @@ interface SudokuIntents {
     fun onClear()
     fun onSwitchMode()
     fun onAnswer(yes: Boolean)
+    fun onInformed()
     fun onNewPuzzle()
     fun onNewPuzzleAnswer(yes: Boolean)
 }

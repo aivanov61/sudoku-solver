@@ -65,18 +65,21 @@ class TestAndroidUI(TestCase):
         self.__play(self.__game())
         self.screen.gameOver.assert_called_once()
 
-    def test_a_broken_action_is_reported_on_the_status_line_and_play_goes_on(self):
+    def test_a_broken_action_is_reported_as_a_warning_to_be_seen_and_play_goes_on(self):
         game = self.__game(broken=Action.UP)
         self.ui.act("up")
+        self.ui.answer(True)
         with patch("ui.android.android_ui.ErrorLog.report_broken", return_value="it broke") as report:
             self.__play(game)
         self.assertEqual(report.call_args.args[0], "up")
         self.assertIsInstance(report.call_args.args[1], RuntimeError)
-        self.screen.showStatus.assert_called_with("it broke", MessageKind.WARNING.value)
+        self.screen.showInform.assert_called_once_with("it broke", MessageKind.WARNING.value)
+        self.screen.questionAnswered.assert_called_once()
         self.assertEqual(game.handle.call_args_list[-1], call(Action.QUIT, None, None))
 
     def test_a_broken_quit_forces_the_game_to_stop(self):
         game = self.__game(broken=Action.QUIT)
+        self.ui.answer(True)
         with patch("ui.android.android_ui.ErrorLog.report_broken", return_value="it broke"):
             self.__play(game)
         game.force_quit_.assert_called_once()
@@ -158,11 +161,12 @@ class TestAndroidUI(TestCase):
         self.ui.status(None)
         self.screen.showStatus.assert_called_once_with("", "")
 
-    def test_inform_shows_the_message_on_the_status_line_for_now(self):
-        self.ui.inform(Message("Cannot change an initial value", MessageKind.WARNING))
-        self.screen.showStatus.assert_called_once_with("Cannot change an initial value", "warning")
-
     # Dialogs
+
+    def test_inform_has_the_screen_show_the_message_and_waits_until_the_player_has_seen_it(self):
+        self.ui.answer(True)
+        self.ui.inform(Message("Cannot change an initial value", MessageKind.WARNING))
+        self.assertEqual(self.screen.method_calls, [call.showInform("Cannot change an initial value", "warning"), call.questionAnswered()])
 
     def test_confirm_asks_the_screen_and_returns_the_players_answer(self):
         self.ui.answer(True)

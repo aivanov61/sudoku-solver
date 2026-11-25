@@ -61,8 +61,23 @@ class GameStateTest {
     @Test
     fun aQuestionIsAskedUntilAnswered() {
         val asked = start.after(GameEvent.Asked("Really quit?"))
-        assertEquals("Really quit?", asked.question)
-        assertNull(asked.after(GameEvent.Answered).question)
+        assertEquals(GameDialog.Confirm("Really quit?"), asked.dialog)
+        assertNull(asked.after(GameEvent.Answered).dialog)
+    }
+
+    @Test
+    fun aMessageToBeSeenShowsUntilAnswered() {
+        val informed = start.after(GameEvent.Informed(WARNING))
+        assertEquals(GameDialog.Inform(WARNING), informed.dialog)
+        assertNull(informed.after(GameEvent.Answered).dialog)
+    }
+
+    @Test
+    fun aDialogThatOpensWhileAnotherWaitsShowsFirstThenTheOtherComesBack() {
+        val both = start.after(GameEvent.Asked("Really quit?")).after(GameEvent.Informed(WARNING))
+        assertEquals(listOf(GameDialog.Confirm("Really quit?"), GameDialog.Inform(WARNING)), both.dialogs)
+        assertEquals(GameDialog.Inform(WARNING), both.dialog)
+        assertEquals(GameDialog.Confirm("Really quit?"), both.after(GameEvent.Answered).dialog)
     }
 
     @Test
@@ -94,5 +109,6 @@ class GameStateTest {
     private companion object {
         val EMPTY = CellState(null, CellKind.TYPED, false, 0, (1..9).toSet(), setOf(Edge.TOP))
         val GIVEN_5 = CellState(5, CellKind.INITIAL, false, 0, emptySet(), setOf(Edge.TOP))
+        val WARNING = GameMessage("Cannot change an initial value while playing.", MessageKind.WARNING)
     }
 }
