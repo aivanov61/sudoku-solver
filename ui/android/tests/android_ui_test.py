@@ -29,6 +29,7 @@ from ui.android.android_ui import AndroidUI
 
 class TestAndroidUI(TestCase):
     AUTO_SAVE_PATH = "files/autosave.json"
+    SHADES = 3
 
     def setUp(self):
         self.screen = MagicMock()
@@ -36,7 +37,7 @@ class TestAndroidUI(TestCase):
         self.AutoSave = auto_save_patcher.start()
         self.addCleanup(auto_save_patcher.stop)
         self.auto_save = self.AutoSave.return_value
-        self.ui = AndroidUI(self.screen, self.AUTO_SAVE_PATH)
+        self.ui = AndroidUI(self.screen, self.AUTO_SAVE_PATH, self.SHADES)
         self.done = []  # what a game whose UP opens a dialog did, in order (see __open_in_play)
         return super().setUp()
 
@@ -148,6 +149,20 @@ class TestAndroidUI(TestCase):
         board.cell(8, 8).set(3, (CellAttrs.GUESS, CellAttrs.CONFLICTING, {"depth": 2}))
         self.ui.cell_changed(board.cell(8, 8))
         self.screen.showCell.assert_called_with(8, 8, 3, CellAttrs.GUESS, True, 2, [], ["right", "bottom"])
+
+    def test_guesses_within_the_shades_of_gray_are_not_warned_of(self):
+        for depth in range(self.SHADES + 1):
+            self.ui.guess_depth_changed(depth)
+        self.screen.showInform.assert_not_called()
+
+    def test_guesses_deeper_than_the_last_shade_are_warned_of_once(self):
+        self.__open_in_play(self.__guesses_to(*range(self.SHADES + 3)), lambda: self.ui.answer(True))
+        self.screen.showInform.assert_called_once_with("No more shades of gray left - repeating last shade.", "warning")
+
+    def test_guesses_that_go_back_within_the_shades_and_deeper_again_are_warned_of_again(self):
+        deeper_twice = self.__guesses_to(self.SHADES, self.SHADES + 1, self.SHADES, self.SHADES + 1)
+        self.__open_in_play(deeper_twice, lambda: self.ui.answer(True), lambda: self.ui.answer(True))
+        self.assertEqual(self.screen.showInform.call_count, 2)
 
     def test_mode_changed_passes_the_mode_and_its_actions_by_name(self):
         self.ui.mode_changed(Mode.SETUP, OFFERED_ACTIONS[Mode.SETUP])
@@ -268,6 +283,15 @@ class TestAndroidUI(TestCase):
 
     def __confirm(self):
         return self.ui.confirm("Really quit?")
+
+    def __guesses_to(self, *depths):
+        """What the game does when its guesses go to each of the depths in turn, for __open_in_play"""
+
+        def deepen():
+            for depth in depths:
+                self.ui.guess_depth_changed(depth)
+
+        return deepen
 
     def __dialog_calls(self):
         """The screen's calls that open or end a dialog, in order"""

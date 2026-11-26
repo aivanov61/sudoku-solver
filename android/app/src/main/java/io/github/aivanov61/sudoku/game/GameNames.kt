@@ -31,9 +31,18 @@ enum class GameAction(override val gameName: String) : GameNamed {
     PLAY("play"),
     INIT("init"),
     VALUE("value"),
+    GUESS("guess"),
     SELECT("select"),
     DEL("del"),
+    UNDO("undo"),
+    REWIND("rewind"),
     FORCE_QUIT("force_quit"),  // stop at once, without the game's own "Really quit?"
+}
+
+/** The game's modes (game/actions.py's Mode) */
+enum class GameMode(override val gameName: String) : GameNamed {
+    SETUP("SETUP"),
+    PLAY("PLAY"),
 }
 
 /**

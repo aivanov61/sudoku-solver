@@ -22,6 +22,7 @@ import io.github.aivanov61.sudoku.game.CellKind
 import io.github.aivanov61.sudoku.game.CellState
 import io.github.aivanov61.sudoku.game.Edge
 import io.github.aivanov61.sudoku.game.GameAction
+import io.github.aivanov61.sudoku.game.GameMode
 import io.github.aivanov61.sudoku.game.GameEvent
 import io.github.aivanov61.sudoku.game.GameMessage
 import io.github.aivanov61.sudoku.game.MessageKind
@@ -82,8 +83,8 @@ class GameStateTest {
 
     @Test
     fun aNewModeComesWithWhatItOffers() {
-        val state = start.after(GameEvent.ModeChanged("SETUP", setOf(GameAction.PLAY, GameAction.VALUE)))
-        assertEquals("SETUP", state.mode)
+        val state = start.after(GameEvent.ModeChanged(GameMode.SETUP, setOf(GameAction.PLAY, GameAction.VALUE)))
+        assertEquals(GameMode.SETUP, state.mode)
         assertEquals(setOf(GameAction.PLAY, GameAction.VALUE), state.offered)
     }
 

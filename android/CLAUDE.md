@@ -177,10 +177,17 @@ The Kotlin code, in three packages, wired together by the app's container:
   the layouts from the `LayoutRepository` to work `next` out once the game has ended. `SudokuScreen` is stateless:
   a Material 3 `Scaffold` around the game and its top app bar (`GameTopBar`, the overflow menu with New puzzle).
 
+  The command palette has a Setup | Play segmented button (the mode the game last reported), and Undo, Rewind,
+  Erase and Guess, each an icon with its label, disabled when the mode doesn't offer it.
+
+  Guess is one-shot, like Shift: the next digit or command turns it off. Whether it is on is the ViewModel's
+  (`guessOn`), so it stays on through a rotation. A guess's cell is shaded by its depth in `GuessShades`, whose
+  number the app gives the game, which warns when guesses go deeper than the last shade.
+
   The game adapts to the space it is given (`BoxWithConstraints`), not to the device's orientation: the top app bar
-  above the board and the controls (the message area of fixed height, the pad and the commands) below it, the board as
-  large as fits; or, when there is room beside it for the controls, the board as tall as the space, and the top app
-  bar, the mode and the controls beside it. The orientation isn't locked, since Android ignores that on
+  above the board and the controls (the message area of fixed height, the palette and the pad) below it, the board
+  as large as fits; or, when there is room beside it for the controls, the board as tall as the space, and the top
+  app bar and the controls beside it. The orientation isn't locked, since Android ignores that on
   large screens.
 
   `SplashViewModel` reads the notice; the layouts, then the saved game's layout (which starts Python behind the
@@ -200,8 +207,12 @@ The Kotlin code, in three packages, wired together by the app's container:
   They use `kotlinx-coroutines-test`, and `MainDispatcherRule` stands in for the UI thread. The splash's timing
   is tested on virtual time (`advanceTimeBy`, `runCurrent`).
 
-  Composables have no unit tests: Compose UI tests (`createComposeRule`) are planned for the redesigned game
-  screen.
+- **Compose UI tests** (`app/src/androidTest`, `gradle :app:connectedDebugAndroidTest`, on the emulator) cover
+  the game screen: `SudokuScreenTest` shows `SudokuScreen` with a state it makes, finds nodes by what the player
+  sees (text, or a cell's content description, "Row 3, column 8"), and checks the intents `RecordingIntents`
+  records.
+
+  `espresso-core` is pinned to 3.7.0: the older one `ui-test-junit4` brings can't tap on Android 17.
 
 On the Python side, `ui/android/android_ui.py`'s `AndroidUI` is the port's adapter. `play()` runs on the game
 thread, taking requests from one queue: the actions that `act()` puts there, the saves that `save()` puts there,
@@ -214,6 +225,9 @@ and while a dialog waits.
 restore the game first, and forget (delete) it once the game is over. A file it can't restore (damaged, from a
 newer version, or on another layout) gets a warning, and is kept until the player has something to save, so they
 can still install a newer version or keep the file.
+
+`guess_depth_changed()` warns through `inform()` when guesses go deeper than the screen's shades of gray, whose
+number `AndroidUI` is given, as the terminal warns.
 
 `confirm()` and `inform()` wait on the same queue, until an `Answer`, then report `questionAnswered()`. A save that
 comes meanwhile is carried out at once, as Android may end the app before the dialog is answered, and an action is

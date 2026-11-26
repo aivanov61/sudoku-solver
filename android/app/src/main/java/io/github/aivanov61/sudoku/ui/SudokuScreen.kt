@@ -17,6 +17,7 @@
 
 package io.github.aivanov61.sudoku.ui
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,18 +27,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -45,15 +52,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.aivanov61.sudoku.R
 import io.github.aivanov61.sudoku.data.GameDialog
 import io.github.aivanov61.sudoku.data.GameState
 import io.github.aivanov61.sudoku.game.BoardSize
@@ -62,14 +75,18 @@ import io.github.aivanov61.sudoku.game.CellState
 import io.github.aivanov61.sudoku.game.Edge
 import io.github.aivanov61.sudoku.game.GameAction
 import io.github.aivanov61.sudoku.game.GameMessage
+import io.github.aivanov61.sudoku.game.GameMode
 import io.github.aivanov61.sudoku.game.MessageKind
 import io.github.aivanov61.sudoku.game.Position
 
 /** The narrowest the controls can be beside the board: the digit pad's nine buttons, and the space between them */
 private val MIN_CONTROLS_WIDTH = 300.dp
 
+/** How much of its color a disabled control keeps, as Material 3's own components do */
+private const val DISABLED_ALPHA = 0.38f
+
 /**
- * The game's screen: the top app bar, the mode and the board, the message area, a digit pad and a few commands; and
+ * The game's screen: the top app bar, the board, the message area, the command palette and the digit pad; and
  * the game's yes/no questions and messages to be seen, and New puzzle's question, as dialogs.  It only shows the
  * state, and passes what the player does on to the intents.  The Material 3 Scaffold pads the content clear of the
  * system bars; the content places the top app bar itself, as where it goes depends on the space.
@@ -93,7 +110,7 @@ fun SudokuScreen(state: SudokuUiState, intents: SudokuIntents) {
 
 /**
  * The game and its top app bar.  When there is room beside a board as tall as the space for the controls, the board
- * takes the full height, and the top app bar, the mode and the controls go beside it; otherwise everything is stacked
+ * takes the full height, and the top app bar and the controls go beside it; otherwise everything is stacked
  * in a column, the top app bar first.  It goes by the space it is given, not by the device's orientation, since a
  * split screen or a large screen can be wide in portrait.
  */
@@ -111,8 +128,10 @@ private fun GameContent(state: SudokuUiState, intents: SudokuIntents, modifier: 
 }
 
 /**
- * The top app bar, then the game: the mode and the board, as large as fits, and the controls at the bottom of the
- * screen, within thumb reach.  Until the game has started, or once it has failed, a notice says so in its place.
+ * The top app bar, then the game: the board, as large as fits, and the controls at the bottom of the screen, within
+ * thumb reach.  Until the game has started, or once it has failed, a notice says so in its place.  The board fits
+ * both the width and the height left: the controls are measured first, and the board gets at most the rest (`weight`
+ * without fill), at its own aspect ratio.
  */
 @Composable
 private fun Stacked(state: SudokuUiState, intents: SudokuIntents, topBar: @Composable () -> Unit) {
@@ -129,7 +148,8 @@ private fun Stacked(state: SudokuUiState, intents: SudokuIntents, topBar: @Compo
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                ModeAndBoard(size, state.game, intents::onCellTapped, Modifier.weight(1f))
+                val boardModifier = Modifier.weight(1f, fill = false).aspectRatio(size.cols.toFloat() / size.rows)
+                Board(size, state.game.cells, state.game.selected, intents::onCellTapped, boardModifier)
                 Controls(state, intents, Modifier.fillMaxWidth())
             }
         }
@@ -141,23 +161,6 @@ private fun Stacked(state: SudokuUiState, intents: SudokuIntents, topBar: @Compo
 private fun Notice(text: String, modifier: Modifier, color: Color = Color.Unspecified) {
     Box(modifier, contentAlignment = Alignment.TopCenter) {
         Text(text, color = color)
-    }
-}
-
-/**
- * The mode's name, and below it the board, as large as fits both the width and the height left: the controls are
- * measured first, and the board gets at most the rest (`weight` without fill), at its own aspect ratio
- */
-@Composable
-private fun ModeAndBoard(size: BoardSize, game: GameState, onTap: (Position) -> Unit, modifier: Modifier) {
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(game.mode, style = MaterialTheme.typography.titleMedium)
-        val boardModifier = Modifier.weight(1f, fill = false).aspectRatio(size.cols.toFloat() / size.rows)
-        Board(size, game.cells, game.selected, onTap, boardModifier)
     }
 }
 
@@ -174,7 +177,11 @@ private fun Board(
             Row(Modifier.weight(1f)) {
                 for (col in 0 until size.cols) {
                     val position = Position(row, col)
-                    val modifier = Modifier.weight(1f).fillMaxSize().clickable { onTap(position) }
+                    val modifier = Modifier
+                        .weight(1f)
+                        .fillMaxSize()
+                        .clickable { onTap(position) }
+                        .semantics { contentDescription = "Row ${row + 1}, column ${col + 1}" }
                     Cell(cells[position], position == selected, modifier)
                 }
             }
@@ -206,8 +213,7 @@ private fun Cell(cell: CellState?, isSelected: Boolean, modifier: Modifier) {
 
 private fun cellBackground(cell: CellState?, isSelected: Boolean): Color = when {
     isSelected -> Palette.SELECTED
-    cell != null && cell.depth > 0 -> Palette.GUESS_SHADE.copy(alpha = minOf(0.1f * cell.depth, 0.5f))
-    else -> Color.White
+    else -> cell?.let { GuessShades.of(it.depth) } ?: Color.White
 }
 
 /** Thin lines around every cell, thick ones on the sides that are block edges */
@@ -245,13 +251,13 @@ private fun PossibleValues(possible: Set<Int>) {
     }
 }
 
-/** What goes below or beside the board: the message area, the digit pad and the commands */
+/** What goes below or beside the board: the message area, the command palette, and the digit pad, nearest the thumb */
 @Composable
 private fun Controls(state: SudokuUiState, intents: SudokuIntents, modifier: Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         MessageArea(state.game.message)
+        CommandPalette(state, intents)
         DigitPad(intents::onDigit)
-        Commands(state.modeSwitch, intents)
     }
 }
 
@@ -305,25 +311,102 @@ private fun DigitPad(onDigit: (Int) -> Unit) {
     }
 }
 
-/** Clear, and the switch between setup and play */
+/** The game-play buttons: the mode switch, and below it the commands and the Guess toggle */
 @Composable
-private fun Commands(modeSwitch: GameAction, intents: SudokuIntents) {
-    val switchLabel = if (modeSwitch == GameAction.PLAY) "Play" else "Setup"
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+private fun CommandPalette(state: SudokuUiState, intents: SudokuIntents) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        ModeSwitch(state.game.mode, intents::onSwitchMode)
         val commands = listOf(
-            "Clear" to intents::onClear,
-            switchLabel to intents::onSwitchMode,
+            Command("Undo", R.drawable.ic_undo, GameAction.UNDO, intents::onUndo),
+            Command("Rewind", R.drawable.ic_fast_rewind, GameAction.REWIND, intents::onRewind),
+            Command("Erase", R.drawable.ic_ink_eraser, GameAction.DEL, intents::onErase),
         )
-        for ((label, onClick) in commands) {
-            OutlinedButton(onClick = onClick, modifier = Modifier.weight(1f)) {
+        Row(Modifier.fillMaxWidth()) {
+            for (command in commands) {
+                CommandButton(command, enabled = state.offers(command.action), Modifier.weight(1f))
+            }
+            GuessToggle(state.guessing, state.offers(GameAction.GUESS), intents::onGuessToggled, Modifier.weight(1f))
+        }
+    }
+}
+
+/**
+ * Setup | Play, a Material 3 segmented button.  The selected segment is the mode the game last reported, so a tap on
+ * the other one only asks the game to switch: if the game refuses, the segment stays where it was.
+ */
+@Composable
+private fun ModeSwitch(mode: GameMode?, onSwitch: () -> Unit) {
+    val segments = listOf(GameMode.SETUP to "Setup", GameMode.PLAY to "Play")
+    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+        segments.forEachIndexed { index, (segment, label) ->
+            SegmentedButton(
+                selected = segment == mode,
+                onClick = {
+                    if (segment != mode) {
+                        onSwitch()
+                    }
+                },
+                shape = SegmentedButtonDefaults.itemShape(index, segments.size),
+            ) {
                 Text(label)
             }
         }
     }
 }
 
+/** A command of the palette: its label and icon, the game's action it asks for, and the intent that asks for it */
+private data class Command(
+    val label: String,
+    @param:DrawableRes val icon: Int,
+    val action: GameAction,
+    val onClick: () -> Unit,
+)
+
+/** The command's icon with its label below, as one button, so the whole of it can be tapped */
+@Composable
+private fun CommandButton(command: Command, enabled: Boolean, modifier: Modifier) {
+    TextButton(
+        onClick = command.onClick,
+        modifier = modifier,
+        enabled = enabled,
+        contentPadding = PaddingValues(4.dp),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(painterResource(command.icon), contentDescription = null)  // the label says what it is
+            Text(command.label, style = MaterialTheme.typography.labelMedium)
+        }
+    }
+}
+
 /**
- * The board, as tall as the space, and beside it the top app bar, the mode and the controls, so the board gets
+ * Guess, laid out as the commands are, and filled while it is on, when the pad enters guesses.  The whole of it
+ * toggles, and TalkBack reads it as a switch, on or off.
+ */
+@Composable
+private fun GuessToggle(on: Boolean, enabled: Boolean, onToggle: () -> Unit, modifier: Modifier) {
+    val colors = MaterialTheme.colorScheme
+    val contentColor = when {
+        !enabled -> colors.onSurface.copy(alpha = DISABLED_ALPHA)
+        on -> colors.onSecondaryContainer
+        else -> colors.primary  // as a TextButton's
+    }
+    Column(
+        modifier = modifier
+            .clip(ButtonDefaults.textShape)
+            .background(if (on) colors.secondaryContainer else Color.Transparent)
+            .toggleable(value = on, enabled = enabled, role = Role.Switch, onValueChange = { onToggle() })
+            .defaultMinSize(minHeight = ButtonDefaults.MinHeight)
+            .padding(4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(painterResource(R.drawable.ic_question_mark), contentDescription = null, tint = contentColor)
+        Text("Guess", style = MaterialTheme.typography.labelMedium, color = contentColor)
+    }
+}
+
+/**
+ * The board, as tall as the space, and beside it the top app bar and the controls, so the board gets
  * every row of the screen that a top app bar above it would take
  */
 @Composable
@@ -343,7 +426,6 @@ private fun SideBySide(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             topBar()
-            Text(state.game.mode, style = MaterialTheme.typography.titleMedium)
             Controls(state, intents, Modifier.fillMaxWidth())
         }
     }
@@ -398,7 +480,8 @@ private fun SudokuScreenPreview() {
         cells = cells,
         selected = Position(4, 4),
         message = GameMessage("A hint", MessageKind.HINT),
-        mode = "SETUP",
+        mode = GameMode.SETUP,
+        offered = setOf(GameAction.PLAY, GameAction.VALUE, GameAction.DEL),
     )
     val state = SudokuUiState(game)
     MaterialTheme {
@@ -412,7 +495,10 @@ private fun SudokuScreenPreview() {
 private object PreviewIntents : SudokuIntents {
     override fun onCellTapped(position: Position) {}
     override fun onDigit(digit: Int) {}
-    override fun onClear() {}
+    override fun onErase() {}
+    override fun onUndo() {}
+    override fun onRewind() {}
+    override fun onGuessToggled() {}
     override fun onSwitchMode() {}
     override fun onAnswer(yes: Boolean) {}
     override fun onInformed() {}
@@ -423,7 +509,6 @@ private object PreviewIntents : SudokuIntents {
 /** The screen's own colors */
 private object Palette {
     val SELECTED = Color(0xFFFFF59D)
-    val GUESS_SHADE = Color.Gray
     val CONFLICT = Color(0xFFD32F2F)
     val SOLVED = Color(0xFF0288D1)
     val TYPED = Color(0xFF1A237E)

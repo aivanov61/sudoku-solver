@@ -35,6 +35,9 @@ android {
         versionCode = 1
         versionName = "1.0"
 
+        // Runs the instrumented tests (app/src/androidTest) on the device: the Compose UI tests of the screens
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
         ndk {
             // Chaquopy ships Python for these ABIs: real phones, and the emulator on a PC
             abiFilters += listOf("arm64-v8a", "x86_64")
@@ -128,6 +131,12 @@ dependencies {
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.navigation3.ui)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)  // the empty activity createComposeRule() shows a screen in
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(platform(libs.androidx.compose.bom))
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.runner)
+    // Newer than the Espresso ui-test-junit4 brings, whose way of sending taps Android 17 no longer has
+    androidTestImplementation(libs.androidx.test.espresso.core)
 }

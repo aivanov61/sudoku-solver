@@ -47,20 +47,35 @@ class SudokuViewModel(
 ) : ViewModel(), SudokuIntents {
     private val askingNewPuzzle = MutableStateFlow(false)
     private val next = MutableStateFlow<Route?>(null)
+    // Whether Guess is on: the screen's own, as the game has no such switch, only GUESS.  It is one-shot, like Shift:
+    // the next digit or command turns it off.
+    private val guessOn = MutableStateFlow(false)
 
     /** The screen's state, worked out while the screen is shown (and for 5 seconds after, to ride out a rotation) */
-    val uiState: StateFlow<SudokuUiState> = combine(repository.state, askingNewPuzzle, next, ::SudokuUiState)
+    val uiState: StateFlow<SudokuUiState> = combine(repository.state, askingNewPuzzle, next, guessOn, ::SudokuUiState)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SudokuUiState(repository.state.value))
 
     // Interface required for the screen
 
     override fun onCellTapped(position: Position) = act(GameAction.SELECT, position = position)
 
-    override fun onDigit(digit: Int) = act(GameAction.VALUE, digit = digit)
+    /** Enter the digit as a guess while guessing, else as a value */
+    override fun onDigit(digit: Int) {
+        val guessing = SudokuUiState(repository.state.value, guessOn = guessOn.value).guessing
+        command(if (guessing) GameAction.GUESS else GameAction.VALUE, digit)
+    }
 
-    override fun onClear() = act(GameAction.DEL)
+    override fun onErase() = command(GameAction.DEL)
 
-    override fun onSwitchMode() = act(SudokuUiState(repository.state.value).modeSwitch)
+    override fun onUndo() = command(GameAction.UNDO)
+
+    override fun onRewind() = command(GameAction.REWIND)
+
+    override fun onGuessToggled() {
+        guessOn.value = !guessOn.value
+    }
+
+    override fun onSwitchMode() = command(SudokuUiState(repository.state.value).modeSwitch)
 
     override fun onAnswer(yes: Boolean) {
         viewModelScope.launch { repository.answer(yes) }
@@ -71,6 +86,7 @@ class SudokuViewModel(
 
     /** Ask the player first when the board has values, which a new puzzle would lose; else start it at once */
     override fun onNewPuzzle() {
+        endGuess()
         if (repository.state.value.hasValues) {
             askingNewPuzzle.value = true
         } else {
@@ -94,6 +110,16 @@ class SudokuViewModel(
 
     private fun act(action: GameAction, digit: Int? = null, position: Position? = null) {
         viewModelScope.launch { repository.act(action, digit, position) }
+    }
+
+    /** Carry out one of the player's commands (a digit is one), which ends a one-shot Guess */
+    private fun command(action: GameAction, digit: Int? = null) {
+        endGuess()
+        act(action, digit)
+    }
+
+    private fun endGuess() {
+        guessOn.value = false
     }
 
     /**

@@ -23,7 +23,10 @@ import io.github.aivanov61.sudoku.game.Position
 interface SudokuIntents {
     fun onCellTapped(position: Position)
     fun onDigit(digit: Int)
-    fun onClear()
+    fun onErase()
+    fun onUndo()
+    fun onRewind()
+    fun onGuessToggled()
     fun onSwitchMode()
     fun onAnswer(yes: Boolean)
     fun onInformed()

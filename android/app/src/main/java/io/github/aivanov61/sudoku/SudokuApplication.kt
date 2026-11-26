@@ -22,6 +22,7 @@ import io.github.aivanov61.sudoku.data.AssetCopyrightRepository
 import io.github.aivanov61.sudoku.game.PythonGame
 import io.github.aivanov61.sudoku.game.PythonLayoutRepository
 import io.github.aivanov61.sudoku.game.PythonSavedGameRepository
+import io.github.aivanov61.sudoku.ui.GuessShades
 import java.io.File
 
 /**
@@ -36,7 +37,7 @@ class SudokuApplication : Application() {
         super.onCreate()
         val autoSave = File(filesDir, AUTO_SAVE_FILE)
         container = DefaultAppContainer(
-            newGame = { layout -> PythonGame(this, layout, autoSave) },
+            newGame = { layout -> PythonGame(this, layout, autoSave, GuessShades.COLORS.size) },
             newLayoutRepository = { PythonLayoutRepository(this) },
             newCopyrightRepository = { AssetCopyrightRepository(assets) },
             newSavedGameRepository = { PythonSavedGameRepository(this, autoSave) },

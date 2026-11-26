@@ -22,17 +22,25 @@ import io.github.aivanov61.sudoku.game.GameAction
 
 /**
  * Everything the game screen shows: the game as last reported, and what the screen works out from it; and the
- * screen's own state: whether New puzzle is asking the player first, and the route that replaces the game, null
- * until a new puzzle has been asked for and the game has ended
+ * screen's own state: whether New puzzle is asking the player first, the route that replaces the game, null until a
+ * new puzzle has been asked for and the game has ended, and whether the player has turned Guess on
  */
 data class SudokuUiState(
     val game: GameState = GameState(),
     val askingNewPuzzle: Boolean = false,
     val next: Route? = null,
+    val guessOn: Boolean = false,
 ) {
     /** The action that switches between setup and play: whichever of the two the mode offers */
     val modeSwitch: GameAction
         get() = if (GameAction.PLAY in game.offered) GameAction.PLAY else GameAction.INIT
+
+    /** Whether the mode offers the action, so its command can be used; the game refuses the others with a warning */
+    fun offers(action: GameAction): Boolean = action in game.offered
+
+    /** Whether the pad enters guesses: Guess is on, and the mode offers guesses (so never in setup) */
+    val guessing: Boolean
+        get() = guessOn && offers(GameAction.GUESS)
 
     /**
      * Whether a new puzzle can be started: once the game has started or failed.  Before that, the game may still be

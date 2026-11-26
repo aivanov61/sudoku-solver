@@ -53,8 +53,9 @@ class PythonScreen(private val onEvent: (GameEvent) -> Unit) {
 
     fun questionAnswered() = onEvent(GameEvent.Answered)
 
-    fun modeChanged(mode: String, actions: Array<String>) =
-        onEvent(GameEvent.ModeChanged(mode, actions.mapNotNull { fromGameName<GameAction>(it) }.toSet()))
+    fun modeChanged(mode: String, actions: Array<String>) = onEvent(
+        GameEvent.ModeChanged(fromGameName<GameMode>(mode), actions.mapNotNull { fromGameName<GameAction>(it) }.toSet()),
+    )
 
     fun gameOver() = onEvent(GameEvent.Over)
 

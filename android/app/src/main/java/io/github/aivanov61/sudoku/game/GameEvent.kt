@@ -40,8 +40,8 @@ sealed interface GameEvent {
     /** The newest question asked, or message shown until seen, has been answered */
     data object Answered : GameEvent
 
-    /** The game is now in the mode (its name for the player), which offers these actions */
-    data class ModeChanged(val mode: String, val offered: Set<GameAction>) : GameEvent
+    /** The game is now in the mode, or in one the app doesn't know (null), which offers these actions */
+    data class ModeChanged(val mode: GameMode?, val offered: Set<GameAction>) : GameEvent
 
     /** The game is over */
     data object Over : GameEvent

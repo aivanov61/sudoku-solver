@@ -22,6 +22,7 @@ import io.github.aivanov61.sudoku.game.CellState
 import io.github.aivanov61.sudoku.game.GameAction
 import io.github.aivanov61.sudoku.game.GameEvent
 import io.github.aivanov61.sudoku.game.GameMessage
+import io.github.aivanov61.sudoku.game.GameMode
 import io.github.aivanov61.sudoku.game.Position
 
 /** The game as it last reported itself: never more than the game said, as the game is the source of truth */
@@ -31,7 +32,7 @@ data class GameState(
     val selected: Position = Position(0, 0),
     val message: GameMessage = GameMessage.NONE,
     val dialogs: List<GameDialog> = emptyList(),  // the dialogs the game is waiting on, the newest last
-    val mode: String = "",
+    val mode: GameMode? = null,  // null until the game reports a mode the app knows
     val offered: Set<GameAction> = emptySet(),
     val isOver: Boolean = false,
     val failure: String? = null,  // why the game stopped on an error, which the screen shows; kept apart from isOver

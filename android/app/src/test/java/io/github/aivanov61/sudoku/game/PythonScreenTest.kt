@@ -91,7 +91,13 @@ class PythonScreenTest {
     fun aModeKeepsOnlyTheActionsTheAppKnows() {
         screen.modeChanged("SETUP", arrayOf("play", "value", "up", "select"))
         val known = setOf(GameAction.PLAY, GameAction.VALUE, GameAction.SELECT)
-        assertEquals(listOf(GameEvent.ModeChanged("SETUP", known)), events)
+        assertEquals(listOf(GameEvent.ModeChanged(GameMode.SETUP, known)), events)
+    }
+
+    @Test
+    fun aModeTheAppDoesntKnowIsNone() {
+        screen.modeChanged("SOLVING", arrayOf())
+        assertEquals(listOf(GameEvent.ModeChanged(null, emptySet())), events)
     }
 
     @Test

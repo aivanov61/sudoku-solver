@@ -43,12 +43,17 @@ class AndroidUI:
     The game is auto-saved to the file given (see AutoSave): restored from it when play starts, and saved to it when
     the app asks.
 
+    The screen shades each guess's cell by its depth, in the number of shades of gray given; guesses deeper than the
+    last shade are warned of, as in the terminal.
+
     For now, while the app is a first try: saving to a file the player names, restoring one, configuring and walking
     through steps are not offered.
     """
 
-    def __init__(self, screen: Screen, auto_save_path: str) -> None:
+    def __init__(self, screen: Screen, auto_save_path: str, shades: int) -> None:
         self.__screen = screen
+        self.__shades = shades  # the shades of gray the screen has for guess depths
+        self.__guess_depth = 0
         self.__auto_save = AutoSave(auto_save_path, self)
         self.__requests: Queue[Request] = Queue()  # each carried out on the game, in turn
         self.__held: deque[Request] = deque()  # the actions held while a dialog waited, carried out first
@@ -115,7 +120,11 @@ class AndroidUI:
         """Show nothing, as walking through steps is not offered yet"""
 
     def guess_depth_changed(self, depth: int) -> None:
-        """Show nothing more: each cell comes with the guess depth it was entered at"""
+        """Warn when guesses go from within the screen's shades of gray to deeper than the last one (each cell comes with its own depth)"""
+        runs_out = depth > self.__shades >= self.__guess_depth
+        self.__guess_depth = depth
+        if runs_out:
+            self.inform(Message("No more shades of gray left - repeating last shade.", MessageKind.WARNING))
 
     def show_board(self, cells: list[Cell]) -> None:
         for cell in cells:

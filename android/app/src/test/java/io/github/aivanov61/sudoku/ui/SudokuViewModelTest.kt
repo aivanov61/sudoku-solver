@@ -28,6 +28,7 @@ import io.github.aivanov61.sudoku.game.FakeGame
 import io.github.aivanov61.sudoku.game.FakeGame.Act
 import io.github.aivanov61.sudoku.game.GameAction
 import io.github.aivanov61.sudoku.game.GameEvent
+import io.github.aivanov61.sudoku.game.GameMode
 import io.github.aivanov61.sudoku.game.Position
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -71,15 +72,89 @@ class SudokuViewModelTest {
     }
 
     @Test
-    fun clearDeletesTheValue() = runTest(mainDispatcherRule.dispatcher) {
-        viewModel().onClear()
+    fun withGuessOnADigitIsEnteredAsAGuess() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = playingViewModel()
+        viewModel.onGuessToggled()
+        assertTrue(viewModel.uiState.value.guessing)
+        viewModel.onDigit(5)
+        assertEquals(listOf(Act(GameAction.GUESS, digit = 5)), game.acts)
+    }
+
+    @Test
+    fun guessIsOneShotLikeShift() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = playingViewModel()
+        viewModel.onGuessToggled()
+        viewModel.onDigit(5)
+        viewModel.onDigit(6)
+        assertFalse(viewModel.uiState.value.guessing)
+        assertEquals(listOf(Act(GameAction.GUESS, digit = 5), Act(GameAction.VALUE, digit = 6)), game.acts)
+    }
+
+    @Test
+    fun aTappedCellKeepsGuessOn() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = playingViewModel()
+        viewModel.onGuessToggled()
+        viewModel.onCellTapped(Position(2, 7))
+        assertTrue(viewModel.uiState.value.guessing)
+    }
+
+    @Test
+    fun everyCommandTurnsGuessOff() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = playingViewModel()
+        val commands = mapOf<String, SudokuViewModel.() -> Unit>(
+            "Undo" to { onUndo() },
+            "Rewind" to { onRewind() },
+            "Erase" to { onErase() },
+            "the mode switch" to { onSwitchMode() },
+            "New puzzle" to { onNewPuzzle() },
+        )
+        for ((name, command) in commands) {
+            viewModel.onGuessToggled()
+            viewModel.command()
+            assertFalse("$name left Guess on", viewModel.uiState.value.guessing)
+        }
+    }
+
+    @Test
+    fun guessTappedAgainEntersValues() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = playingViewModel()
+        viewModel.onGuessToggled()
+        viewModel.onGuessToggled()
+        viewModel.onDigit(5)
+        assertEquals(listOf(Act(GameAction.VALUE, digit = 5)), game.acts)
+    }
+
+    @Test
+    fun withGuessOnSetupStillEntersValues() = runTest(mainDispatcherRule.dispatcher) {
+        val viewModel = playingViewModel()
+        viewModel.onGuessToggled()
+        game.report(GameEvent.ModeChanged(GameMode.SETUP, setOf(GameAction.VALUE)))
+        viewModel.onDigit(5)
+        assertEquals(listOf(Act(GameAction.VALUE, digit = 5)), game.acts)
+    }
+
+    @Test
+    fun eraseDeletesTheValue() = runTest(mainDispatcherRule.dispatcher) {
+        viewModel().onErase()
         assertEquals(listOf(Act(GameAction.DEL)), game.acts)
+    }
+
+    @Test
+    fun undoUndoesTheLastMove() = runTest(mainDispatcherRule.dispatcher) {
+        viewModel().onUndo()
+        assertEquals(listOf(Act(GameAction.UNDO)), game.acts)
+    }
+
+    @Test
+    fun rewindGoesBackToTheLastGuess() = runTest(mainDispatcherRule.dispatcher) {
+        viewModel().onRewind()
+        assertEquals(listOf(Act(GameAction.REWIND)), game.acts)
     }
 
     @Test
     fun switchingModesUsesTheSwitchTheModeOffers() = runTest(mainDispatcherRule.dispatcher) {
         val viewModel = viewModel()
-        game.report(GameEvent.ModeChanged("PLAY", setOf(GameAction.INIT)))
+        game.report(GameEvent.ModeChanged(GameMode.PLAY, setOf(GameAction.INIT)))
         viewModel.onSwitchMode()
         assertEquals(listOf(Act(GameAction.INIT)), game.acts)
     }
@@ -192,6 +267,13 @@ class SudokuViewModelTest {
         val repository = GameRepository(game, backgroundScope, mainDispatcherRule.dispatcher)
         val viewModel = SudokuViewModel(repository, FakeLayoutRepository(layouts))
         backgroundScope.launch { viewModel.uiState.collect() }  // for as long as the test runs, as the screen would
+        return viewModel
+    }
+
+    /** A view model whose game is in play, which offers values and guesses */
+    private fun TestScope.playingViewModel(): SudokuViewModel {
+        val viewModel = viewModel()
+        game.report(GameEvent.ModeChanged(GameMode.PLAY, setOf(GameAction.VALUE, GameAction.GUESS)))
         return viewModel
     }
 
