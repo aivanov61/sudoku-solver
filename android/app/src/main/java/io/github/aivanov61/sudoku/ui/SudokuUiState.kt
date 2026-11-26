@@ -43,6 +43,15 @@ data class SudokuUiState(
         get() = guessOn && offers(GameAction.GUESS)
 
     /**
+     * How many places the digit has left for the pad to show: one in each row, less the cells that hold it, whatever
+     * their kind and even in conflict, as the app doesn't know the solution; never fewer than none
+     */
+    fun left(digit: Int): Int {
+        val places = game.size?.rows ?: 0
+        return (places - game.cells.values.count { it.value == digit }).coerceAtLeast(0)
+    }
+
+    /**
      * Whether a new puzzle can be started: once the game has started or failed.  Before that, the game may still be
      * restoring the saved game, which ending it would then delete unasked.
      */

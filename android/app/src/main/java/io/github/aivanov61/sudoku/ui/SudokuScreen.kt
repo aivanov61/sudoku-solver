@@ -52,6 +52,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
@@ -60,6 +61,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -82,7 +84,7 @@ import io.github.aivanov61.sudoku.game.Position
 /** The narrowest the controls can be beside the board: the digit pad's nine buttons, and the space between them */
 private val MIN_CONTROLS_WIDTH = 300.dp
 
-/** How much of its color a disabled control keeps, as Material 3's own components do */
+/** How much of its color a disabled control keeps, as Material 3's own components do; a digit with none left too */
 private const val DISABLED_ALPHA = 0.38f
 
 /**
@@ -257,7 +259,7 @@ private fun Controls(state: SudokuUiState, intents: SudokuIntents, modifier: Mod
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         MessageArea(state.game.message)
         CommandPalette(state, intents)
-        DigitPad(intents::onDigit)
+        DigitPad(state::left, intents::onDigit)
     }
 }
 
@@ -296,8 +298,9 @@ private fun messageColor(kind: MessageKind): Color = when (kind) {
     else -> MaterialTheme.colorScheme.onSurface
 }
 
+/** The nine digits, each with how many places it has left ([left]); every digit can be entered, even with none left */
 @Composable
-private fun DigitPad(onDigit: (Int) -> Unit) {
+private fun DigitPad(left: (Int) -> Int, onDigit: (Int) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         for (digit in 1..9) {
             FilledTonalButton(
@@ -305,9 +308,27 @@ private fun DigitPad(onDigit: (Int) -> Unit) {
                 modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(0.dp),
             ) {
-                Text(digit.toString(), fontSize = 18.sp)
+                DigitKey(digit, left(digit))
             }
         }
+    }
+}
+
+/**
+ * The digit, with the number of its places left small below it, which TalkBack reads as "3 left"; once none are
+ * left, the digit is dimmed and the number left out, its line kept so the pad doesn't move
+ */
+@Composable
+private fun DigitKey(digit: Int, left: Int) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(digit.toString(), fontSize = 18.sp, modifier = Modifier.alpha(if (left > 0) 1f else DISABLED_ALPHA))
+        Text(
+            if (left > 0) left.toString() else "",
+            style = MaterialTheme.typography.labelSmall,
+            modifier = Modifier.clearAndSetSemantics {
+                contentDescription = if (left > 0) "$left left" else "none left"
+            },
+        )
     }
 }
 

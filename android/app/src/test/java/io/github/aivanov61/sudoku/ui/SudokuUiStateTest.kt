@@ -18,7 +18,11 @@
 package io.github.aivanov61.sudoku.ui
 
 import io.github.aivanov61.sudoku.data.GameState
+import io.github.aivanov61.sudoku.game.BoardSize
+import io.github.aivanov61.sudoku.game.CellKind
+import io.github.aivanov61.sudoku.game.CellState
 import io.github.aivanov61.sudoku.game.GameAction
+import io.github.aivanov61.sudoku.game.Position
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -65,4 +69,55 @@ class SudokuUiStateTest {
     fun guessOffIsNotGuessing() {
         assertFalse(SudokuUiState(GameState(offered = setOf(GameAction.GUESS)), guessOn = false).guessing)
     }
+
+    // The digits left
+
+    @Test
+    fun onAnEmptyBoardADigitHasAPlaceInEachRow() {
+        assertEquals(9, boardWith().left(5))
+    }
+
+    @Test
+    fun aValueTakesOneOfItsDigitsPlaces() {
+        assertEquals(8, boardWith(value(5)).left(5))
+    }
+
+    @Test
+    fun aValueTakesNoneOfAnotherDigitsPlaces() {
+        assertEquals(9, boardWith(value(3)).left(5))
+    }
+
+    @Test
+    fun valuesOfEveryKindTakePlaces() {
+        val values = CellKind.entries.map { kind -> value(5, kind) }
+        assertEquals(9 - CellKind.entries.size, boardWith(*values.toTypedArray()).left(5))
+    }
+
+    @Test
+    fun aValueInConflictTakesAPlace() {
+        assertEquals(8, boardWith(value(5).copy(conflicted = true)).left(5))
+    }
+
+    @Test
+    fun moreValuesThanPlacesLeaveNone() {
+        val values = List(10) { value(5) }
+        assertEquals(0, boardWith(*values.toTypedArray()).left(5))
+    }
+
+    @Test
+    fun beforeTheGameHasStartedNoneAreLeft() {
+        assertEquals(0, SudokuUiState().left(5))
+    }
+
+    // Private functions
+
+    /** A started 9x9 game whose first cells, in reading order, are as given, and the rest empty */
+    private fun boardWith(vararg cells: CellState): SudokuUiState {
+        val positions = (0 until 9).flatMap { row -> (0 until 9).map { col -> Position(row, col) } }
+        val all = positions.mapIndexed { index, position -> position to (cells.getOrNull(index) ?: value(null)) }
+        return SudokuUiState(GameState(size = BoardSize(9, 9), cells = all.toMap()))
+    }
+
+    private fun value(digit: Int?, kind: CellKind = CellKind.TYPED): CellState =
+        CellState(digit, kind, false, 0, emptySet(), emptySet())
 }

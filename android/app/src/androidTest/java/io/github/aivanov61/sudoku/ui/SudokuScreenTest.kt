@@ -23,6 +23,8 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -57,6 +59,21 @@ class SudokuScreenTest {
     fun aDigitOnThePadIsEntered() {
         show(startedGame())
         composeRule.onNodeWithText("5").performClick()
+        assertEquals(listOf("onDigit(5)"), intents.calls)
+    }
+
+    @Test
+    fun thePadShowsHowManyPlacesADigitHasLeft() {
+        show(startedGame(5, 5, 3))
+        composeRule.onNode(hasText("5") and hasContentDescription("7 left")).assertExists()
+        composeRule.onNode(hasText("3") and hasContentDescription("8 left")).assertExists()
+        composeRule.onNode(hasText("1") and hasContentDescription("9 left")).assertExists()
+    }
+
+    @Test
+    fun aDigitWithNoneLeftCanStillBeEntered() {
+        show(startedGame(*IntArray(9) { 5 }))
+        composeRule.onNode(hasText("5") and hasContentDescription("none left")).assertIsEnabled().performClick()
         assertEquals(listOf("onDigit(5)"), intents.calls)
     }
 
@@ -181,12 +198,14 @@ class SudokuScreenTest {
     }
 
     /**
-     * A started game on an empty 9x9 board whose cells show no small digits, so the only digits on the screen are
-     * the pad's
+     * A started game on a 9x9 board whose first cells, in reading order, hold the values given, and whose cells show
+     * no small digits, so the only other digits on the screen are the pad's
      */
-    private fun startedGame(): GameState {
-        val empty = CellState(null, CellKind.TYPED, false, 0, emptySet(), emptySet())
+    private fun startedGame(vararg values: Int): GameState {
         val positions = (0 until 9).flatMap { row -> (0 until 9).map { col -> Position(row, col) } }
-        return GameState(size = BoardSize(9, 9), cells = positions.associateWith { empty })
+        val cells = positions.mapIndexed { index, position ->
+            position to CellState(values.getOrNull(index), CellKind.TYPED, false, 0, emptySet(), emptySet())
+        }
+        return GameState(size = BoardSize(9, 9), cells = cells.toMap())
     }
 }

@@ -279,7 +279,7 @@ when done.
 ### MVP 1's phases
 
 Each phase is one Android concept. **Pair** marks the phases Tony writes himself, pair programming with Claude
-(see below); Tony may move others to pair programming at any time.
+(see below); Tony may move others to pair programming at any time, or out of it (as he did phase 9).
 
 | # | Concept | What it brings |
 |---|---|---|
@@ -291,7 +291,7 @@ Each phase is one Android concept. **Pair** marks the phases Tony writes himself
 | 6 | Top app bar and menus | New puzzle |
 | 7 | Compose layout and Material components | The message area, and `inform()` as a dialog |
 | 8 | The same, continued | The command palette, with the value/guess switch |
-| 9 | Derived UI state (**pair**) | The pad, dimmed and with counts |
+| 9 | Derived UI state | The pad, dimmed and with counts |
 | 10 | Building and installing an APK | Finishing touches, and the app on Tony's phone; tag `mvp1` |
 
 Branches are named `mvp<n>-phase<m>-<topic>`, e.g. `mvp1-phase1-data-layer`.
