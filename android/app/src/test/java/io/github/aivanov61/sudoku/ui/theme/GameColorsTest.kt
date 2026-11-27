@@ -129,6 +129,14 @@ class GameColorsTest {
     }
 
     @Test
+    fun everyKindThePadEntersReadsOnItsKeys() {
+        val entered = listOf(CellKind.INITIAL, CellKind.TYPED, CellKind.GUESS)
+        assertReadable(VALUE_CONTRAST) { gameColors, scheme ->
+            entered.map { Triple("$it", gameColors.values.of(it), scheme.secondaryContainer) }  // a filled tonal button's
+        }
+    }
+
+    @Test
     fun everyMessageReadsInTheMessageArea() {
         assertReadable(TEXT_CONTRAST) { gameColors, scheme ->
             MessageKind.entries.map { Triple("$it", gameColors.message(it), scheme.surfaceContainerHigh) }

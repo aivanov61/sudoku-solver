@@ -274,6 +274,12 @@ when done.
 
   A configuration screen built from the game's `ConfigOption`s.
 
+  The game's help in the top app bar's menu, beyond MVP 1's How to play: the solving help, tags and marks.
+
+  An on-screen guide, on for the first game, that walks the player through what to tap to set up and play, in the
+  message area. It can be switched off or back on, and stays as set across games until the app is uninstalled
+  (an app-only setting, in DataStore).
+
 - **MVP 3, more puzzles and games:** a list of saved games (new, resume, delete), and sharing save files with
   the PC.
 
@@ -298,8 +304,9 @@ Each phase is one Android concept. **Pair** marks the phases Tony writes himself
 | 8 | The same, continued | The command palette, with the value/guess switch |
 | 9 | Derived UI state | The pad, dimmed and with counts |
 | 10a | Theming: light and dark, a design system's own colors | The terminal's colors, the selected cell outlined over its related cells |
-| 10b | Building and installing an APK; Gradle's configuration cache | Finishing touches, the configuration cache turned on (if Chaquopy's tasks allow it), and the app on Tony's phone |
-| 10c | An Android project's README: what to install, how to build, and how to put the app on a phone | `android/README.md`, like the repository's own `README.md`, for the Android app in place of the terminal; tag `mvp1` |
+| 10b | Building and installing an APK; Gradle's configuration cache | Finishing touches (thicker block lines, dimmed givens in the dark, the pad and the outline in the color of what the pad enters), the configuration cache turned on (if Chaquopy's tasks allow it), and the app on Tony's phone |
+| 10c | Pushing screens onto the back stack; Up versus Back | How to play and About (the app's version and the copyright) in the top app bar's menu, each a screen of its own |
+| 10d | An Android project's README: what to install, how to build, and how to put the app on a phone | `android/README.md`, like the repository's own `README.md`, for the Android app in place of the terminal; tag `mvp1` |
 
 Branches are named `mvp<n>-phase<m>-<topic>`, e.g. `mvp1-phase1-data-layer`.
 
@@ -315,7 +322,10 @@ Branches are named `mvp<n>-phase<m>-<topic>`, e.g. `mvp1-phase1-data-layer`.
 
    Architecture comes first unless it isn't clear yet; then TDD lets it emerge, and the doc follows as it does.
 3. Write failing tests first, then build it.
-4. Try it on the emulator (and, once the app is far enough along, on the phone).
+
+   The unit tests run at every step. The Compose UI tests take minutes on the emulator, so they run only when a
+   change touches a screen or its tests, and always before a commit.
+4. Try it on the emulator. Tony tries it on his phone once all of a stage's steps are done (10a to 10d for MVP 1).
 5. Commit once Tony has tried it and says so.
 6. Fast-forward main and push only on his word, then delete the branch.
 
@@ -348,15 +358,15 @@ closely; where a terminal color doesn't read on the theme's background, the app 
 
 | Meaning | Terminal | Light theme | Dark theme |
 |---|---|---|---|
-| A given | purple on lavender | purple `#A020F0`, bold, on lavender `#E6E6FA` | the same |
+| A given | purple on lavender | purple `#A020F0`, bold, on lavender `#E6E6FA` | a lighter purple `#D8A8FF`, bold, on lavender dimmed to `#44445A` |
 | A typed value | darkorange3 `#CD6600` | a darker orange, `#9C4A00` | orange `#FFA500` |
 | A guessed value | green | dark green `#1B5E20` | limegreen `#32CD32` |
 | A solved value | lightskyblue `#87CEFA` | a darker sky blue, `#01579B` | lightskyblue |
 | The value just entered that clashes (conflicting) | bold red on bright yellow | red `#C50F1F`, bold, on bright yellow `#F9F1A5` | the same |
 | A value it clashes with (conflicted) | its own color on yellow | its own color, bold, on `#F5D547` | the same, in the light theme's colors |
-| Guess depth | shades of gray, lighter each guess (away from black) | 8 shades, darker each guess, `#F2F2F2` to `#C8C8C8` | 8 shades, lighter each guess, `#242424` to `#4E4E4E` |
-| The selected cell | the terminal's cursor | an outline in the theme's `primary` | the same |
-| The selected cell's block, row and column | (none) | a faint tint of `primary` over the cell's own background | a faint white over it |
+| Guess depth | shades of gray, lighter each guess (away from black) | 8 shades, darker each guess, `#F2F2F2` to `#C8C8C8` | 8 shades, lighter each guess, `#242424` to `#474747`, so a guess still reads on the last under the highlight |
+| The selected cell, and the pad's digits | the terminal's cursor | an outline, and digits, in the color of what the pad enters: a given's in setup, a typed value's in play, a guessed value's while Guess is on | the same |
+| The selected cell's block, row and column | (none) | a faint tint of `primary` over the cell's own background | white at 12% over it, to stand out from the black |
 | Possible values | the terminal's text color | the theme's `onSurfaceVariant` | the same |
 | Grid lines | the terminal's text color | the theme's `onSurface` | the same |
 | Successes and hints | lightskyblue | the solved blue, `#01579B` | lightskyblue |
@@ -448,6 +458,26 @@ This takes the place of `ask_file_name()`'s typed name, which the terminal keeps
 - The `syncSharedAssets` task copies the repository's files the app shows as they are into its assets (read with
   `context.assets`): today the GNU GPL notice, `ui/copyright.txt`, which the terminal shows too. It is wired in
   with the Variant API (`addGeneratedSourceDirectory`), so every step that needs the assets runs it first.
+
+- Gradle's configuration cache is on (`gradle.properties`); Chaquopy 17.2.0's tasks are compatible with it.
+
+- Two build types (`docs/architecture.md`, Building and installing). Debug builds have the id
+  `io.github.aivanov61.sudoku.debug` and the name "Sudoku Solver (debug)" (`app/src/debug/res`), so they install
+  beside the release build, each with its own saved game.
+
+  The release build is shrunk by R8, which can't see Python's calls into Kotlin: `proguard-rules.pro` keeps
+  `PythonScreen`'s methods, and any class Python calls by name needs the same.
+
+- The release is signed with Tony's key. Its path and alias are in his `~/.gradle/gradle.properties`
+  (`sudoku.release.storeFile`, `sudoku.release.keyAlias`), and its password is never on disk: he types it into his
+  own terminal (`$env:SUDOKU_RELEASE_PASSWORD = Read-Host ... -MaskInput`), then runs
+  `.\gradlew.bat :app:installRelease`, which installs on every connected device.
+
+  A build asked for a release reads the password, and isn't kept in the configuration cache. Never read that
+  file or the keystore, and never ask for the password: Tony builds the signed release himself.
+
+- The launcher icon is an adaptive vector icon in `res/drawable` (`ic_launcher*`): a 3x3 grid with a given's 7, and
+  SOLVED across it.
 
 - The emulator is `Pixel_5` (x86_64). The first start after an install takes several seconds, while Chaquopy
   unpacks Python.

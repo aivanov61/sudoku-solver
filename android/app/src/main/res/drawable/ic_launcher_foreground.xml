@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The launcher icon's foreground: the grid, with the SOLVED stamp over it -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_launcher_grid" />
+    <item android:drawable="@drawable/ic_launcher_solved" />
+</layer-list>

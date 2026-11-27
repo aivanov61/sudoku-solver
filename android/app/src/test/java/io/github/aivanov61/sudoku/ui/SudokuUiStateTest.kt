@@ -23,6 +23,7 @@ import io.github.aivanov61.sudoku.game.CellKind
 import io.github.aivanov61.sudoku.game.CellState
 import io.github.aivanov61.sudoku.game.Conflict
 import io.github.aivanov61.sudoku.game.GameAction
+import io.github.aivanov61.sudoku.game.GameMode
 import io.github.aivanov61.sudoku.game.Position
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -69,6 +70,24 @@ class SudokuUiStateTest {
     @Test
     fun guessOffIsNotGuessing() {
         assertFalse(SudokuUiState(GameState(offered = setOf(GameAction.GUESS)), guessOn = false).guessing)
+    }
+
+    // What the pad enters
+
+    @Test
+    fun inSetupThePadEntersGivens() {
+        assertEquals(CellKind.INITIAL, SudokuUiState(GameState(mode = GameMode.SETUP, offered = setOf(GameAction.VALUE))).entering)
+    }
+
+    @Test
+    fun inPlayThePadEntersValues() {
+        assertEquals(CellKind.TYPED, SudokuUiState(GameState(mode = GameMode.PLAY, offered = setOf(GameAction.GUESS))).entering)
+    }
+
+    @Test
+    fun whileGuessingThePadEntersGuesses() {
+        val state = SudokuUiState(GameState(mode = GameMode.PLAY, offered = setOf(GameAction.GUESS)), guessOn = true)
+        assertEquals(CellKind.GUESS, state.entering)
     }
 
     // The digits left

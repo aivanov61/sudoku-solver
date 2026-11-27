@@ -22,6 +22,9 @@ plugins {
     alias(libs.plugins.chaquopy)
 }
 
+// The build was asked for a release (assembleRelease, installRelease, ...), which is signed with the release key
+val buildsRelease = gradle.startParameter.taskNames.any { it.contains("Release") }
+
 android {
     namespace = "io.github.aivanov61.sudoku"
     compileSdk {
@@ -44,11 +47,37 @@ android {
         }
     }
 
+    signingConfigs {
+        // The release key, the app's identity: kept outside the repository, and named in the developer's own
+        // ~/.gradle/gradle.properties. Its password is never on disk: it is read, only for a build that asks for a
+        // release, from the environment of the terminal that builds it. Without them, the release build is unsigned.
+        val releaseKeystore = providers.gradleProperty("sudoku.release.storeFile")
+        val releasePassword = providers.environmentVariable("SUDOKU_RELEASE_PASSWORD")
+        if (buildsRelease && releaseKeystore.isPresent && releasePassword.isPresent) {
+            create("release") {
+                storeFile = file(releaseKeystore.get())
+                storePassword = releasePassword.get()
+                keyAlias = providers.gradleProperty("sudoku.release.keyAlias").get()
+                keyPassword = releasePassword.get()  // a PKCS12 keystore's key has the keystore's password
+            }
+        }
+    }
+
     buildTypes {
         debug {
+            // Another app to Android, so it is installed beside the release build, with a saved game of its own
+            applicationIdSuffix = ".debug"
+
             // Measure what the unit tests cover, with JaCoCo: gradle :app:createDebugUnitTestCoverageReport writes
             // the report to app/build/reports/coverage/test/debug/index.html
             enableUnitTestCoverage = true
+        }
+        release {
+            // R8 removes the code and resources nothing uses, and optimizes the rest
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
@@ -58,6 +87,14 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+}
+
+// The configuration cache would keep the release key's password on disk, so a build that may sign a release isn't
+// kept in it: a task that can't be cached, in the build, has Gradle not store the build's configuration.
+if (buildsRelease) {
+    tasks.matching { it.name == "packageRelease" }.configureEach {
+        notCompatibleWithConfigurationCache("It is given the release key's password, which mustn't be kept on disk")
     }
 }
 

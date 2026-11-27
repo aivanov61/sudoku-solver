@@ -95,6 +95,10 @@ private const val DISABLED_ALPHA = 0.38f
 /** How thick the selected cell's outline is */
 private val SELECTED_OUTLINE = 2.5.dp
 
+/** How thick the lines are between the blocks, and between the cells within a block */
+private val BLOCK_EDGE = 2.5.dp
+private val CELL_EDGE = 0.5.dp
+
 /**
  * The game's screen: the top app bar, the board, the message area, the command palette and the digit pad; and
  * the game's yes/no questions and messages to be seen, and New puzzle's question, as dialogs.  It only shows the
@@ -159,7 +163,7 @@ private fun Stacked(state: SudokuUiState, intents: SudokuIntents, topBar: @Compo
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 val boardModifier = Modifier.weight(1f, fill = false).aspectRatio(size.cols.toFloat() / size.rows)
-                Board(size, state.game, intents::onCellTapped, boardModifier)
+                Board(size, state.game, state.entering, intents::onCellTapped, boardModifier)
                 Controls(state, intents, Modifier.fillMaxWidth())
             }
         }
@@ -174,9 +178,13 @@ private fun Notice(text: String, modifier: Modifier, color: Color = Color.Unspec
     }
 }
 
-/** The cells, the selected one outlined, and it and its related cells highlighted */
+/**
+ * The cells, the selected one outlined in the color of the kind of value the pad enters ([entering]), and it and its
+ * related cells highlighted
+ */
 @Composable
-private fun Board(size: BoardSize, game: GameState, onTap: (Position) -> Unit, modifier: Modifier) {
+private fun Board(size: BoardSize, game: GameState, entering: CellKind, onTap: (Position) -> Unit, modifier: Modifier) {
+    val outline = SudokuTheme.gameColors.values.of(entering)
     Column(modifier) {
         for (row in 0 until size.rows) {
             Row(Modifier.weight(1f)) {
@@ -188,23 +196,23 @@ private fun Board(size: BoardSize, game: GameState, onTap: (Position) -> Unit, m
                         .clickable { onTap(position) }
                         .semantics { contentDescription = "Row ${row + 1}, column ${col + 1}" }
                     val isSelected = position == game.selected
-                    Cell(game.cells[position], isSelected, isSelected || position in game.related, modifier)
+                    Cell(game.cells[position], if (isSelected) outline else null, isSelected || position in game.related, modifier)
                 }
             }
         }
     }
 }
 
-/** A cell in the game's colors, with the highlight when [isRelated] to the selected one, and outlined when [isSelected] */
+/** A cell in the game's colors, with the highlight when [isRelated] to the selected one, and outlined in [outline] if any */
 @Composable
-private fun Cell(cell: CellState?, isSelected: Boolean, isRelated: Boolean, modifier: Modifier) {
+private fun Cell(cell: CellState?, outline: Color?, isRelated: Boolean, modifier: Modifier) {
     val colors = MaterialTheme.colorScheme
     val gameColors = SudokuTheme.gameColors
     Box(
         modifier = modifier
             .background(gameColors.background(cell, isRelated))
             .drawBehind { drawEdges(cell?.edges.orEmpty(), colors.onSurface) }
-            .then(if (isSelected) Modifier.border(SELECTED_OUTLINE, colors.primary) else Modifier),
+            .then(if (outline != null) Modifier.border(SELECTED_OUTLINE, outline) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         val value = cell?.value
@@ -224,7 +232,7 @@ private fun Cell(cell: CellState?, isSelected: Boolean, isRelated: Boolean, modi
 /** Thin lines around every cell, thick ones on the sides that are block edges */
 private fun DrawScope.drawEdges(edges: Set<Edge>, color: Color) {
     val (w, h) = size.width to size.height
-    fun width(edge: Edge) = (if (edge in edges) 2.dp else 0.5.dp).toPx()
+    fun width(edge: Edge) = (if (edge in edges) BLOCK_EDGE else CELL_EDGE).toPx()
     drawLine(color, Offset(0f, 0f), Offset(w, 0f), width(Edge.TOP))
     drawLine(color, Offset(0f, h), Offset(w, h), width(Edge.BOTTOM))
     drawLine(color, Offset(0f, 0f), Offset(0f, h), width(Edge.LEFT))
@@ -255,7 +263,7 @@ private fun Controls(state: SudokuUiState, intents: SudokuIntents, modifier: Mod
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         MessageArea(state.game.message)
         CommandPalette(state, intents)
-        DigitPad(state::left, intents::onDigit)
+        DigitPad(state::left, SudokuTheme.gameColors.values.of(state.entering), intents::onDigit)
     }
 }
 
@@ -290,9 +298,12 @@ private fun MessageArea(status: GameMessage) {
 @Composable
 private fun messageColor(kind: MessageKind): Color = SudokuTheme.gameColors.message(kind)
 
-/** The nine digits, each with how many places it has left ([left]); every digit can be entered, even with none left */
+/**
+ * The nine digits, in the [color] of the kind of value they enter, each with how many places it has left ([left]);
+ * every digit can be entered, even with none left
+ */
 @Composable
-private fun DigitPad(left: (Int) -> Int, onDigit: (Int) -> Unit) {
+private fun DigitPad(left: (Int) -> Int, color: Color, onDigit: (Int) -> Unit) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         for (digit in 1..9) {
             FilledTonalButton(
@@ -300,20 +311,20 @@ private fun DigitPad(left: (Int) -> Int, onDigit: (Int) -> Unit) {
                 modifier = Modifier.weight(1f),
                 contentPadding = PaddingValues(0.dp),
             ) {
-                DigitKey(digit, left(digit))
+                DigitKey(digit, left(digit), color)
             }
         }
     }
 }
 
 /**
- * The digit, with the number of its places left small below it, which TalkBack reads as "3 left"; once none are
- * left, the digit is dimmed and the number left out, its line kept so the pad doesn't move
+ * The digit in its [color], with the number of its places left small below it in the key's own, which TalkBack reads
+ * as "3 left"; once none are left, the digit is dimmed and the number left out, its line kept so the pad doesn't move
  */
 @Composable
-private fun DigitKey(digit: Int, left: Int) {
+private fun DigitKey(digit: Int, left: Int, color: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(digit.toString(), fontSize = 18.sp, modifier = Modifier.alpha(if (left > 0) 1f else DISABLED_ALPHA))
+        Text(digit.toString(), fontSize = 18.sp, color = color, modifier = Modifier.alpha(if (left > 0) 1f else DISABLED_ALPHA))
         Text(
             if (left > 0) left.toString() else "",
             style = MaterialTheme.typography.labelSmall,
@@ -432,7 +443,7 @@ private fun SideBySide(
     Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         val ratio = size.cols.toFloat() / size.rows
         val boardModifier = Modifier.fillMaxHeight().aspectRatio(ratio, matchHeightConstraintsFirst = true)
-        Board(size, state.game, intents::onCellTapped, boardModifier)
+        Board(size, state.game, state.entering, intents::onCellTapped, boardModifier)
         Column(
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.CenterHorizontally,

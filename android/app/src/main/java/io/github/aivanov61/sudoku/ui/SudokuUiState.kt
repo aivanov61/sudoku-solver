@@ -18,7 +18,9 @@
 package io.github.aivanov61.sudoku.ui
 
 import io.github.aivanov61.sudoku.data.GameState
+import io.github.aivanov61.sudoku.game.CellKind
 import io.github.aivanov61.sudoku.game.GameAction
+import io.github.aivanov61.sudoku.game.GameMode
 
 /**
  * Everything the game screen shows: the game as last reported, and what the screen works out from it; and the
@@ -41,6 +43,14 @@ data class SudokuUiState(
     /** Whether the pad enters guesses: Guess is on, and the mode offers guesses (so never in setup) */
     val guessing: Boolean
         get() = guessOn && offers(GameAction.GUESS)
+
+    /** The kind of value the pad enters, whose color the pad and the selected cell's outline take: givens in setup */
+    val entering: CellKind
+        get() = when {
+            game.mode == GameMode.SETUP -> CellKind.INITIAL
+            guessing -> CellKind.GUESS
+            else -> CellKind.TYPED
+        }
 
     /**
      * How many places the digit has left for the pad to show: one in each row, less the cells that hold it, whatever

@@ -102,10 +102,12 @@ data class GameColors(
         )
 
         val Dark = Light.copy(
-            guessShades = grays(first = 0x24, step = 6),  // lighter each guess, away from the dark surface, as in the terminal
-            highlight = Color.White.copy(alpha = 0.08f),
+            guessShades = grays(first = 0x24, step = 5),  // lighter each guess, away from the dark surface, as in the terminal;
+            // the last dark enough that a guess still reads on it under the highlight
+            givenBackground = Color(0xFF44445A),  // lavender, dimmed to stand off the dark surface as much as it does the light one
+            highlight = Color.White.copy(alpha = 0.12f),
             values = ValueColors(
-                given = LIGHT_VALUES.given,  // on its lavender in both themes
+                given = Color(0xFFD8A8FF),  // the terminal's purple, lighter, to read on the dimmed lavender
                 typed = Color(0xFFFFA500),  // orange
                 guessed = Color(0xFF32CD32),  // limegreen
                 solved = Color(0xFF87CEFA),  // lightskyblue

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The launcher icon, adaptive (Android 8 and later): the phone crops it to its own shape, and draws the themed icon
+    from the monochrome layer (Android 13 and later), which leaves out the stamp, as it can't be read in one color.
+    https://developer.android.com/develop/ui/views/launch/icon_design_adaptive
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@color/ic_launcher_background" />
+    <foreground android:drawable="@drawable/ic_launcher_foreground" />
+    <monochrome android:drawable="@drawable/ic_launcher_grid" />
+</adaptive-icon>

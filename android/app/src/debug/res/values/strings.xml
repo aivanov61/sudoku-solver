@@ -1,0 +1,4 @@
+<resources>
+    <!-- The debug build's own name, in place of main's, so it can be told from the release build beside it -->
+    <string name="app_name">Sudoku Solver (debug)</string>
+</resources>

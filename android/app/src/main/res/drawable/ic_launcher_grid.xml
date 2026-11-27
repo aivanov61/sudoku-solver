@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The launcher icon's grid: a 3x3 box with a given's digit, in a given's purple. A launcher icon is drawn on 108dp,
+    of which the phone may crop all but the middle 66dp, so the grid stays within it. It is the foreground's lower
+    layer, and alone the themed (monochrome) icon, where the phone draws it in one color of its own.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- The box, and the lines between its cells -->
+    <path
+        android:pathData="M30,30 H78 V78 H30 Z"
+        android:strokeWidth="2.5"
+        android:strokeColor="#A020F0"
+        android:strokeLineJoin="round" />
+    <path
+        android:pathData="M46,30 V78 M62,30 V78 M30,46 H78 M30,62 H78"
+        android:strokeWidth="1"
+        android:strokeColor="#A020F0" />
+    <!-- The digit, a 7, in the top left cell -->
+    <path
+        android:pathData="M34.5,33.5 H41.5 L37,42.5"
+        android:strokeWidth="2.2"
+        android:strokeColor="#A020F0"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+</vector>
