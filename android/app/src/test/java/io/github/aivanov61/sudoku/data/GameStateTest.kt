@@ -20,6 +20,7 @@ package io.github.aivanov61.sudoku.data
 import io.github.aivanov61.sudoku.game.BoardSize
 import io.github.aivanov61.sudoku.game.CellKind
 import io.github.aivanov61.sudoku.game.CellState
+import io.github.aivanov61.sudoku.game.Conflict
 import io.github.aivanov61.sudoku.game.Edge
 import io.github.aivanov61.sudoku.game.GameAction
 import io.github.aivanov61.sudoku.game.GameMode
@@ -49,8 +50,11 @@ class GameStateTest {
     }
 
     @Test
-    fun selectingMovesTheSelection() {
-        assertEquals(Position(2, 7), start.after(GameEvent.Selected(Position(2, 7))).selected)
+    fun selectingMovesTheSelectionAndItsRelatedCells() {
+        val related = setOf(Position(2, 8), Position(3, 7))
+        val state = start.after(GameEvent.Selected(Position(2, 7), related))
+        assertEquals(Position(2, 7), state.selected)
+        assertEquals(related, state.related)
     }
 
     @Test
@@ -108,8 +112,8 @@ class GameStateTest {
     }
 
     private companion object {
-        val EMPTY = CellState(null, CellKind.TYPED, false, 0, (1..9).toSet(), setOf(Edge.TOP))
-        val GIVEN_5 = CellState(5, CellKind.INITIAL, false, 0, emptySet(), setOf(Edge.TOP))
+        val EMPTY = CellState(null, CellKind.TYPED, Conflict.NONE, 0, (1..9).toSet(), setOf(Edge.TOP))
+        val GIVEN_5 = CellState(5, CellKind.INITIAL, Conflict.NONE, 0, emptySet(), setOf(Edge.TOP))
         val WARNING = GameMessage("Cannot change an initial value while playing.", MessageKind.WARNING)
     }
 }

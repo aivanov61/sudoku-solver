@@ -18,7 +18,9 @@
 package io.github.aivanov61.sudoku.ui
 
 import androidx.annotation.DrawableRes
+import android.content.res.Configuration
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -74,18 +76,24 @@ import io.github.aivanov61.sudoku.data.GameState
 import io.github.aivanov61.sudoku.game.BoardSize
 import io.github.aivanov61.sudoku.game.CellKind
 import io.github.aivanov61.sudoku.game.CellState
+import io.github.aivanov61.sudoku.game.Conflict
 import io.github.aivanov61.sudoku.game.Edge
 import io.github.aivanov61.sudoku.game.GameAction
 import io.github.aivanov61.sudoku.game.GameMessage
 import io.github.aivanov61.sudoku.game.GameMode
 import io.github.aivanov61.sudoku.game.MessageKind
 import io.github.aivanov61.sudoku.game.Position
+import io.github.aivanov61.sudoku.ui.theme.GameColors
+import io.github.aivanov61.sudoku.ui.theme.SudokuTheme
 
 /** The narrowest the controls can be beside the board: the digit pad's nine buttons, and the space between them */
 private val MIN_CONTROLS_WIDTH = 300.dp
 
 /** How much of its color a disabled control keeps, as Material 3's own components do; a digit with none left too */
 private const val DISABLED_ALPHA = 0.38f
+
+/** How thick the selected cell's outline is */
+private val SELECTED_OUTLINE = 2.5.dp
 
 /**
  * The game's screen: the top app bar, the board, the message area, the command palette and the digit pad; and
@@ -151,7 +159,7 @@ private fun Stacked(state: SudokuUiState, intents: SudokuIntents, topBar: @Compo
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 val boardModifier = Modifier.weight(1f, fill = false).aspectRatio(size.cols.toFloat() / size.rows)
-                Board(size, state.game.cells, state.game.selected, intents::onCellTapped, boardModifier)
+                Board(size, state.game, intents::onCellTapped, boardModifier)
                 Controls(state, intents, Modifier.fillMaxWidth())
             }
         }
@@ -166,14 +174,9 @@ private fun Notice(text: String, modifier: Modifier, color: Color = Color.Unspec
     }
 }
 
+/** The cells, the selected one outlined, and it and its related cells highlighted */
 @Composable
-private fun Board(
-    size: BoardSize,
-    cells: Map<Position, CellState>,
-    selected: Position,
-    onTap: (Position) -> Unit,
-    modifier: Modifier,
-) {
+private fun Board(size: BoardSize, game: GameState, onTap: (Position) -> Unit, modifier: Modifier) {
     Column(modifier) {
         for (row in 0 until size.rows) {
             Row(Modifier.weight(1f)) {
@@ -184,19 +187,24 @@ private fun Board(
                         .fillMaxSize()
                         .clickable { onTap(position) }
                         .semantics { contentDescription = "Row ${row + 1}, column ${col + 1}" }
-                    Cell(cells[position], position == selected, modifier)
+                    val isSelected = position == game.selected
+                    Cell(game.cells[position], isSelected, isSelected || position in game.related, modifier)
                 }
             }
         }
     }
 }
 
+/** A cell in the game's colors, with the highlight when [isRelated] to the selected one, and outlined when [isSelected] */
 @Composable
-private fun Cell(cell: CellState?, isSelected: Boolean, modifier: Modifier) {
+private fun Cell(cell: CellState?, isSelected: Boolean, isRelated: Boolean, modifier: Modifier) {
+    val colors = MaterialTheme.colorScheme
+    val gameColors = SudokuTheme.gameColors
     Box(
         modifier = modifier
-            .background(cellBackground(cell, isSelected))
-            .drawBehind { drawEdges(cell?.edges.orEmpty()) },
+            .background(gameColors.background(cell, isRelated))
+            .drawBehind { drawEdges(cell?.edges.orEmpty(), colors.onSurface) }
+            .then(if (isSelected) Modifier.border(SELECTED_OUTLINE, colors.primary) else Modifier),
         contentAlignment = Alignment.Center,
     ) {
         val value = cell?.value
@@ -205,46 +213,34 @@ private fun Cell(cell: CellState?, isSelected: Boolean, modifier: Modifier) {
             value != null -> Text(
                 value.toString(),
                 fontSize = 22.sp,
-                fontWeight = if (cell.kind == CellKind.INITIAL) FontWeight.Bold else FontWeight.Normal,
-                color = valueColor(cell),
+                fontWeight = if (cell.kind == CellKind.INITIAL || cell.conflict != Conflict.NONE) FontWeight.Bold else FontWeight.Normal,
+                color = gameColors.value(cell),
             )
-            else -> PossibleValues(cell.possible)
+            else -> PossibleValues(cell.possible, colors.onSurfaceVariant)
         }
     }
 }
 
-private fun cellBackground(cell: CellState?, isSelected: Boolean): Color = when {
-    isSelected -> Palette.SELECTED
-    else -> cell?.let { GuessShades.of(it.depth) } ?: Color.White
-}
-
 /** Thin lines around every cell, thick ones on the sides that are block edges */
-private fun DrawScope.drawEdges(edges: Set<Edge>) {
+private fun DrawScope.drawEdges(edges: Set<Edge>, color: Color) {
     val (w, h) = size.width to size.height
     fun width(edge: Edge) = (if (edge in edges) 2.dp else 0.5.dp).toPx()
-    drawLine(Color.Black, Offset(0f, 0f), Offset(w, 0f), width(Edge.TOP))
-    drawLine(Color.Black, Offset(0f, h), Offset(w, h), width(Edge.BOTTOM))
-    drawLine(Color.Black, Offset(0f, 0f), Offset(0f, h), width(Edge.LEFT))
-    drawLine(Color.Black, Offset(w, 0f), Offset(w, h), width(Edge.RIGHT))
-}
-
-private fun valueColor(cell: CellState): Color = when {
-    cell.conflicted -> Palette.CONFLICT
-    cell.kind == CellKind.INITIAL -> Color.Black
-    cell.kind == CellKind.SOLVED -> Palette.SOLVED
-    else -> Palette.TYPED
+    drawLine(color, Offset(0f, 0f), Offset(w, 0f), width(Edge.TOP))
+    drawLine(color, Offset(0f, h), Offset(w, h), width(Edge.BOTTOM))
+    drawLine(color, Offset(0f, 0f), Offset(0f, h), width(Edge.LEFT))
+    drawLine(color, Offset(w, 0f), Offset(w, h), width(Edge.RIGHT))
 }
 
 /** The possible values in small digits, each in its place of a 3x3 square */
 @Composable
-private fun PossibleValues(possible: Set<Int>) {
+private fun PossibleValues(possible: Set<Int>, color: Color) {
     Column(Modifier.fillMaxSize().padding(2.dp)) {
         for (first in listOf(1, 4, 7)) {
             Row(Modifier.weight(1f)) {
                 for (digit in first until first + 3) {
                     Box(Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
                         if (digit in possible) {
-                            Text(digit.toString(), fontSize = 9.sp, lineHeight = 9.sp, color = Color.Gray)
+                            Text(digit.toString(), fontSize = 9.sp, lineHeight = 9.sp, color = color)
                         }
                     }
                 }
@@ -292,11 +288,7 @@ private fun MessageArea(status: GameMessage) {
 
 /** The color of a message of the kind, the same on the status line and in a dialog */
 @Composable
-private fun messageColor(kind: MessageKind): Color = when (kind) {
-    MessageKind.WARNING -> Palette.WARNING
-    MessageKind.SUCCESS, MessageKind.HINT -> Palette.SOLVED
-    else -> MaterialTheme.colorScheme.onSurface
-}
+private fun messageColor(kind: MessageKind): Color = SudokuTheme.gameColors.message(kind)
 
 /** The nine digits, each with how many places it has left ([left]); every digit can be entered, even with none left */
 @Composable
@@ -440,7 +432,7 @@ private fun SideBySide(
     Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         val ratio = size.cols.toFloat() / size.rows
         val boardModifier = Modifier.fillMaxHeight().aspectRatio(ratio, matchHeightConstraintsFirst = true)
-        Board(size, state.game.cells, state.game.selected, intents::onCellTapped, boardModifier)
+        Board(size, state.game, intents::onCellTapped, boardModifier)
         Column(
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -490,22 +482,35 @@ private fun NewPuzzleDialog(onAnswer: (Boolean) -> Unit) {
 }
 
 @Preview(name = "Portrait", showBackground = true, widthDp = 393, heightDp = 851)
+@Preview(name = "Portrait, dark", showBackground = true, widthDp = 393, heightDp = 851, uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Preview(name = "Landscape", showBackground = true, widthDp = 851, heightDp = 393)
 @Composable
 private fun SudokuScreenPreview() {
-    val empty = CellState(null, CellKind.TYPED, false, 0, (1..9).toSet(), emptySet())
-    val cells = (0 until 9).flatMap { row -> (0 until 9).map { col -> Position(row, col) to empty } }.toMap() +
-        (Position(4, 4) to empty.copy(value = 5, kind = CellKind.INITIAL, possible = emptySet()))
+    val empty = CellState(null, CellKind.TYPED, Conflict.NONE, 0, (1..9).toSet(), emptySet())
+    val value = empty.copy(possible = emptySet())
+    val cells = (0 until 9).flatMap { row -> (0 until 9).map { col -> Position(row, col) to empty } }.toMap() + mapOf(
+        Position(4, 4) to value.copy(value = 5, kind = CellKind.INITIAL),
+        Position(4, 0) to value.copy(value = 3),
+        Position(0, 4) to value.copy(value = 7, kind = CellKind.SOLVED),
+        Position(7, 7) to value.copy(value = 1, kind = CellKind.GUESS, depth = 1),
+        Position(7, 8) to value.copy(value = 2, kind = CellKind.GUESS, depth = GameColors.GUESS_SHADES),
+        Position(1, 1) to value.copy(value = 8, conflict = Conflict.CONFLICTED),
+        Position(1, 7) to value.copy(value = 8, kind = CellKind.GUESS, conflict = Conflict.CONFLICTING, depth = 2),
+    )
+    val selected = Position(4, 4)
+    val related = (0 until 9).flatMap { listOf(Position(4, it), Position(it, 4)) } +
+        (3..5).flatMap { row -> (3..5).map { col -> Position(row, col) } }
     val game = GameState(
         size = BoardSize(9, 9),
         cells = cells,
-        selected = Position(4, 4),
+        selected = selected,
+        related = related.toSet() - selected,
         message = GameMessage("A hint", MessageKind.HINT),
         mode = GameMode.SETUP,
         offered = setOf(GameAction.PLAY, GameAction.VALUE, GameAction.DEL),
     )
     val state = SudokuUiState(game)
-    MaterialTheme {
+    SudokuTheme {
         Surface {
             SudokuScreen(state, PreviewIntents)
         }
@@ -527,11 +532,3 @@ private object PreviewIntents : SudokuIntents {
     override fun onNewPuzzleAnswer(yes: Boolean) {}
 }
 
-/** The screen's own colors */
-private object Palette {
-    val SELECTED = Color(0xFFFFF59D)
-    val CONFLICT = Color(0xFFD32F2F)
-    val SOLVED = Color(0xFF0288D1)
-    val TYPED = Color(0xFF1A237E)
-    val WARNING = Color(0xFFB26A00)
-}

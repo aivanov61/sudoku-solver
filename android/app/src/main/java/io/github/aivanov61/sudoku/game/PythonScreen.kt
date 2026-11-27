@@ -27,7 +27,7 @@ class PythonScreen(private val onEvent: (GameEvent) -> Unit) {
         col: Int,
         value: Int,
         kind: String,
-        conflicted: Boolean,
+        conflict: String,
         depth: Int,
         possible: IntArray,
         edges: Array<String>,
@@ -35,7 +35,7 @@ class PythonScreen(private val onEvent: (GameEvent) -> Unit) {
         val cell = CellState(
             value = value.takeIf { it > 0 },
             kind = fromGameName<CellKind>(kind) ?: CellKind.TYPED,
-            conflicted = conflicted,
+            conflict = fromGameName<Conflict>(conflict) ?: Conflict.NONE,
             depth = depth,
             possible = possible.toSet(),
             edges = edges.mapNotNull { fromGameName<Edge>(it) }.toSet(),
@@ -43,7 +43,9 @@ class PythonScreen(private val onEvent: (GameEvent) -> Unit) {
         onEvent(GameEvent.CellChanged(Position(row, col), cell))
     }
 
-    fun showSelected(row: Int, col: Int) = onEvent(GameEvent.Selected(Position(row, col)))
+    /** The selected cell, and each cell related to it as a [row, col] pair */
+    fun showSelected(row: Int, col: Int, related: Array<IntArray>) =
+        onEvent(GameEvent.Selected(Position(row, col), related.map { (relatedRow, relatedCol) -> Position(relatedRow, relatedCol) }.toSet()))
 
     fun showStatus(text: String, kind: String) = onEvent(GameEvent.StatusChanged(message(text, kind)))
 

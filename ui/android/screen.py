@@ -26,16 +26,17 @@ class Screen(Protocol):
     never holds on to the game's objects; it turns each call into a typed event for the app's view model.
     """
 
-    def showCell(self, row: int, col: int, value: int, kind: str, conflicted: bool, depth: int, possible: list[int], edges: list[str]) -> None:
+    def showCell(self, row: int, col: int, value: int, kind: str, conflict: str, depth: int, possible: list[int], edges: list[str]) -> None:
         """
         Show the cell as it is now: its value (0 for none), how the value got there (a CellAttrs primary attribute,
-        "" for a typed value or none), whether it is in conflict, the guess depth it was entered at (0 for none),
-        the possible values it shows, and which of its sides are block edges (Border's names)
+        "" for a typed value or none), its conflict mark (a CellAttrs conflict attribute, "" for none), the guess
+        depth it was entered at (0 for none), the possible values it shows, and which of its sides are block edges
+        (Border's names)
         """
         ...
 
-    def showSelected(self, row: int, col: int) -> None:
-        """Show which cell is selected: the one values go into"""
+    def showSelected(self, row: int, col: int, related: list[list[int]]) -> None:
+        """Show which cell is selected, the one values go into, and the [row, col] of each cell related to it"""
         ...
 
     def showStatus(self, text: str, kind: str) -> None:

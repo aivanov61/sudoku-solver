@@ -57,6 +57,10 @@ class Board(ABC):
     def cell(self, row: int, col: int) -> Cell:
         return self._block_at(row, col).cell(row, col)
 
+    def related_cells(self, row: int, col: int) -> list[Cell]:
+        """Return every other cell in the same block, row or column as the cell at row, col, as its block finds them"""
+        return list(self._block_at(row, col).related_cells(row, col))
+
     def cells_where(self, condition: Callable[[Cell], object]) -> list[Cell]:
         """Return the cells for which condition(cell) is true, left to right and top to bottom"""
         cells = (cell for block in self._blocks() for cell in block.cells_where(condition))

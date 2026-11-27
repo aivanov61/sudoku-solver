@@ -101,6 +101,11 @@ new game on the same layout gets a new entry, with new ViewModels, rather than t
 The app's name, "Sudoku Solver", is in one place, `app_name` (`res/values/strings.xml`): the launcher shows it,
 and the splash and the top app bar read it with `stringResource()`. "Sudoku" still names the puzzle.
 
+Every screen is shown in `SudokuTheme` (`ui/theme/`): Material 3's light or dark color scheme, as the phone is set,
+and `GameColors`, the terminal's colors made readable on each (see Design decisions, Colors), which it provides
+through a `CompositionLocal`. The selected cell is outlined, over a highlight of its related cells (its block, row
+and column), which the game reports with it (`Puzzle.related_cells()`), as only the game knows a layout's blocks.
+
 The game in progress is auto-saved to the app's own storage (`filesDir/autosave.json`, an ordinary save file):
 the `Game` entry saves it whenever the app is stopped (`LifecycleEventEffect(ON_STOP)`), since Android may then end
 the process without calling it, and the game restores itself from it when it starts. So a game survives Home, Back,
@@ -181,8 +186,8 @@ The Kotlin code, in three packages, wired together by the app's container:
   Erase and Guess, each an icon with its label, disabled when the mode doesn't offer it.
 
   Guess is one-shot, like Shift: the next digit or command turns it off. Whether it is on is the ViewModel's
-  (`guessOn`), so it stays on through a rotation. A guess's cell is shaded by its depth in `GuessShades`, whose
-  number the app gives the game, which warns when guesses go deeper than the last shade.
+  (`guessOn`), so it stays on through a rotation. A guess's cell is shaded by its depth in `GameColors`' guess shades,
+  whose number the app gives the game, which warns when guesses go deeper than the last shade.
 
   The game adapts to the space it is given (`BoxWithConstraints`), not to the device's orientation: the top app bar
   above the board and the controls (the message area of fixed height, the palette and the pad) below it, the board
@@ -292,7 +297,9 @@ Each phase is one Android concept. **Pair** marks the phases Tony writes himself
 | 7 | Compose layout and Material components | The message area, and `inform()` as a dialog |
 | 8 | The same, continued | The command palette, with the value/guess switch |
 | 9 | Derived UI state | The pad, dimmed and with counts |
-| 10 | Building and installing an APK | Finishing touches, and the app on Tony's phone; tag `mvp1` |
+| 10a | Theming: light and dark, a design system's own colors | The terminal's colors, the selected cell outlined over its related cells |
+| 10b | Building and installing an APK; Gradle's configuration cache | Finishing touches, the configuration cache turned on (if Chaquopy's tasks allow it), and the app on Tony's phone |
+| 10c | An Android project's README: what to install, how to build, and how to put the app on a phone | `android/README.md`, like the repository's own `README.md`, for the Android app in place of the terminal; tag `mvp1` |
 
 Branches are named `mvp<n>-phase<m>-<topic>`, e.g. `mvp1-phase1-data-layer`.
 
@@ -328,6 +335,45 @@ It proved the board, a tap and a digit through `puzzle.handle()` on the game thr
 answered through the queue.
 
 ## Design decisions
+
+### Colors (decided 2026-11-26, built in step 10a and MVP 2)
+
+The app keeps the terminal's colors (`ui/terminal/display_attrs.py`, `terminal_ui.py`), so a game reads the same
+on the PC and the phone. The terminal's plain `red`, `yellow` and `green` are taken as Windows Terminal's default
+scheme (Campbell) shows them.
+
+The app follows the phone's light or dark setting. The terminal draws on black, so the dark theme matches it
+closely; where a terminal color doesn't read on the theme's background, the app uses the nearest one that does
+(`GameColorsTest` checks every value on every background it can be drawn on).
+
+| Meaning | Terminal | Light theme | Dark theme |
+|---|---|---|---|
+| A given | purple on lavender | purple `#A020F0`, bold, on lavender `#E6E6FA` | the same |
+| A typed value | darkorange3 `#CD6600` | a darker orange, `#9C4A00` | orange `#FFA500` |
+| A guessed value | green | dark green `#1B5E20` | limegreen `#32CD32` |
+| A solved value | lightskyblue `#87CEFA` | a darker sky blue, `#01579B` | lightskyblue |
+| The value just entered that clashes (conflicting) | bold red on bright yellow | red `#C50F1F`, bold, on bright yellow `#F9F1A5` | the same |
+| A value it clashes with (conflicted) | its own color on yellow | its own color, bold, on `#F5D547` | the same, in the light theme's colors |
+| Guess depth | shades of gray, lighter each guess (away from black) | 8 shades, darker each guess, `#F2F2F2` to `#C8C8C8` | 8 shades, lighter each guess, `#242424` to `#4E4E4E` |
+| The selected cell | the terminal's cursor | an outline in the theme's `primary` | the same |
+| The selected cell's block, row and column | (none) | a faint tint of `primary` over the cell's own background | a faint white over it |
+| Possible values | the terminal's text color | the theme's `onSurfaceVariant` | the same |
+| Grid lines | the terminal's text color | the theme's `onSurface` | the same |
+| Successes and hints | lightskyblue | the solved blue, `#01579B` | lightskyblue |
+| Every other message | yellow | dark amber `#7A5900` | yellow `#C19C00` |
+| A grayed-out entry | gray50 | Material's disabled dimming (38%) | the same |
+
+To come in MVP 2, in the same way:
+
+| Meaning | Terminal | The app |
+|---|---|---|
+| A tagged cell's small digits, and so a "must be" mark | lightskyblue | the solved blue |
+| The remaining possible values of a cell that has lost some | yellow | the messages' yellow |
+| The values ruled out | red | red, struck through (see the next decision) |
+| The outline of a house a hint points at | yellow | an outline in the messages' yellow |
+| A value a hint points at, where it can still go | yellow on black | the messages' yellow, on a dark chip |
+| A value a hint points at, where it can't go | white on red | white on red |
+| A value with no place left, while a warning says so | white on red | white on red |
 
 ### An empty cell's small digits (decided 2026-11-13, built in MVP 2)
 

@@ -34,11 +34,13 @@ import io.github.aivanov61.sudoku.data.GameState
 import io.github.aivanov61.sudoku.game.BoardSize
 import io.github.aivanov61.sudoku.game.CellKind
 import io.github.aivanov61.sudoku.game.CellState
+import io.github.aivanov61.sudoku.game.Conflict
 import io.github.aivanov61.sudoku.game.GameAction
 import io.github.aivanov61.sudoku.game.GameMode
 import io.github.aivanov61.sudoku.game.GameMessage
 import io.github.aivanov61.sudoku.game.MessageKind
 import io.github.aivanov61.sudoku.game.Position
+import io.github.aivanov61.sudoku.ui.theme.SudokuTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -194,7 +196,7 @@ class SudokuScreenTest {
 
     private fun show(game: GameState, askingNewPuzzle: Boolean = false, guessOn: Boolean = false) {
         val state = SudokuUiState(game, askingNewPuzzle, guessOn = guessOn)
-        composeRule.setContent { SudokuScreen(state, intents) }
+        composeRule.setContent { SudokuTheme { SudokuScreen(state, intents) } }
     }
 
     /**
@@ -204,7 +206,7 @@ class SudokuScreenTest {
     private fun startedGame(vararg values: Int): GameState {
         val positions = (0 until 9).flatMap { row -> (0 until 9).map { col -> Position(row, col) } }
         val cells = positions.mapIndexed { index, position ->
-            position to CellState(values.getOrNull(index), CellKind.TYPED, false, 0, emptySet(), emptySet())
+            position to CellState(values.getOrNull(index), CellKind.TYPED, Conflict.NONE, 0, emptySet(), emptySet())
         }
         return GameState(size = BoardSize(9, 9), cells = cells.toMap())
     }

@@ -100,6 +100,10 @@ class Puzzle:
     def force_quit_(self) -> None:
         self.is_playing = False
 
+    def related_cells(self, row: int, col: int) -> list[tuple[int, int]]:
+        """Return the (row, col) of every other cell in the same block, row or column as the cell at row, col"""
+        return [(cell.row, cell.col) for cell in self.__board.related_cells(row, col)]
+
     # Interface required for handle(): one method per Action
 
     def quit_(self) -> None:

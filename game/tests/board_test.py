@@ -60,6 +60,12 @@ class TestBoard(TestCase):
         self.assertEqual(self.__position(self.board.first_cell_where(has_value)), (3, 5))
         self.assertIsNone(self.board.first_cell_where(lambda cell: cell.value() == 9))
 
+    def test_related_cells_are_the_other_cells_in_its_block_row_and_column(self):
+        positions = {self.__position(cell) for cell in self.board.related_cells(4, 7)}
+        block = {(row, col) for row in range(3, 6) for col in range(6, 9)}
+        line = {(4, col) for col in range(9)} | {(row, 7) for row in range(9)}
+        self.assertEqual(positions, (block | line) - {(4, 7)})
+
     def test_cells_in_row_are_that_rows_cells_left_to_right(self):
         positions = [self.__position(cell) for cell in self.board.cells_in_row(4)]
         self.assertEqual(positions, [(4, col) for col in range(9)])

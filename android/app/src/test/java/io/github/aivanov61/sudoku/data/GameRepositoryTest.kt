@@ -38,7 +38,7 @@ class GameRepositoryTest {
     @Test
     fun theStateIsWhatTheGameReported() = runTest {
         val repository = repository()
-        game.report(GameEvent.Started(BoardSize(9, 9)), GameEvent.Selected(Position(3, 1)))
+        game.report(GameEvent.Started(BoardSize(9, 9)), GameEvent.Selected(Position(3, 1), emptySet()))
         runCurrent()  // let the repository's collecting coroutine take in the events
         assertEquals(BoardSize(9, 9), repository.state.value.size)
         assertEquals(Position(3, 1), repository.state.value.selected)

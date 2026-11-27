@@ -21,6 +21,7 @@ import io.github.aivanov61.sudoku.data.GameState
 import io.github.aivanov61.sudoku.game.BoardSize
 import io.github.aivanov61.sudoku.game.CellKind
 import io.github.aivanov61.sudoku.game.CellState
+import io.github.aivanov61.sudoku.game.Conflict
 import io.github.aivanov61.sudoku.game.GameAction
 import io.github.aivanov61.sudoku.game.Position
 import org.junit.Assert.assertEquals
@@ -95,7 +96,7 @@ class SudokuUiStateTest {
 
     @Test
     fun aValueInConflictTakesAPlace() {
-        assertEquals(8, boardWith(value(5).copy(conflicted = true)).left(5))
+        assertEquals(8, boardWith(value(5).copy(conflict = Conflict.CONFLICTING)).left(5))
     }
 
     @Test
@@ -119,5 +120,5 @@ class SudokuUiStateTest {
     }
 
     private fun value(digit: Int?, kind: CellKind = CellKind.TYPED): CellState =
-        CellState(digit, kind, false, 0, emptySet(), emptySet())
+        CellState(digit, kind, Conflict.NONE, 0, emptySet(), emptySet())
 }

@@ -61,7 +61,14 @@ class TestAndroidUI(TestCase):
         game = self.__game()
         self.ui.act("select", row=2, col=7)
         self.__play(game)
-        self.assertEqual(self.screen.showSelected.call_args_list, [call(0, 0), call(2, 7), call(2, 7)])
+        selected = [called.args[:2] for called in self.screen.showSelected.call_args_list]
+        self.assertEqual(selected, [(0, 0), (2, 7), (2, 7)])
+
+    def test_the_selected_cell_is_shown_with_its_related_cells_as_row_col_pairs(self):
+        game = self.__game()
+        game.related_cells.side_effect = lambda row, col: [(row, col + 1), (row + 1, col)]
+        self.__play(game)
+        self.screen.showSelected.assert_called_with(0, 0, [[0, 1], [1, 0]])
 
     def test_play_tells_the_screen_once_the_game_is_over(self):
         self.__play(self.__game())
@@ -134,21 +141,28 @@ class TestAndroidUI(TestCase):
         Puzzle(board, RecordingUI())
         board.cell(0, 0).set(5, (CellAttrs.INITIAL,))
         self.ui.cell_changed(board.cell(0, 1))
-        self.screen.showCell.assert_called_with(0, 1, 0, "", False, 0, [1, 2, 3, 4, 6, 7, 8, 9], ["top"])
+        self.screen.showCell.assert_called_with(0, 1, 0, "", "", 0, [1, 2, 3, 4, 6, 7, 8, 9], ["top"])
 
     def test_a_filled_cell_is_shown_with_its_value_kind_and_block_edges(self):
         board = Board3x3()
         Puzzle(board, RecordingUI())
         board.cell(0, 0).set(5, (CellAttrs.INITIAL,))
         self.ui.cell_changed(board.cell(0, 0))
-        self.screen.showCell.assert_called_with(0, 0, 5, CellAttrs.INITIAL, False, 0, [], ["top", "left"])
+        self.screen.showCell.assert_called_with(0, 0, 5, CellAttrs.INITIAL, "", 0, [], ["top", "left"])
 
     def test_a_cell_is_shown_with_its_conflict_and_guess_depth(self):
         board = Board3x3()
         Puzzle(board, RecordingUI())
         board.cell(8, 8).set(3, (CellAttrs.GUESS, CellAttrs.CONFLICTING, {"depth": 2}))
         self.ui.cell_changed(board.cell(8, 8))
-        self.screen.showCell.assert_called_with(8, 8, 3, CellAttrs.GUESS, True, 2, [], ["right", "bottom"])
+        self.screen.showCell.assert_called_with(8, 8, 3, CellAttrs.GUESS, CellAttrs.CONFLICTING, 2, [], ["right", "bottom"])
+
+    def test_a_cell_a_value_clashes_with_is_shown_as_conflicted(self):
+        board = Board3x3()
+        Puzzle(board, RecordingUI())
+        board.cell(8, 8).set(3, (CellAttrs.CONFLICTED,))
+        self.ui.cell_changed(board.cell(8, 8))
+        self.assertEqual(self.screen.showCell.call_args.args[4], CellAttrs.CONFLICTED)
 
     def test_guesses_within_the_shades_of_gray_are_not_warned_of(self):
         for depth in range(self.SHADES + 1):
@@ -227,6 +241,7 @@ class TestAndroidUI(TestCase):
         game = MagicMock()
         game.is_playing = True
         game.selected_cell = (0, 0)
+        game.related_cells.return_value = []
 
         def stop():
             game.is_playing = False

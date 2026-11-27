@@ -33,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.aivanov61.sudoku.R
+import io.github.aivanov61.sudoku.ui.theme.SudokuTheme
 
 /**
  * The game's splash screen, which informs the player about the copyright and GNU GPL.  The splash screen shows
@@ -63,7 +64,7 @@ fun SplashScreen(text: String, onTap: () -> Unit) {
 @Preview(showBackground = true)
 @Composable
 private fun SplashScreenPreview() {
-    MaterialTheme {
+    SudokuTheme {
         Surface {
             SplashScreen(
                 text = """Hello, World!

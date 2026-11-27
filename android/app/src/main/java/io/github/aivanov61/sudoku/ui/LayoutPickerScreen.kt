@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.aivanov61.sudoku.data.Layout
+import io.github.aivanov61.sudoku.ui.theme.SudokuTheme
 
 /**
  * The choice of puzzle layout: a list of the layouts, each with its label.  A broken one is shown, with its notes,
@@ -82,7 +83,7 @@ private const val DIMMED = 0.38f
 @Preview(showBackground = true)
 @Composable
 private fun LayoutPickerScreenPreview() {
-    MaterialTheme {
+    SudokuTheme {
         Surface {
             LayoutPickerScreen(
                 LayoutPickerUiState(
@@ -100,7 +101,7 @@ private fun LayoutPickerScreenPreview() {
 @Preview(showBackground = true)
 @Composable
 private fun LayoutPickerScreenNonePreview() {
-    MaterialTheme {
+    SudokuTheme {
         Surface {
             LayoutPickerScreen(
                 LayoutPickerUiState(listOf(Layout("Broken", "Broken (it has no blocks)", canPick = false))),

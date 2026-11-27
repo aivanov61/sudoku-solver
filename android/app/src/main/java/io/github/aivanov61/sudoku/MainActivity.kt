@@ -22,7 +22,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -46,6 +45,7 @@ import io.github.aivanov61.sudoku.ui.SplashScreen
 import io.github.aivanov61.sudoku.ui.SplashViewModel
 import io.github.aivanov61.sudoku.ui.SudokuScreen
 import io.github.aivanov61.sudoku.ui.SudokuViewModel
+import io.github.aivanov61.sudoku.ui.theme.SudokuTheme
 
 /** The app's one startup activity: it hosts [SudokuApp] */
 class MainActivity : ComponentActivity() {
@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            MaterialTheme {
+            SudokuTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     SudokuApp()
                 }

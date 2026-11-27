@@ -30,6 +30,7 @@ data class GameState(
     val size: BoardSize? = null,  // null until the game has started
     val cells: Map<Position, CellState> = emptyMap(),
     val selected: Position = Position(0, 0),
+    val related: Set<Position> = emptySet(),  // the cells related to the selected one: in its block, row or column
     val message: GameMessage = GameMessage.NONE,
     val dialogs: List<GameDialog> = emptyList(),  // the dialogs the game is waiting on, the newest last
     val mode: GameMode? = null,  // null until the game reports a mode the app knows
@@ -47,7 +48,7 @@ data class GameState(
     fun after(event: GameEvent): GameState = when (event) {
         is GameEvent.Started -> copy(size = event.size)
         is GameEvent.CellChanged -> copy(cells = cells + (event.position to event.cell))
-        is GameEvent.Selected -> copy(selected = event.position)
+        is GameEvent.Selected -> copy(selected = event.position, related = event.related)
         is GameEvent.StatusChanged -> copy(message = event.message)
         is GameEvent.Informed -> copy(dialogs = dialogs + GameDialog.Inform(event.message))
         is GameEvent.Asked -> copy(dialogs = dialogs + GameDialog.Confirm(event.question))

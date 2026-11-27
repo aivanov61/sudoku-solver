@@ -55,6 +55,16 @@ enum class CellKind(override val gameName: String) : GameNamed {
     SOLVED("solved"),
 }
 
+/**
+ * A cell's conflict mark (game/cell_attrs.py): CONFLICTING, the value just entered clashes with a related cell, or
+ * CONFLICTED, a value the one just entered clashes with; NONE for no conflict
+ */
+enum class Conflict(override val gameName: String) : GameNamed {
+    NONE(""),
+    CONFLICTING("conflicting"),
+    CONFLICTED("conflicted"),
+}
+
 /** A side of a cell (game/border.py) */
 enum class Edge(override val gameName: String) : GameNamed {
     TOP("top"),

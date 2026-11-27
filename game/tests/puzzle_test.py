@@ -87,6 +87,11 @@ class TestPuzzle(TestCase):
         self.puzzle.select_(6, 3)
         self.assertEqual(self.puzzle.selected_cell, (6, 3))
 
+    def test_related_cells_are_the_positions_of_the_cells_in_the_same_block_row_and_column(self):
+        related = self.puzzle.related_cells(0, 0)
+        self.assertEqual(len(related), 20)
+        self.assertEqual(set(related), {(0, col) for col in range(1, 9)} | {(row, 0) for row in range(1, 9)} | {(1, 1), (1, 2), (2, 1), (2, 2)})
+
     # Entering values
 
     def test_entering_a_value_reports_the_changed_cells(self):

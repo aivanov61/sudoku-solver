@@ -28,31 +28,43 @@ class PythonScreenTest {
 
     @Test
     fun anEmptyCellHasNoValueAndItsPossibleValues() {
-        screen.showCell(0, 1, 0, "", false, 0, intArrayOf(1, 2, 3), arrayOf("top"))
-        val cell = CellState(null, CellKind.TYPED, false, 0, setOf(1, 2, 3), setOf(Edge.TOP))
+        screen.showCell(0, 1, 0, "", "", 0, intArrayOf(1, 2, 3), arrayOf("top"))
+        val cell = CellState(null, CellKind.TYPED, Conflict.NONE, 0, setOf(1, 2, 3), setOf(Edge.TOP))
         assertEquals(listOf(GameEvent.CellChanged(Position(0, 1), cell)), events)
     }
 
     @Test
     fun aFilledCellHasItsValueKindConflictDepthAndEdges() {
-        screen.showCell(8, 8, 3, "guess", true, 2, intArrayOf(), arrayOf("right", "bottom"))
-        val cell = CellState(3, CellKind.GUESS, true, 2, emptySet(), setOf(Edge.RIGHT, Edge.BOTTOM))
+        screen.showCell(8, 8, 3, "guess", "conflicting", 2, intArrayOf(), arrayOf("right", "bottom"))
+        val cell = CellState(3, CellKind.GUESS, Conflict.CONFLICTING, 2, emptySet(), setOf(Edge.RIGHT, Edge.BOTTOM))
         assertEquals(listOf(GameEvent.CellChanged(Position(8, 8), cell)), events)
     }
 
     @Test
+    fun aCellAValueClashesWithIsConflicted() {
+        screen.showCell(0, 0, 4, "", "conflicted", 0, intArrayOf(), arrayOf())
+        assertEquals(Conflict.CONFLICTED, (events.single() as GameEvent.CellChanged).cell.conflict)
+    }
+
+    @Test
+    fun aConflictTheAppDoesNotKnowIsShownAsNone() {
+        screen.showCell(0, 0, 4, "", "disputed", 0, intArrayOf(), arrayOf())
+        assertEquals(Conflict.NONE, (events.single() as GameEvent.CellChanged).cell.conflict)
+    }
+
+    @Test
     fun aKindTheAppDoesNotKnowIsShownAsTyped() {
-        screen.showCell(0, 0, 4, "pencilled", false, 0, intArrayOf(), arrayOf())
-        val cell = CellState(4, CellKind.TYPED, false, 0, emptySet(), emptySet())
+        screen.showCell(0, 0, 4, "pencilled", "", 0, intArrayOf(), arrayOf())
+        val cell = CellState(4, CellKind.TYPED, Conflict.NONE, 0, emptySet(), emptySet())
         assertEquals(listOf(GameEvent.CellChanged(Position(0, 0), cell)), events)
     }
 
     // Everything else
 
     @Test
-    fun theSelectedCellIsReportedByPosition() {
-        screen.showSelected(2, 7)
-        assertEquals(listOf(GameEvent.Selected(Position(2, 7))), events)
+    fun theSelectedCellIsReportedByPositionWithItsRelatedCells() {
+        screen.showSelected(2, 7, arrayOf(intArrayOf(2, 8), intArrayOf(3, 7)))
+        assertEquals(listOf(GameEvent.Selected(Position(2, 7), setOf(Position(2, 8), Position(3, 7)))), events)
     }
 
     @Test

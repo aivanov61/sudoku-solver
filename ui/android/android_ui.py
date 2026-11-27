@@ -21,7 +21,7 @@ from queue import Queue
 from game.actions import Action, Mode
 from game.border import Border
 from game.cell import Cell
-from game.cell_attrs import CellAttrs
+from game.cell_attrs import Attributes, CellAttrs
 from game.config_option import ConfigOption
 from game.puzzle import Puzzle
 from game.user_interface import Message, MessageKind, Step
@@ -69,10 +69,10 @@ class AndroidUI:
         self.__game = game
         game.render()
         self.__auto_save.restore(game)
-        self.__screen.showSelected(*game.selected_cell)
+        self.__show_selected(game)
         while game.is_playing:
             self.__next_request().in_play(game)
-            self.__screen.showSelected(*game.selected_cell)
+            self.__show_selected(game)
         self.__auto_save.forget()
         self.__screen.gameOver()
 
@@ -132,16 +132,22 @@ class AndroidUI:
 
     def cell_changed(self, cell: Cell) -> None:
         attrs = cell.attr()
-        kind = next((attr for attr in attrs if attr in CellAttrs.PRIMARY), "")
-        conflicted = any(attr in CellAttrs.CONFLICT_ATTRS for attr in attrs)
+        kind = self.__attr_among(attrs, CellAttrs.PRIMARY)
+        conflict = self.__attr_among(attrs, CellAttrs.CONFLICT_ATTRS)
         depth = next((attr["depth"] for attr in attrs if isinstance(attr, dict)), 0)
         possible = sorted(cell.shown_possible())
-        self.__screen.showCell(cell.row, cell.col, cell.value() or 0, kind, conflicted, depth, possible, self.__edges(cell.borders))
+        self.__screen.showCell(cell.row, cell.col, cell.value() or 0, kind, conflict, depth, possible, self.__edges(cell.borders))
 
     def mode_changed(self, mode: Mode, actions: tuple[Action, ...]) -> None:
         self.__screen.modeChanged(mode.value, [action.value for action in actions])
 
     # Private functions
+
+    def __show_selected(self, game: Puzzle) -> None:
+        """Show the selected cell, with the [row, col] of each cell related to it"""
+        row, col = game.selected_cell
+        related = [[related_row, related_col] for related_row, related_col in game.related_cells(row, col)]
+        self.__screen.showSelected(row, col, related)
 
     def __next_request(self) -> Request:
         """The first of the actions held while a dialog waited, else the next request"""
@@ -168,6 +174,11 @@ class AndroidUI:
             yes = self.__requests.get().while_waiting(game, self.__held)
         self.__screen.questionAnswered()
         return yes
+
+    @staticmethod
+    def __attr_among(attrs: Attributes, names: tuple[str, ...]) -> str:
+        """The cell's attribute that is one of the names, or "" for none"""
+        return next((attr for attr in attrs if isinstance(attr, str) and attr in names), "")
 
     @staticmethod
     def __edges(borders: Border) -> list[str]:

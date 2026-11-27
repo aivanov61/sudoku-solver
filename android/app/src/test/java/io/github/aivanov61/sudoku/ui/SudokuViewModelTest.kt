@@ -24,6 +24,7 @@ import io.github.aivanov61.sudoku.data.Layout
 import io.github.aivanov61.sudoku.game.BoardSize
 import io.github.aivanov61.sudoku.game.CellKind
 import io.github.aivanov61.sudoku.game.CellState
+import io.github.aivanov61.sudoku.game.Conflict
 import io.github.aivanov61.sudoku.game.FakeGame
 import io.github.aivanov61.sudoku.game.FakeGame.Act
 import io.github.aivanov61.sudoku.game.GameAction
@@ -52,7 +53,7 @@ class SudokuViewModelTest {
     @Test
     fun whatTheGameReportsBecomesTheScreensState() = runTest(mainDispatcherRule.dispatcher) {
         val viewModel = viewModel()
-        game.report(GameEvent.Started(BoardSize(9, 9)), GameEvent.Selected(Position(3, 1)))
+        game.report(GameEvent.Started(BoardSize(9, 9)), GameEvent.Selected(Position(3, 1), emptySet()))
         assertEquals(BoardSize(9, 9), viewModel.uiState.value.game.size)
         assertEquals(Position(3, 1), viewModel.uiState.value.game.selected)
     }
@@ -288,7 +289,7 @@ class SudokuViewModelTest {
     }
 
     /** A cell with the value, or none */
-    private fun cellWith(value: Int?) = CellState(value, CellKind.TYPED, false, 0, emptySet(), emptySet())
+    private fun cellWith(value: Int?) = CellState(value, CellKind.TYPED, Conflict.NONE, 0, emptySet(), emptySet())
 
     /** A layout with the name, which can be picked */
     private fun layout(name: String) = Layout(name, label = name, canPick = true)

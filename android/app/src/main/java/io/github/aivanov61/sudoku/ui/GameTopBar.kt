@@ -24,7 +24,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -37,6 +36,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import io.github.aivanov61.sudoku.R
+import io.github.aivanov61.sudoku.ui.theme.SudokuTheme
 
 /**
  * The game screen's Material 3 top app bar: the app's name, and the app-level menu behind the overflow button (⋮).
@@ -83,7 +83,7 @@ private fun OverflowMenu(canStartNew: Boolean, onNewPuzzle: () -> Unit) {
 @Preview
 @Composable
 private fun GameTopBarPreview() {
-    MaterialTheme {
+    SudokuTheme {
         GameTopBar(canStartNew = true, onNewPuzzle = {})
     }
 }

@@ -25,8 +25,8 @@ sealed interface GameEvent {
     /** The cell at the position is now as given */
     data class CellChanged(val position: Position, val cell: CellState) : GameEvent
 
-    /** The cell at the position is selected: the one values go into */
-    data class Selected(val position: Position) : GameEvent
+    /** The cell at the position is selected, the one values go into, and these are the cells related to it */
+    data class Selected(val position: Position, val related: Set<Position>) : GameEvent
 
     /** The status line now shows the message */
     data class StatusChanged(val message: GameMessage) : GameEvent
@@ -56,13 +56,13 @@ data class Position(val row: Int, val col: Int)
 data class BoardSize(val rows: Int, val cols: Int)
 
 /**
- * A cell as the game shows it: its value (null for none), how the value got there, whether it is in conflict,
- * the guess depth it was entered at (0 for none), the possible values it shows, and which of its sides are block edges
+ * A cell as the game shows it: its value (null for none), how the value got there, its conflict mark, the guess
+ * depth it was entered at (0 for none), the possible values it shows, and which of its sides are block edges
  */
 data class CellState(
     val value: Int?,
     val kind: CellKind,
-    val conflicted: Boolean,
+    val conflict: Conflict,
     val depth: Int,
     val possible: Set<Int>,
     val edges: Set<Edge>,
