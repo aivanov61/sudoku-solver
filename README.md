@@ -4,6 +4,8 @@ Play sudoku puzzles in the terminal - written in python.  The program shows each
 cell's possible values and highlights conflicts as you play, and can point out
 obvious moves (n) or make them all at once (a), and save and restore puzzles (s, o).
 
+The same game can also be played on an Android phone: see [android/README.md](android/README.md).
+
 ## Requirements
 
 Once this git package is downloaded into a directory, the only two requirements are:

@@ -1,29 +1,18 @@
 # The Android app's architecture
 
 How the app's code maps onto MVVM and Modern Android App Architecture, and how the parts talk to each other.
-Updated at the start of each phase and as it goes; this is **MVP 1, step 10d** (finishing touches from playing
-it; derived UI state, continued).
+Updated at the start of each phase and as it goes; this is **MVP 1, step 10e** (an Android project's README, and
+handing the app out as an APK).
 
-Step 10d changes only the game feature (see [The game feature](#the-game-feature)):
-
-- **Warnings name the app's controls.** The game's warnings that say how to switch modes ask the user interface
-  how (`switching_to(mode)`, a new method of the port): the terminal says "ESC goes back to setup", the app "tap
-  Setup to go back to setup".
-
-- **Typed values are green and guesses orange**, in the terminal too, and so the pad and the outline.
-
-- **The related cells are outlined, not tinted.** The selected cell and its related cells, taken together, are
-  outlined by a band just inside the grid's lines, in the color of what the pad enters; the grid's lines stay as
-  they are. Which sides of a cell are outlined is derived UI state, `SudokuUiState.outlined(position)`, unit tested.
-
-- **The controls split left and right**, below the message area and the mode switch: the commands two by two
-  (Rewind beside Guess) on the left, and the digit pad, 3x3, on the right.
+Step 10e changes no code. It adds `android/README.md` (what the app is, with screenshots, how to install it from a
+GitHub Release, how to build and test it, and where the code is) and the GitHub Release itself, tagged `mvp1`,
+with the signed `app-release.apk` attached (see [Building and installing](#building-and-installing)).
 
 The app is drawn as an overview, then one section per feature (a screen with its ViewModel and data), each
 through the same layers. Features share only the app's container and the activity that hosts their screens.
 
-Colors: green is new in step 10d, amber is changed in step 10d, uncolored is unchanged. A `*` marks a part not
-written yet. The diagrams step 10d doesn't change are as step 10c left them, with its colors taken off.
+Colors: green is new in step 10e, amber is changed in step 10e, uncolored is unchanged. A `*` marks a part not
+written yet. The diagrams step 10e doesn't change are as step 10d left them, with its colors taken off.
 
 Arrows: solid arrows are calls; dotted arrows are data flowing back, or a class implementing an interface.
 
@@ -76,9 +65,6 @@ flowchart TB
     AppContainer -- "gameRepository(layout), layoutRepository" --> GameFeature
     GameFeature -- "saves, restores, deletes" --> AutoSaveFile
     SplashFeature -- "reads its layout" --> AutoSaveFile
-
-    classDef changed fill:#b45309,stroke:#fcd34d,stroke-width:2px,color:#ffffff
-    class Game,GameFeature changed
 ```
 
 | Class | What it does |
@@ -328,9 +314,6 @@ flowchart TB
     PythonScreen -. "GameEvent" .-> PythonGame
     PythonGame -- "Catalog.board(layout), see the layouts feature" --> AndroidUI
     SaveFile -- "writes, reads" --> AutoSaveFile
-
-    classDef changed fill:#b45309,stroke:#fcd34d,stroke-width:2px,color:#ffffff
-    class Controls,CommandPalette,DigitPad,BoardCells,GameColors,SudokuUiState,AndroidUI,Puzzle changed
 ```
 
 Everything from `GameRepository` down is MVVM's **Model**, which Google's guide splits into the data layer and
@@ -843,7 +826,11 @@ flowchart LR
     Password --> Release
     Debug -- "app-debug.apk" --> Emulator["the emulator, and the tests"]
     Release -- "app-release.apk" --> Phone["Tony's phone"]
-    Release -- "app-release.apk, step 10e" --> GitHub["a GitHub Release *(10e)"]
+    Release -- "app-release.apk" --> GitHub["a GitHub Release, tagged mvp1 *"]
+    GitHub -- "downloaded, installed" --> Phones["anyone's phone"]
+
+    classDef new fill:#15803d,stroke:#86efac,stroke-width:2px,color:#ffffff
+    class GitHub,Phones new
 
 ```
 
@@ -914,3 +901,14 @@ flowchart LR
 
   Each new version needs a higher `versionCode`, or Android refuses to replace the one installed; `versionName` is
   what Settings shows.
+
+- **A GitHub Release** *, added: a git tag (`mvp1`) with the signed `app-release.apk` attached, the app's public
+  download outside the Play Store. Installing it is sideloading: the phone asks to let the browser or Files app
+  "Install unknown apps", and Play Protect may warn about an app it hasn't seen
+  ([Alternative distribution](https://developer.android.com/studio/publish#publishing-unknown)).
+
+  The tag points at the source the APK was built from, in the public repository, which is how the release offers
+  the source the GNU GPL asks for.
+
+  Later versions get their own tags and releases, each APK signed with the same key, so it installs over the last
+  one and keeps its saved game.
