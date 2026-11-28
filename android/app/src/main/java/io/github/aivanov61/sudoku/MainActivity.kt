@@ -38,6 +38,9 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import io.github.aivanov61.sudoku.ui.AboutScreen
+import io.github.aivanov61.sudoku.ui.AboutViewModel
+import io.github.aivanov61.sudoku.ui.HowToPlayScreen
 import io.github.aivanov61.sudoku.ui.LayoutPickerScreen
 import io.github.aivanov61.sudoku.ui.LayoutPickerViewModel
 import io.github.aivanov61.sudoku.ui.Route
@@ -64,8 +67,9 @@ class MainActivity : ComponentActivity() {
     /**
      * The Sudoku app: the copyright splash screen, then the layout picker when there isn't exactly one layout to play,
      * then the game, and after New puzzle the picker or the game again.  Navigation 3 shows the last route on the back
-     * stack; each step replaces the route before it, so Back leaves the app.  Each route's entry gets its own view models, which live
-     * as long as the route is on the back stack.
+     * stack; each of those steps replaces the route before it, so Back leaves the app.  How to play and About are
+     * pushed on top of the game instead, and Up or Back pops them, back to the game as it was.  Each route's entry
+     * gets its own view models, which live as long as the route is on the back stack.
      */
     @Composable
     private fun SudokuApp() {
@@ -80,7 +84,16 @@ class MainActivity : ComponentActivity() {
             entryProvider = entryProvider {
                 entry<Route.Splash> { Splash(onEnded = backStack::replaceLast) }
                 entry<Route.LayoutPicker> { LayoutPicker(onPick = { backStack.replaceLast(Route.Game(it)) }) }
-                entry<Route.Game> { route -> Game(route.layout, onEnded = backStack::replaceLast) }
+                entry<Route.Game> { route ->
+                    Game(
+                        route.layout,
+                        onEnded = backStack::replaceLast,
+                        onHowToPlay = { backStack.add(Route.HowToPlay) },
+                        onAbout = { backStack.add(Route.About) },
+                    )
+                }
+                entry<Route.HowToPlay> { HowToPlayScreen(onUp = { backStack.removeLastOrNull() }) }
+                entry<Route.About> { About(onUp = { backStack.removeLastOrNull() }) }
             },
         )
     }
@@ -105,15 +118,24 @@ class MainActivity : ComponentActivity() {
     /**
      * The game on the [layout] named, saved whenever the app is stopped (Home, Back, another app, a rotation), as
      * Android may then end the app's process without calling it; once the player has started a new puzzle and the
-     * game has ended, [onEnded] is given the route that follows it
+     * game has ended, [onEnded] is given the route that follows it.  The menu's How to play and About call
+     * [onHowToPlay] and [onAbout].
      */
     @Composable
-    private fun Game(layout: String, onEnded: (Route) -> Unit) {
+    private fun Game(layout: String, onEnded: (Route) -> Unit, onHowToPlay: () -> Unit, onAbout: () -> Unit) {
         val game: SudokuViewModel = viewModel(factory = SudokuViewModel.factory(layout))
         LifecycleEventEffect(Lifecycle.Event.ON_STOP) { game.onStopped() }
         val state by game.uiState.collectAsStateWithLifecycle()
         GoOnOnceKnown(state.next, onEnded)
-        SudokuScreen(state, game)
+        SudokuScreen(state, game, onHowToPlay, onAbout)
+    }
+
+    /** About: the app's version, from the build, and the copyright notice its view model reads; Up calls [onUp] */
+    @Composable
+    private fun About(onUp: () -> Unit) {
+        val about: AboutViewModel = viewModel(factory = AboutViewModel.Factory)
+        val state by about.uiState.collectAsStateWithLifecycle()
+        AboutScreen(BuildConfig.VERSION_NAME, state.notice, onUp)
     }
 
     /**

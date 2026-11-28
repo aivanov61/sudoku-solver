@@ -87,6 +87,8 @@ android {
     }
     buildFeatures {
         compose = true
+        // Generates the BuildConfig class, whose VERSION_NAME (versionName above) the About screen shows
+        buildConfig = true
     }
 }
 

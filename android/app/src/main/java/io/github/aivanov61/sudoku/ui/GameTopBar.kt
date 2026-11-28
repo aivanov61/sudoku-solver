@@ -40,16 +40,17 @@ import io.github.aivanov61.sudoku.ui.theme.SudokuTheme
 
 /**
  * The game screen's Material 3 top app bar: the app's name, and the app-level menu behind the overflow button (⋮).
- * New puzzle is enabled once a new puzzle [canStartNew]; choosing it calls [onNewPuzzle].  Material 3 still marks
+ * New puzzle is enabled once a new puzzle [canStartNew]; choosing it calls [onNewPuzzle].  How to play and About
+ * call [onHowToPlay] and [onAbout], which push their screens on top of the game.  Material 3 still marks
  * its app bars experimental, though they are its standard ones.  It goes inside content the screen has already
  * padded clear of the system bars (it may be beside the board), so it adds no insets of its own.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GameTopBar(canStartNew: Boolean, onNewPuzzle: () -> Unit) {
+fun GameTopBar(canStartNew: Boolean, onNewPuzzle: () -> Unit, onHowToPlay: () -> Unit, onAbout: () -> Unit) {
     TopAppBar(
         title = { Text(stringResource(R.string.app_name)) },
-        actions = { OverflowMenu(canStartNew, onNewPuzzle) },
+        actions = { OverflowMenu(canStartNew, onNewPuzzle, onHowToPlay, onAbout) },
         windowInsets = WindowInsets(0.dp),
     )
 }
@@ -61,29 +62,38 @@ fun GameTopBar(canStartNew: Boolean, onNewPuzzle: () -> Unit) {
  * UI element state with no logic behind it, which Google's guide on state hoisting lets a composable keep.
  */
 @Composable
-private fun OverflowMenu(canStartNew: Boolean, onNewPuzzle: () -> Unit) {
+private fun OverflowMenu(canStartNew: Boolean, onNewPuzzle: () -> Unit, onHowToPlay: () -> Unit, onAbout: () -> Unit) {
     var isOpen by remember { mutableStateOf(false) }
     Box {  // the menu opens anchored to the box, so below the button
         IconButton(onClick = { isOpen = true }) {
             Icon(painterResource(R.drawable.ic_more_vert), contentDescription = "More options")
         }
         DropdownMenu(expanded = isOpen, onDismissRequest = { isOpen = false }) {
-            DropdownMenuItem(
-                text = { Text("New puzzle") },
-                onClick = {
-                    isOpen = false
-                    onNewPuzzle()
-                },
-                enabled = canStartNew,
-            )
+            val close = { isOpen = false }
+            MenuItem("New puzzle", close, onNewPuzzle, enabled = canStartNew)
+            MenuItem(stringResource(R.string.how_to_play), close, onHowToPlay)
+            MenuItem(stringResource(R.string.about), close, onAbout)
         }
     }
+}
+
+/** An item of the menu, which closes the menu ([close]) and then does what it is for ([onClick]) */
+@Composable
+private fun MenuItem(text: String, close: () -> Unit, onClick: () -> Unit, enabled: Boolean = true) {
+    DropdownMenuItem(
+        text = { Text(text) },
+        onClick = {
+            close()
+            onClick()
+        },
+        enabled = enabled,
+    )
 }
 
 @Preview
 @Composable
 private fun GameTopBarPreview() {
     SudokuTheme {
-        GameTopBar(canStartNew = true, onNewPuzzle = {})
+        GameTopBar(canStartNew = true, onNewPuzzle = {}, onHowToPlay = {}, onAbout = {})
     }
 }

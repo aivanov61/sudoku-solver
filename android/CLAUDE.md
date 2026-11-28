@@ -98,6 +98,10 @@ New puzzle, in the game's top app bar menu, asks first when the board has values
 without a saved game: a new game on the only layout, or the picker. Each `Route.Game` has an `id` of its own, so a
 new game on the same layout gets a new entry, with new ViewModels, rather than the ended game's.
 
+How to play and About, also in that menu, are pushed on top of the game (`Route.HowToPlay`, `Route.About`), not
+put in its place, and Up (the ← of their `UpTopBar`) or Back pops them, back to the game as it was. Opening them is
+navigation, so the menu passes it up to `SudokuApp` as lambdas, not to the ViewModel.
+
 The app's name, "Sudoku Solver", is in one place, `app_name` (`res/values/strings.xml`): the launcher shows it,
 and the splash and the top app bar read it with `stringResource()`. "Sudoku" still names the puzzle.
 
@@ -204,6 +208,10 @@ The Kotlin code, in three packages, wired together by the app's container:
   `LayoutPickerViewModel` reads the layouts for the stateless `LayoutPickerScreen`, which says so when none can be
   picked. A pick is navigation, so it goes up to `SudokuApp` as a lambda, not to the ViewModel.
 
+  `HowToPlayScreen` is stateless and has no ViewModel: its text is string resources (`how_to_play_*`).
+  `AboutViewModel` reads the notice, as the splash's does, for the stateless `AboutScreen`, which shows it below
+  the app's name and version (`BuildConfig.VERSION_NAME`, the build's `versionName`).
+
 - **Unit tests** (`app/src/test`, `gradle :app:testDebugUnitTest`) cover `GameState`, the repository, the
   ViewModels and the container, over `FakeGame`, `FakeCopyrightRepository`, `FakeLayoutRepository` (which can
   hold the layouts back, as a slow start of Python would) and `FakeSavedGameRepository`, and `PythonScreen`;
@@ -215,7 +223,7 @@ The Kotlin code, in three packages, wired together by the app's container:
 - **Compose UI tests** (`app/src/androidTest`, `gradle :app:connectedDebugAndroidTest`, on the emulator) cover
   the game screen: `SudokuScreenTest` shows `SudokuScreen` with a state it makes, finds nodes by what the player
   sees (text, or a cell's content description, "Row 3, column 8"), and checks the intents `RecordingIntents`
-  records.
+  records. `PushedScreensTest` covers How to play and About.
 
   `espresso-core` is pinned to 3.7.0: the older one `ui-test-junit4` brings can't tap on Android 17.
 

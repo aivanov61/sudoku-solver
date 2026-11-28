@@ -54,6 +54,7 @@ class SudokuScreenTest {
     val composeRule = createComposeRule()
 
     private val intents = RecordingIntents()
+    private val pushed = mutableListOf<String>()  // the screens the menu asked to push, which is navigation, not an intent
 
     // The board and the pad
 
@@ -192,11 +193,33 @@ class SudokuScreenTest {
         assertEquals(listOf("onNewPuzzleAnswer(true)"), intents.calls)
     }
 
+    // The menu
+
+    @Test
+    fun howToPlayInTheMenuOpensIt() {
+        show(startedGame())
+        composeRule.onNodeWithContentDescription("More options").performClick()
+        composeRule.onNodeWithText("How to play").performClick()
+        assertEquals(listOf("How to play"), pushed)
+    }
+
+    @Test
+    fun aboutInTheMenuOpensIt() {
+        show(startedGame())
+        composeRule.onNodeWithContentDescription("More options").performClick()
+        composeRule.onNodeWithText("About").performClick()
+        assertEquals(listOf("About"), pushed)
+    }
+
     // Private functions
 
     private fun show(game: GameState, askingNewPuzzle: Boolean = false, guessOn: Boolean = false) {
         val state = SudokuUiState(game, askingNewPuzzle, guessOn = guessOn)
-        composeRule.setContent { SudokuTheme { SudokuScreen(state, intents) } }
+        composeRule.setContent {
+            SudokuTheme {
+                SudokuScreen(state, intents, onHowToPlay = { pushed += "How to play" }, onAbout = { pushed += "About" })
+            }
+        }
     }
 
     /**

@@ -103,12 +103,14 @@ private val CELL_EDGE = 0.5.dp
  * The game's screen: the top app bar, the board, the message area, the command palette and the digit pad; and
  * the game's yes/no questions and messages to be seen, and New puzzle's question, as dialogs.  It only shows the
  * state, and passes what the player does on to the intents.  The Material 3 Scaffold pads the content clear of the
- * system bars; the content places the top app bar itself, as where it goes depends on the space.
+ * system bars; the content places the top app bar itself, as where it goes depends on the space.  The menu's How
+ * to play and About are navigation, not intents, so they go up as [onHowToPlay] and [onAbout].
  */
 @Composable
-fun SudokuScreen(state: SudokuUiState, intents: SudokuIntents) {
+fun SudokuScreen(state: SudokuUiState, intents: SudokuIntents, onHowToPlay: () -> Unit, onAbout: () -> Unit) {
     Scaffold { padding ->
-        GameContent(state, intents, Modifier.padding(padding))
+        val topBar = @Composable { GameTopBar(state.canStartNew, intents::onNewPuzzle, onHowToPlay, onAbout) }
+        GameContent(state, intents, topBar, Modifier.padding(padding))
     }
     when (val dialog = state.game.dialog) {
         is GameDialog.Confirm -> ConfirmDialog(dialog.question, intents::onAnswer)
@@ -129,8 +131,7 @@ fun SudokuScreen(state: SudokuUiState, intents: SudokuIntents) {
  * split screen or a large screen can be wide in portrait.
  */
 @Composable
-private fun GameContent(state: SudokuUiState, intents: SudokuIntents, modifier: Modifier) {
-    val topBar = @Composable { GameTopBar(state.canStartNew, intents::onNewPuzzle) }
+private fun GameContent(state: SudokuUiState, intents: SudokuIntents, topBar: @Composable () -> Unit, modifier: Modifier) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         val size = state.game.size
         if (size == null || state.game.failure != null || (maxWidth - maxHeight < MIN_CONTROLS_WIDTH)) {
@@ -523,7 +524,7 @@ private fun SudokuScreenPreview() {
     val state = SudokuUiState(game)
     SudokuTheme {
         Surface {
-            SudokuScreen(state, PreviewIntents)
+            SudokuScreen(state, PreviewIntents, onHowToPlay = {}, onAbout = {})
         }
     }
 }

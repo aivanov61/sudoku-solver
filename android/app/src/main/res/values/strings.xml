@@ -1,3 +1,18 @@
 <resources>
     <string name="app_name">Sudoku Solver</string>
+
+    <!-- How to play, from the game's menu: a title, then its paragraphs, each a heading and its text -->
+    <string name="how_to_play">How to play</string>
+    <string name="how_to_play_setup_heading">Set up the puzzle</string>
+    <string name="how_to_play_setup">Tap a cell, then a digit, to enter each of the puzzle\'s given numbers. Erase clears the selected cell. When all the givens are in, tap Play.</string>
+    <string name="how_to_play_play_heading">Play</string>
+    <string name="how_to_play_play">Tap a cell, then a digit, to fill it in. The small number under each digit on the pad is how many of that digit are still to place. The small digits in an empty cell are the values it can still take.</string>
+    <string name="how_to_play_guesses_heading">Guesses</string>
+    <string name="how_to_play_guesses">Tap Guess before a digit to enter it as a guess. It is shaded, a shade deeper for each guess made on top of another. Rewind takes the board back to just before your most recent guess, so you can try another.</string>
+    <string name="how_to_play_mistakes_heading">Mistakes</string>
+    <string name="how_to_play_mistakes">A value that clashes with another in its row, column or block is shown on yellow. Undo takes back the last value you entered. You can also go to any other cell (or stay on this one) and Erase its value; after Erase, Undo brings the value back. Setup allows you to go back to setting up, once everything has been undone (including Erased values).</string>
+
+    <!-- About, from the game's menu -->
+    <string name="about">About</string>
+    <string name="about_version">Version %1$s</string>
 </resources>

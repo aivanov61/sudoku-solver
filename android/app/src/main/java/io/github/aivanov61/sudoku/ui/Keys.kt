@@ -58,4 +58,12 @@ sealed interface Route : NavKey {
         /** A new game's route, on the [layout] named */
         constructor(layout: String) : this(layout, UUID.randomUUID().toString())
     }
+
+    /** How to play, pushed on top of the game from its menu */
+    @Serializable
+    data object HowToPlay : Route
+
+    /** About: the app's version and the copyright notice, pushed on top of the game from its menu */
+    @Serializable
+    data object About : Route
 }

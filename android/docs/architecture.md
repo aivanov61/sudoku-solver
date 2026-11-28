@@ -1,30 +1,26 @@
 # The Android app's architecture
 
 How the app's code maps onto MVVM and Modern Android App Architecture, and how the parts talk to each other.
-Updated at the start of each phase and as it goes; this is **MVP 1, step 10b** (building and installing an APK).
+Updated at the start of each phase and as it goes; this is **MVP 1, step 10c** (pushing screens onto the back
+stack; Up versus Back).
 
-Step 10b changes how the app is built, so that it can be installed on a phone and played there (see
-[Building and installing](#building-and-installing)), and adds the finishing touches Tony asked for after playing it.
+Step 10c adds two screens to the game's menu, How to play and About (see
+[How to play and About](#how-to-play-and-about)).
 
-- **Gradle's configuration cache.** Gradle keeps the result of configuring the build between builds, so a build
-  whose scripts haven't changed starts its tasks at once.
+- **Pushed, not replaced.** Until now, each screen replaced the one before it, so the back stack held one route.
+  How to play and About are pushed on top of the game, and popped off again, so the game is still there below
+  them, as it was.
 
-- **A release build.** Shrunk and optimized by R8, and signed with Tony's own key, so Android lets each new
-  version replace the one installed. Debug builds get an id of their own, so both can be installed side by side,
-  each with its own saved game.
+- **Up and Back.** Each has a top app bar with Up (←), which pops it, as Back does: within an app, Up and Back
+  lead to the same place ([Principles of navigation](https://developer.android.com/guide/navigation/principles)).
 
-- **A launcher icon,** in place of Android's default one.
-
-- **Finishing touches.** Thicker lines between the blocks; in the dark theme, the givens on a dimmed lavender. The
-  pad's digits and the selected cell's outline take the color of what the pad enters: a given's in setup, a typed
-  value's in play, a guess's while Guess is on (`SudokuUiState.entering`).
+- **About** shows the app's version and the GNU GPL notice, read through the splash's `CopyrightRepository`.
 
 The app is drawn as an overview, then one section per feature (a screen with its ViewModel and data), each
 through the same layers. Features share only the app's container and the activity that hosts their screens.
 
-Colors: green is new in step 10b, amber is changed in step 10b, uncolored is unchanged. A `*` marks a part not
-written yet. Step 10b's changes are in [Building and installing](#building-and-installing) and, for the finishing
-touches, in the game feature; the other diagrams are as step 10a left them, with its colors taken off.
+Colors: green is new in step 10c, amber is changed in step 10c, uncolored is unchanged. A `*` marks a part not
+written yet. The diagrams step 10c doesn't change are as step 10b left them, with its colors taken off.
 
 Arrows: solid arrows are calls; dotted arrows are data flowing back, or a class implementing an interface.
 
@@ -55,6 +51,10 @@ flowchart TB
         GameFeature["GameTopBar · SudokuScreen · SudokuViewModel · GameRepository · AutoSave"]
     end
 
+    subgraph Help["How to play and About: Route.HowToPlay, Route.About"]
+        HelpFeature["HowToPlayScreen · AboutScreen · AboutViewModel · CopyrightRepository"]
+    end
+
     subgraph Storage["App storage · filesDir"]
         AutoSaveFile["autosave.json"]
     end
@@ -65,20 +65,28 @@ flowchart TB
     LayoutsFeature -- "a pick: replaced by" --> GameFeature
     GameFeature -- "New puzzle, with one layout: replaced by a new" --> GameFeature
     GameFeature -- "New puzzle, otherwise: replaced by" --> LayoutsFeature
+    GameFeature -- "How to play, About: pushes" --> HelpFeature
+    HelpFeature -. "Up or Back: popped, back to" .-> GameFeature
+    AppContainer -- "copyrightRepository" --> HelpFeature
     AppContainer -- "copyrightRepository, layoutRepository, savedGameRepository" --> SplashFeature
     AppContainer -- "layoutRepository" --> LayoutsFeature
     AppContainer -- "gameRepository(layout), layoutRepository" --> GameFeature
     GameFeature -- "saves, restores, deletes" --> AutoSaveFile
     SplashFeature -- "reads its layout" --> AutoSaveFile
+
+    classDef new fill:#2e7d32,stroke:#a5d6a7,stroke-width:2px,color:#ffffff
+    classDef changed fill:#b45309,stroke:#fcd34d,stroke-width:2px,color:#ffffff
+    class Help,HelpFeature new
+    class Game,GameFeature,NavDisplay changed
 ```
 
 | Class | What it does |
 |---|---|
 | `SudokuApplication` | Made by Android once per process, before any screen (the manifest names it); makes the one `AppContainer`, giving it `newGame` (a `PythonGame` on the layout named), `newLayoutRepository`, `newCopyrightRepository` and `newSavedGameRepository`. It names the auto-save file, `filesDir/autosave.json`, and gives it to both the game and the saved game's repository. It gives the game the number of `GuessShades`, joining the screen's choice to the game's warning, as wiring is the app's to do |
 | `AppContainer` | The app's dependencies (`DefaultAppContainer`): the app-long scope; `gameRepository(layout)`, the game in play, made when first asked for and anew for another layout or once the game has ended (over, or failed: `GameState.hasEnded`, so reopening the app tries again); and the `LayoutRepository`, `CopyrightRepository` and `SavedGameRepository`, each made when first asked for |
-| `MainActivity` | Shows everything in `SudokuTheme`. Its composable `SudokuApp` holds the back stack (`rememberNavBackStack(Route.Splash)`, kept through rotation and process death) and shows it with `NavDisplay`; `rememberViewModelStoreNavEntryDecorator()` gives each entry its own ViewModels, which live as long as its route is on the stack. Each entry is a small composable (`Splash`, `LayoutPicker`, `Game`) that gets its ViewModel and shows its screen. `SudokuApp` does the navigating (`replaceLast`): it replaces the splash with the splash's `next` route once there is one, the picker with `Route.Game(layout)` when the player picks one, and the game with the game's `next` route once the player has started a new puzzle. The game's entry has the game saved whenever the app is stopped (`LifecycleEventEffect(ON_STOP)`) |
+| `MainActivity` | Shows everything in `SudokuTheme`. Its composable `SudokuApp` holds the back stack (`rememberNavBackStack(Route.Splash)`, kept through rotation and process death) and shows it with `NavDisplay`; `rememberViewModelStoreNavEntryDecorator()` gives each entry its own ViewModels, which live as long as its route is on the stack. Each entry is a small composable (`Splash`, `LayoutPicker`, `Game`) that gets its ViewModel and shows its screen. `SudokuApp` does the navigating (`replaceLast`): it replaces the splash with the splash's `next` route once there is one, the picker with `Route.Game(layout)` when the player picks one, and the game with the game's `next` route once the player has started a new puzzle. It pushes `Route.HowToPlay` or `Route.About` on top of the game when the player picks it from the game's menu, and pops it on Up or Back (`removeLastOrNull()`). The game's entry has the game saved whenever the app is stopped (`LifecycleEventEffect(ON_STOP)`), even while a pushed screen covers the game (tried on the emulator: Home from About, then process death, keeps the game) |
 | `SudokuTheme` | `ui/theme/Theme.kt`, the app's theme, as Android Studio's template has it: Material 3's `MaterialTheme` with its baseline light or dark color scheme (`lightColorScheme()`, `darkColorScheme()`), as the phone is set (`isSystemInDarkTheme()`), and the matching `GameColors` through `LocalGameColors`, which composables read as `SudokuTheme.gameColors`. Every screen and preview is shown in it. The window behind the first frame is light or dark too (`res/values/themes.xml`, `res/values-night/themes.xml`), so a dark phone doesn't flash white |
-| `Route` | `ui/Keys.kt`: Navigation 3's keys, one per screen, in a sealed interface (so `Route.Game` doesn't clash with the `Game` interface): `Route.Splash`, `Route.LayoutPicker` and `Route.Game(layout, id)`, each a `@Serializable` `NavKey`. Each step replaces the route before it, so Back from the picker or the game leaves the app. After process death the stack comes back as it was, so the app reopens on `Route.Game` without the splash, and the game restores itself from the auto-save. `id` is there because Nav 3 tells entries apart by their keys, so a new game on the same layout needs a key of its own, or Nav 3 would keep the old entry, and with it the ViewModel of the game that has ended; each `Route.Game` is made with a fresh `id`, which is saved with the back stack. `Route.toStart(layouts, savedLayout)` is the route that starts a game, worked out once for the splash and for New puzzle: the game on the saved layout, else on the only layout, when it can be picked, else the picker |
+| `Route` | `ui/Keys.kt`: Navigation 3's keys, one per screen, in a sealed interface (so `Route.Game` doesn't clash with the `Game` interface): `Route.Splash`, `Route.LayoutPicker`, `Route.Game(layout, id)`, `Route.HowToPlay` and `Route.About`, each a `@Serializable` `NavKey`. Each step between the splash, the picker and the game replaces the route before it, so Back from the picker or the game leaves the app; How to play and About are pushed on top of the game, so Back from them returns to it. After process death the whole stack comes back, About on top of the game. After process death the stack comes back as it was, so the app reopens on `Route.Game` without the splash, and the game restores itself from the auto-save. `id` is there because Nav 3 tells entries apart by their keys, so a new game on the same layout needs a key of its own, or Nav 3 would keep the old entry, and with it the ViewModel of the game that has ended; each `Route.Game` is made with a fresh `id`, which is saved with the back stack. `Route.toStart(layouts, savedLayout)` is the route that starts a game, worked out once for the splash and for New puzzle: the game on the saved layout, else on the only layout, when it can be picked, else the picker |
 | `autosave.json` | The game in progress, in app-specific internal storage (`filesDir`: no permission needed, private to the app, deleted on uninstall). It is an ordinary save file, written and read only by the game (`game/save_file.py`), so it is interchangeable with the PC's |
 
 ### Where the app's state lives
@@ -255,7 +263,7 @@ flowchart TB
         direction LR
         SudokuScreen["SudokuScreen · Scaffold"] --> GameContent["GameContent · BoxWithConstraints"]
         GameContent --> Board["Stacked, or SideBySide"]
-        Board --> GameTopBar["GameTopBar · TopAppBar, overflow menu"]
+        Board --> GameTopBar["GameTopBar · TopAppBar, overflow menu: New puzzle, How to play, About"]
         Board --> Controls["Controls: MessageArea, CommandPalette, DigitPad"]
         Controls --> CommandPalette["CommandPalette: ModeSwitch, CommandButton row, GuessToggle"]
         Controls --> DigitPad["DigitPad · the digits left"]
@@ -304,6 +312,7 @@ flowchart TB
 
     GameEntry -- "onStopped()" --> SudokuViewModel
     GameEntry -- "onEnded(next): replaces the game" --> SudokuApp
+    GameEntry -- "onHowToPlay, onAbout: pushes" --> SudokuApp
     SudokuScreenTest -- "setContent { SudokuScreen(state, intents) }" --> SudokuScreen
     SudokuScreen -- "intents" --> SudokuViewModel
     SudokuViewModel -. "StateFlow‹SudokuUiState›" .-> SudokuScreen
@@ -319,7 +328,7 @@ flowchart TB
     SaveFile -- "writes, reads" --> AutoSaveFile
 
     classDef changed fill:#b45309,stroke:#fcd34d,stroke-width:2px,color:#ffffff
-    class Board,DigitPad,GameColors,SudokuUiState changed
+    class GameTopBar,SudokuScreen,GameEntry changed
 ```
 
 Everything from `GameRepository` down is MVVM's **Model**, which Google's guide splits into the data layer and
@@ -709,7 +718,90 @@ flowchart LR
   Phase 9 adds the pad's counts, found by their content description ("3 left"), and a digit with none left,
   still enabled and entered on a tap. The dimming isn't in the semantics tree, so it is checked by eye.
 
+  Step 10c adds the menu's How to play and About, which go up as navigation, not as intents, and
+  `PushedScreensTest`: How to play's headings, About's version and notice, and Up, found by its content
+  description ("Navigate up"), on each.
+
 Google's guide: [Test your Compose layout](https://developer.android.com/develop/ui/compose/testing).
+
+## How to play and About
+
+```mermaid
+flowchart TB
+    subgraph Host["View · the activity that hosts the screens"]
+        SudokuApp["MainActivity.SudokuApp"]
+    end
+
+    subgraph View["View · Compose · UI thread"]
+        direction LR
+        HowToPlayScreen["HowToPlayScreen"] --> UpTopBar["UpTopBar · TopAppBar with Up"]
+        AboutScreen["AboutScreen"] --> UpTopBar
+        Strings["res/values/strings.xml: how_to_play_…"]
+        HowToPlayScreen --> Strings
+    end
+
+    subgraph VM["ViewModel"]
+        direction LR
+        AboutViewModel["AboutViewModel"] --- AboutUiState["AboutUiState"]
+    end
+
+    subgraph DataLayer["Model · data layer · data/"]
+        CopyrightRepository["«interface» CopyrightRepository, see the splash feature"]
+    end
+
+    subgraph Build["The build"]
+        BuildConfig["BuildConfig.VERSION_NAME, from versionName"]
+    end
+
+    SudokuApp -- "Route.HowToPlay" --> HowToPlayScreen
+    SudokuApp -- "Route.About, with the version" --> AboutScreen
+    BuildConfig --> SudokuApp
+    UpTopBar -- "onUp: pops" --> SudokuApp
+    AboutViewModel -. "StateFlow‹AboutUiState›" .-> AboutScreen
+    AboutViewModel -- "notice()" --> CopyrightRepository
+
+    classDef new fill:#2e7d32,stroke:#a5d6a7,stroke-width:2px,color:#ffffff
+    classDef changed fill:#b45309,stroke:#fcd34d,stroke-width:2px,color:#ffffff
+    class HowToPlayScreen,UpTopBar,Strings,AboutScreen,AboutViewModel,AboutUiState,BuildConfig new
+    class SudokuApp changed
+```
+
+| Layer | Class | What it does |
+|---|---|---|
+| View | `MainActivity.SudokuApp` | Pushes `Route.HowToPlay` or `Route.About` (`backStack.add()`) when the game's menu asks for it, and pops it (`removeLastOrNull()`) on Up, as `NavDisplay` does on Back. The game's entry stays on the stack below, with its ViewModel, so the game is as it was when the player comes back. Nothing in the game can change while it is covered, so the save made when the app is stopped is current, even while the game is covered |
+| View | `UpTopBar` | The top app bar of a pushed screen: its title, and Up (←, Material Symbols' `arrow_back`, described as "Navigate up" for TalkBack), which calls `onUp`. It sits in its screen's `Scaffold` as the top bar, so it pads itself clear of the status bar |
+| View | `HowToPlayScreen` | Stateless: How to play's paragraphs, from string resources, in a scrolling column. It has no ViewModel, as it has no state and no data |
+| View | `AboutScreen` | Stateless: the app's name and version, and the GNU GPL notice below, scrolling |
+| ViewModel | `AboutViewModel` | Reads the notice from the `CopyrightRepository`, in `viewModelScope`, as the splash does; its `Factory` gets the repository from the app's container |
+| ViewModel | `AboutUiState` | The notice, empty until read |
+| Build | `BuildConfig.VERSION_NAME` | The app's version, `versionName` in `app/build.gradle.kts` (1.0 for MVP 1), which the build writes into the generated `BuildConfig` class (`buildFeatures { buildConfig = true }`). It is fixed when the app is built, so `SudokuApp` gives it to `AboutScreen` as it is, not through a repository |
+
+How to play is the app's own text, written for touch, so it lives in the app's string resources; the terminal's
+help (`?`) is about keys. MVP 2 adds the game's help for its solving commands.
+
+### Opening About, and coming back
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant G as SudokuScreen<br/>(UI thread)
+    participant A as SudokuApp<br/>(UI thread)
+    participant AS as AboutScreen<br/>(UI thread)
+    participant VM as AboutViewModel<br/>(viewModelScope)
+    participant R as CopyrightRepository<br/>(IO pool)
+
+    G->>A: onAbout(), from the menu
+    A->>A: backStack.add(Route.About): […, Game, About]
+    Note over G: covered: its entry stays on the stack, with its ViewModel
+    A->>VM: made, through its Factory, for About's entry
+    VM->>R: launch { notice() }
+    R-->>VM: the notice's text
+    VM-->>AS: StateFlow‹AboutUiState›
+    AS->>A: onUp(), or Back through NavDisplay's onBack
+    A->>A: backStack.removeLastOrNull(): […, Game]
+    Note over VM: cleared, with About's entry
+    Note over G: shown again, as it was
+```
 
 ## Building and installing
 
@@ -755,10 +847,6 @@ flowchart LR
     Release -- "app-release.apk" --> Phone["Tony's phone"]
     Release -- "app-release.apk, step 10d" --> GitHub["a GitHub Release *(10d)"]
 
-    classDef new fill:#2e7d32,stroke:#a5d6a7,stroke-width:2px,color:#ffffff
-    classDef changed fill:#b45309,stroke:#fcd34d,stroke-width:2px,color:#ffffff
-    class DebugRes,Rules,Release,Keystore,Props,Password,Phone,GitHub new
-    class Gradle,Debug changed
 ```
 
 - **Build types.** Each build is of a build type, which says how the same sources are built
