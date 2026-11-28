@@ -46,6 +46,7 @@ class TerminalUI:
     EARLIER_STEP_KEYS = Commands.keys_for(Action.UP)
     LATER_STEP_KEYS = Commands.keys_for(Action.DOWN)
     STEPS_DONE_KEYS = (*Commands.keys_for(Action.WHY), "KEY_ENTER", "KEY_ESCAPE")
+    SWITCHING_TO = {Mode.SETUP: "ESC goes back to setup", Mode.PLAY: "ESC starts playing"}  # how the player switches to each mode
 
     def __init__(self, display: Display, v_cells: int, h_cells: int) -> None:
         display.geometry(v_cells, h_cells)
@@ -167,6 +168,10 @@ class TerminalUI:
         self.__mode = mode
         self.__offered = actions
         self.__draw_panel()
+
+    def switching_to(self, mode: Mode) -> str:
+        """ESC, which switches to the other mode"""
+        return self.SWITCHING_TO[mode]
 
     # Private functions
 

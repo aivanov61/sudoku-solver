@@ -26,7 +26,7 @@ class DisplayAttrs:
 
     - Primary (at most one per cell)
         - INITIAL - FG=Purple, BG=Lavender
-        - GUESS - FG=Green, BG=[shade of gray]
+        - GUESS - FG=DarkOrange3, BG=[shade of gray]
         - SOLVED - FG=LightSkyBlue, BG=[shade of gray]
     - Additional (optional)
         - CONFLICTING - FG=BoldRed, BG=BrightYellow
@@ -37,7 +37,7 @@ class DisplayAttrs:
     - Ruled out - the values such a cell has lost, in RULED_OUT_DIGITS, on the cell's background
     """
 
-    DEFAULT_COLOR = "darkorange3"
+    DEFAULT_COLOR = "green"  # a typed value's
     MISSING_VALUE = "white_on_red"  # a value with no place left, shown in a cell while a warning says so
     GRAY_STEP = 10
     MAX_GRAY_LEVEL = 100  # There are no gray levels greater than 100
@@ -56,7 +56,7 @@ class DisplayAttrs:
     ATTRS_PRIMARY = {
         # The following are mutually exclusive basic required attributes
         CellAttrs.INITIAL: FgBgAttr(("purple",), ("lavender",)),
-        CellAttrs.GUESS: FgBgAttr(("green",), None),
+        CellAttrs.GUESS: FgBgAttr(("darkorange3",), None),
         CellAttrs.SOLVED: FgBgAttr(("lightskyblue",), None),
     }
 

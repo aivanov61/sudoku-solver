@@ -411,16 +411,20 @@ class TestPuzzle(TestCase):
             self.assertEqual(self.ui.questions, [])
         self.assertIsNone(self.__cell(0, 8).value())
 
+    def test_a_play_command_in_setup_mode_says_how_the_user_interface_starts_playing(self):
+        self.puzzle.undo_()
+        self.assertEqual(self.ui.last_informed(), "This works only while playing - switch to play. ")
+
     def test_going_back_to_setup_with_moves_made_says_setup(self):
         self.puzzle.play_()
         self.__enter(4, 4, 5)
         self.puzzle.init_()
         self.assertEqual(self.ui.last_informed(), "Cannot go back to setup while playing - undo everything first. ")
 
-    def test_undo_with_nothing_to_undo_says_esc_goes_back_to_setup(self):
+    def test_undo_with_nothing_to_undo_says_how_the_user_interface_goes_back_to_setup(self):
         self.puzzle.play_()
         self.puzzle.undo_()
-        self.assertEqual(self.ui.last_informed(), "Nothing to undo - ESC goes back to setup. ")
+        self.assertEqual(self.ui.last_informed(), "Nothing to undo - switch to setup. ")
 
     def test_a_new_puzzle_announces_setup_mode_and_its_actions(self):
         self.assertEqual(self.ui.modes, [(Mode.SETUP, OFFERED_ACTIONS[Mode.SETUP])])

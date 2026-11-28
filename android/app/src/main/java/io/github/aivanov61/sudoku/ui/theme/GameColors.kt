@@ -17,10 +17,8 @@
 
 package io.github.aivanov61.sudoku.ui.theme
 
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import io.github.aivanov61.sudoku.game.CellKind
 import io.github.aivanov61.sudoku.game.CellState
 import io.github.aivanov61.sudoku.game.Conflict
@@ -29,15 +27,13 @@ import io.github.aivanov61.sudoku.game.MessageKind
 /**
  * The game's own colors, which Material 3 has no names for: the terminal's (ui/terminal/display_attrs.py), each as
  * it reads on the theme's background (see CLAUDE.md's Colors).  The board itself is the theme's surface, which shows
- * through a cell outside any guess or conflict.
+ * through a given, and any other cell outside any guess or conflict.
  */
 @Immutable
 data class GameColors(
     val guessShades: List<Color>,  // behind a cell by the depth of the guess it was entered at, the first the nearest the surface
-    val givenBackground: Color,
     val conflictingBackground: Color,  // behind the value just entered that clashes with a related cell
     val conflictedBackground: Color,  // behind a value it clashes with
-    val highlight: Color,  // see-through, over each cell related to the selected one
     val values: ValueColors,
     val valuesOnYellow: ValueColors,  // the values on the conflicted background
     val conflicting: Color,  // the value just entered that clashes
@@ -49,19 +45,15 @@ data class GameColors(
     }
 
     /**
-     * What is drawn behind the cell: its conflict's yellow, else a given's background, else its guess's shade, else
-     * nothing, so the board shows through; with the highlight over it when the cell is [related] to the selected one
+     * What is drawn behind the cell: its conflict's yellow, else its guess's shade, else nothing, so the board shows
+     * through
      */
-    fun background(cell: CellState?, related: Boolean): Color {
-        val own = when {
-            cell == null -> Color.Transparent
-            cell.conflict == Conflict.CONFLICTING -> conflictingBackground
-            cell.conflict == Conflict.CONFLICTED -> conflictedBackground
-            cell.kind == CellKind.INITIAL -> givenBackground
-            cell.depth > 0 -> guessShades[minOf(cell.depth, GUESS_SHADES) - 1]
-            else -> Color.Transparent
-        }
-        return if (related) highlight.compositeOver(own) else own
+    fun background(cell: CellState?): Color = when {
+        cell == null -> Color.Transparent
+        cell.conflict == Conflict.CONFLICTING -> conflictingBackground
+        cell.conflict == Conflict.CONFLICTED -> conflictedBackground
+        cell.depth > 0 -> guessShades[minOf(cell.depth, GUESS_SHADES) - 1]
+        else -> Color.Transparent
     }
 
     /** The color of the cell's value: the conflict's, or its kind's, in the colors that read on its background */
@@ -83,17 +75,15 @@ data class GameColors(
 
         private val LIGHT_VALUES = ValueColors(
             given = Color(0xFFA020F0),  // the terminal's purple
-            typed = Color(0xFF9C4A00),  // the terminal's darkorange3, darker
-            guessed = Color(0xFF1B5E20),  // the terminal's green, darker
+            typed = Color(0xFF1B5E20),  // the terminal's green, darker
+            guessed = Color(0xFF9C4A00),  // the terminal's darkorange3, darker
             solved = Color(0xFF01579B),  // the terminal's lightskyblue, darker
         )
 
         val Light = GameColors(
-            guessShades = grays(first = 0xF2, step = -6),  // darker each guess, away from the light surface
-            givenBackground = Color(0xFFE6E6FA),  // lavender
+            guessShades = grays(first = 0xF4, step = -9),  // darker each guess, away from the light surface, to the darkest the guessed orange reads on
             conflictingBackground = Color(0xFFF9F1A5),  // bright yellow
             conflictedBackground = Color(0xFFF5D547),  // yellow, light enough for the values
-            highlight = lightColorScheme().primary.copy(alpha = 0.12f),
             values = LIGHT_VALUES,
             valuesOnYellow = LIGHT_VALUES,
             conflicting = Color(0xFFC50F1F),  // red
@@ -102,14 +92,11 @@ data class GameColors(
         )
 
         val Dark = Light.copy(
-            guessShades = grays(first = 0x24, step = 5),  // lighter each guess, away from the dark surface, as in the terminal;
-            // the last dark enough that a guess still reads on it under the highlight
-            givenBackground = Color(0xFF44445A),  // lavender, dimmed to stand off the dark surface as much as it does the light one
-            highlight = Color.White.copy(alpha = 0.12f),
+            guessShades = grays(first = 0x26, step = 8),  // lighter each guess, away from the dark surface, as in the terminal, to the lightest limegreen reads on
             values = ValueColors(
-                given = Color(0xFFD8A8FF),  // the terminal's purple, lighter, to read on the dimmed lavender
-                typed = Color(0xFFFFA500),  // orange
-                guessed = Color(0xFF32CD32),  // limegreen
+                given = Color(0xFFD8A8FF),  // the terminal's purple, lighter, to read on the dark surface and the pad's keys
+                typed = Color(0xFF32CD32),  // limegreen
+                guessed = Color(0xFFFFA500),  // orange
                 solved = Color(0xFF87CEFA),  // lightskyblue
             ),
             hint = Color(0xFF87CEFA),  // lightskyblue

@@ -249,6 +249,10 @@ class TestTerminalUI(TestCase):
         self.ui.show_board([])
         self.display.draw_command_panel.assert_called_once_with("SETUP", Commands.panel(OFFERED_ACTIONS[Mode.SETUP]))
 
+    def test_switching_modes_is_esc(self):
+        self.assertEqual(self.ui.switching_to(Mode.SETUP), "ESC goes back to setup")
+        self.assertEqual(self.ui.switching_to(Mode.PLAY), "ESC starts playing")
+
     def test_a_cell_not_yet_drawn_is_drawn_whole(self):
         display = self.__drawn_after_change(None, self.__cell(2, 3, value=4))
         display.draw_cell.assert_called_once()

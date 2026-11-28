@@ -182,6 +182,10 @@ class TestAndroidUI(TestCase):
         self.ui.mode_changed(Mode.SETUP, OFFERED_ACTIONS[Mode.SETUP])
         self.screen.modeChanged.assert_called_once_with("SETUP", [action.value for action in OFFERED_ACTIONS[Mode.SETUP]])
 
+    def test_switching_modes_is_a_tap_on_the_mode_switch(self):
+        self.assertEqual(self.ui.switching_to(Mode.SETUP), "tap Setup to go back to setup")
+        self.assertEqual(self.ui.switching_to(Mode.PLAY), "tap Play to start playing")
+
     # Messages
 
     def test_status_shows_the_message_with_its_kind(self):

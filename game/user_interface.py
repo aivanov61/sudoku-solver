@@ -111,3 +111,7 @@ class UserInterface(Protocol):
     def mode_changed(self, mode: Mode, actions: tuple[Action, ...]) -> None:
         """Hear that the puzzle is now in the mode (see actions.py), which offers these actions"""
         ...
+
+    def switching_to(self, mode: Mode) -> str:
+        """Say how the player switches to the mode, to end a warning that it is needed (e.g. "ESC goes back to setup")"""
+        ...

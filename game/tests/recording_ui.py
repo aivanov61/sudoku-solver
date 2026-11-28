@@ -71,6 +71,9 @@ class RecordingUI:
     def mode_changed(self, mode, actions) -> None:
         self.modes.append((mode, actions))
 
+    def switching_to(self, mode) -> str:
+        return f"switch to {mode.value.lower()}"
+
     # Interface required for tests
 
     def last_status(self) -> str:

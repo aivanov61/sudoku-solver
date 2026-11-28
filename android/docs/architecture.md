@@ -1,26 +1,29 @@
 # The Android app's architecture
 
 How the app's code maps onto MVVM and Modern Android App Architecture, and how the parts talk to each other.
-Updated at the start of each phase and as it goes; this is **MVP 1, step 10c** (pushing screens onto the back
-stack; Up versus Back).
+Updated at the start of each phase and as it goes; this is **MVP 1, step 10d** (finishing touches from playing
+it; derived UI state, continued).
 
-Step 10c adds two screens to the game's menu, How to play and About (see
-[How to play and About](#how-to-play-and-about)).
+Step 10d changes only the game feature (see [The game feature](#the-game-feature)):
 
-- **Pushed, not replaced.** Until now, each screen replaced the one before it, so the back stack held one route.
-  How to play and About are pushed on top of the game, and popped off again, so the game is still there below
-  them, as it was.
+- **Warnings name the app's controls.** The game's warnings that say how to switch modes ask the user interface
+  how (`switching_to(mode)`, a new method of the port): the terminal says "ESC goes back to setup", the app "tap
+  Setup to go back to setup".
 
-- **Up and Back.** Each has a top app bar with Up (←), which pops it, as Back does: within an app, Up and Back
-  lead to the same place ([Principles of navigation](https://developer.android.com/guide/navigation/principles)).
+- **Typed values are green and guesses orange**, in the terminal too, and so the pad and the outline.
 
-- **About** shows the app's version and the GNU GPL notice, read through the splash's `CopyrightRepository`.
+- **The related cells are outlined, not tinted.** The selected cell and its related cells, taken together, are
+  outlined by a band just inside the grid's lines, in the color of what the pad enters; the grid's lines stay as
+  they are. Which sides of a cell are outlined is derived UI state, `SudokuUiState.outlined(position)`, unit tested.
+
+- **The controls split left and right**, below the message area and the mode switch: the commands two by two
+  (Rewind beside Guess) on the left, and the digit pad, 3x3, on the right.
 
 The app is drawn as an overview, then one section per feature (a screen with its ViewModel and data), each
 through the same layers. Features share only the app's container and the activity that hosts their screens.
 
-Colors: green is new in step 10c, amber is changed in step 10c, uncolored is unchanged. A `*` marks a part not
-written yet. The diagrams step 10c doesn't change are as step 10b left them, with its colors taken off.
+Colors: green is new in step 10d, amber is changed in step 10d, uncolored is unchanged. A `*` marks a part not
+written yet. The diagrams step 10d doesn't change are as step 10c left them, with its colors taken off.
 
 Arrows: solid arrows are calls; dotted arrows are data flowing back, or a class implementing an interface.
 
@@ -74,10 +77,8 @@ flowchart TB
     GameFeature -- "saves, restores, deletes" --> AutoSaveFile
     SplashFeature -- "reads its layout" --> AutoSaveFile
 
-    classDef new fill:#2e7d32,stroke:#a5d6a7,stroke-width:2px,color:#ffffff
     classDef changed fill:#b45309,stroke:#fcd34d,stroke-width:2px,color:#ffffff
-    class Help,HelpFeature new
-    class Game,GameFeature,NavDisplay changed
+    class Game,GameFeature changed
 ```
 
 | Class | What it does |
@@ -264,9 +265,10 @@ flowchart TB
         SudokuScreen["SudokuScreen · Scaffold"] --> GameContent["GameContent · BoxWithConstraints"]
         GameContent --> Board["Stacked, or SideBySide"]
         Board --> GameTopBar["GameTopBar · TopAppBar, overflow menu: New puzzle, How to play, About"]
-        Board --> Controls["Controls: MessageArea, CommandPalette, DigitPad"]
-        Controls --> CommandPalette["CommandPalette: ModeSwitch, CommandButton row, GuessToggle"]
-        Controls --> DigitPad["DigitPad · the digits left"]
+        Board --> Controls["Controls: MessageArea, ModeSwitch, then CommandPalette beside DigitPad"]
+        Controls --> CommandPalette["CommandPalette: Undo, Erase / Rewind, GuessToggle"]
+        Controls --> DigitPad["DigitPad · 3x3, the digits left"]
+        Board --> BoardCells["Board, Cell · the outline of the related cells"]
         Board --> GameColors["GameColors: the game's colors, light and dark"]
         SudokuScreen --> ConfirmDialog["ConfirmDialog"]
         SudokuScreen --> InformDialog["InformDialog"]
@@ -300,7 +302,7 @@ flowchart TB
 
     subgraph Python["Python · game thread"]
         direction LR
-        AndroidUI["AndroidUI"] --> Puzzle["Puzzle, Board, Cell"]
+        AndroidUI["AndroidUI · switching_to()"] --> Puzzle["Puzzle, Board, Cell"]
         AndroidUI --> Requests["Request: Act, Save, Answer"]
         AndroidUI --> AutoSave["AutoSave"]
         AutoSave --> SaveFile["SaveFile (game/)"]
@@ -328,7 +330,7 @@ flowchart TB
     SaveFile -- "writes, reads" --> AutoSaveFile
 
     classDef changed fill:#b45309,stroke:#fcd34d,stroke-width:2px,color:#ffffff
-    class GameTopBar,SudokuScreen,GameEntry changed
+    class Controls,CommandPalette,DigitPad,BoardCells,GameColors,SudokuUiState,AndroidUI,Puzzle changed
 ```
 
 Everything from `GameRepository` down is MVVM's **Model**, which Google's guide splits into the data layer and
@@ -338,24 +340,24 @@ its data sources. The Python game is at the bottom, as the source of truth for t
 |---|---|---|
 | View | `MainActivity`'s `Game` entry | Gets the ViewModel and shows the screen; calls `onStopped()` whenever the app is stopped, with `LifecycleEventEffect(Lifecycle.Event.ON_STOP)`, which runs only while the entry is on screen. Once the state has a `next` route, it gives it to `onEnded`, as the splash's entry does, and `SudokuApp` replaces the game with it |
 | View | `SudokuScreen` | Stateless composables: draws the state, and passes taps on as intents (`SudokuIntents`). A Material 3 `Scaffold` pads `GameContent` clear of the system bars; the content places the top app bar itself, since where it goes depends on the space (see `GameContent`). Over them, the dialog the game is waiting on, the newest (`GameState.dialog`): `ConfirmDialog` for a question, `InformDialog` for a message; and New puzzle's. Each of the board's cells has a content description, "Row 3, column 8", which TalkBack reads, and the tests find the cell by |
-| View | `GameContent` | Its `BoxWithConstraints` measures the space the screen is given. While the game is being played, and there is room beside a board as tall as the space for the `Controls` (`MIN_CONTROLS_WIDTH`, the pad's nine buttons), it shows them `SideBySide`; otherwise `Stacked`. It goes by the space, not by the device's orientation, as Google's adaptive guide asks: a split screen or a large screen can be wide in portrait |
+| View | `GameContent` | Its `BoxWithConstraints` measures the space the screen is given. While the game is being played, and there is room beside a board as tall as the space for the `Controls` (`MIN_CONTROLS_WIDTH`, the commands and the pad's three buttons across), it shows them `SideBySide`; otherwise `Stacked`. It goes by the space, not by the device's orientation, as Google's adaptive guide asks: a split screen or a large screen can be wide in portrait |
 | View | `Stacked` | A `Column`, the top app bar first, then the board, and the `Controls` at the bottom, within thumb reach. When the game has failed, or is starting, a `Notice` says so in place of the board and the controls. The board is as large as fits both ways: the `Controls` are measured first, and the board gets at most the rest (`weight(1f, fill = false)`), at its own ratio (`aspectRatio(cols / rows)`, which takes the largest size of that ratio within the constraints) |
 | View | `SideBySide` | A `Row`: the board as tall as the space (`fillMaxHeight().aspectRatio(cols / rows, matchHeightConstraintsFirst = true)`), and beside it the top app bar and the `Controls`, so the board gets the rows a top app bar above it would take |
-| View | `Controls` | What goes under or beside the board: the `MessageArea`, then the `CommandPalette`, then the `DigitPad` at the very bottom, where the thumb is |
-| View | `CommandPalette` | The game-play buttons, in two rows: the `ModeSwitch`, and below it the command row, which MVP 2 adds Next, Auto, Why and Tag to. Like the rest of the screen, it shows the `SudokuUiState` and passes taps on as intents |
+| View | `Controls` | What goes under or beside the board: the `MessageArea`, then the `ModeSwitch`, then at the very bottom, where the thumb is, the `CommandPalette` on the left and the `DigitPad` on the right, each half the width |
+| View | `CommandPalette` | The game-play commands, two by two: Undo and Erase, then Rewind beside the `GuessToggle`, as Rewind takes back to the last guess. MVP 2 adds Next, Auto, Why and Tag. Like the rest of the screen, it shows the `SudokuUiState` and passes taps on as intents |
 | View | `ModeSwitch` | A Material 3 segmented button (`SingleChoiceSegmentedButtonRow`), Setup \| Play, the component for picking one of a few options and showing which is picked. The selected segment is the mode the game last reported (`GameState.mode`), so the game stays the source of truth: a tap on the other segment is `onSwitchMode()`, and if the game refuses (Play with a conflict), the segment stays where it was |
-| View | `CommandButton` | One command, its icon with its label below, as sudoku apps show their tools, all in one Material 3 `TextButton`, so the whole of it can be tapped, and the tests and TalkBack find it by its label (the icon has no description of its own); the icons are Material Symbols vector drawables in `res/drawable`, as the overflow button's is. The row has Undo (`undo`), Rewind (`fast_rewind`) and Erase (`ink_eraser`), then the `GuessToggle`. A command the mode doesn't offer is disabled (`enabled = false`, which TalkBack reads too), by `SudokuUiState.offers(action)`: Undo and Rewind in setup. "Nothing to undo" stays the game's own warning, as the game doesn't report whether there are moves |
-| View | `GuessToggle` | The icon `question_mark` with the label Guess, laid out as the commands are, at the end of the command row; while it is on, it is filled with the color scheme's `secondaryContainer`. Material 3 has no toggle with a label below its icon, so it is a `Column` that is `toggleable` as a whole (`role = Role.Switch`), which TalkBack and the tests read as on or off. It plays the part of sudoku apps' Notes pencil: on, the pad enters guesses (`GUESS`); off, values (`VALUE`). It shows `SudokuUiState.guessing`, and a tap is `onGuessToggled()`. It is disabled, and shown off, while the mode doesn't offer `GUESS` |
-| View | `GameColors` | `ui/theme/GameColors.kt`: the colors of the board and the messages, the terminal's, as they read on the theme's background (see The game's colors), as `GameColors.Light` and `GameColors.Dark`. It works out a cell's colors: `background(cell, related)`, the conflict's yellow, a given's lavender (dimmed in the dark theme, so it stands off the dark board as much as it does the light one, with a lighter purple on it), or the shade of its guess depth, with the highlight over it when the cell is related to the selected one; and `value(cell)`, by its kind, or the conflict's red. The guess shades, `GUESS_SHADES` of them (8), are the same number in both, in even steps away from the board's own color, the last repeated for any deeper guess; `AndroidUI` gets their number, to warn as the terminal does when guesses go past the last |
-| View | `Board`, `Cell` | Each cell is drawn in `GameColors`' colors, with thin lines between the cells and thicker ones (`BLOCK_EDGE`) between the blocks; the selected cell has an outline in the color of what the pad enters (`SudokuUiState.entering`'s value color), inside its edges, and it and its related cells (`GameState.related`) the highlight, so a guess's shade still shows through it. A conflict's value is bold, as a given's is |
-| View | `DigitPad` | The nine digits, a row of `FilledTonalButton`s, in the color of what they enter, as the selected cell's outline; a tap is `onDigit(digit)`. Each digit has the number of its places left (`SudokuUiState.left(digit)`) small below it, which TalkBack reads as "3 left" (the count's own content description, so it isn't a text a digit could be mistaken for). Once none are left, the digit is dimmed (to `DISABLED_ALPHA`, as a disabled button's content is) and the count is left out, but the button stays enabled, so the digit can still be entered, as a guess or to try it |
+| View | `CommandButton` | One command, its icon with its label below, as sudoku apps show their tools, all in one Material 3 `TextButton`, so the whole of it can be tapped, and the tests and TalkBack find it by its label (the icon has no description of its own); the icons are Material Symbols vector drawables in `res/drawable`, as the overflow button's is. The palette has Undo (`undo`), Erase (`ink_eraser`) and Rewind (`fast_rewind`), and the `GuessToggle`. A command the mode doesn't offer is disabled (`enabled = false`, which TalkBack reads too), by `SudokuUiState.offers(action)`: Undo and Rewind in setup. "Nothing to undo" stays the game's own warning, as the game doesn't report whether there are moves |
+| View | `GuessToggle` | The icon `question_mark` with the label Guess, laid out as the commands are, beside Rewind; while it is on, it is filled with the color scheme's `secondaryContainer`. Material 3 has no toggle with a label below its icon, so it is a `Column` that is `toggleable` as a whole (`role = Role.Switch`), which TalkBack and the tests read as on or off. It plays the part of sudoku apps' Notes pencil: on, the pad enters guesses (`GUESS`); off, values (`VALUE`). It shows `SudokuUiState.guessing`, and a tap is `onGuessToggled()`. It is disabled, and shown off, while the mode doesn't offer `GUESS` |
+| View | `GameColors` | `ui/theme/GameColors.kt`: the colors of the board and the messages, the terminal's, as they read on the theme's background (see The game's colors), as `GameColors.Light` and `GameColors.Dark`. It works out a cell's colors: `background(cell)`, the conflict's yellow, or the shade of its guess depth, else none, so the board shows through (a given's, too, with a lighter purple in the dark theme); and `value(cell)`, by its kind, or the conflict's red. The guess shades, `GUESS_SHADES` of them (8), are the same number in both, in even steps away from the board's own color, the last repeated for any deeper guess; `AndroidUI` gets their number, to warn as the terminal does when guesses go past the last |
+| View | `Board`, `Cell` | Each cell is drawn in `GameColors`' colors, with thin lines between the cells and thicker ones (`BLOCK_EDGE`) between the blocks; the selected cell has an outline in the color of what the pad enters (`SudokuUiState.entering`'s value color), inside its edges, and it and its related cells (`GameState.related`), taken together, are outlined in the same color by a band (`RELATED_OUTLINE`, 2 dp; the selected cell's own outline, `SELECTED_OUTLINE`, is 3 dp, so it stands out within it) just inside the grid's lines on their `SudokuUiState.outlined()` sides. The board draws the band over the cells (`drawWithContent`), so it runs unbroken across the lines between them, and the grid's lines stay as they are, so the blocks still read at a glance. A conflict's value is bold, as a given's is |
+| View | `DigitPad` | The nine digits, `FilledTonalButton`s in a 3x3 square, each in its place among a cell's small digits (`DIGIT_ROWS`, which both lay out), in the color of what they enter, as the selected cell's outline; a tap is `onDigit(digit)`. Each digit has the number of its places left (`SudokuUiState.left(digit)`) small below it, which TalkBack reads as "3 left" (the count's own content description, so it isn't a text a digit could be mistaken for). Once none are left, the digit is dimmed (to `DISABLED_ALPHA`, as a disabled button's content is) and the count is left out, but the button stays enabled, so the digit can still be entered, as a guess or to try it |
 | View | `MessageArea` | The status message in a Material 3 tonal `Surface`, colored by its kind (as the terminal colors it, successes and hints in the solved value's blue, everything else in yellow, from `GameColors`), always three lines of text tall (the text style's line height, so it follows the player's font size), so neither a blank message nor a long one moves the pad. A longer message scrolls inside it (`verticalScroll(rememberScrollState())`), from its top for each new message |
 | View | `GameTopBar` | A Material 3 `TopAppBar`, titled with the app's name (`R.string.app_name`, "Sudoku Solver", as on the splash and under the app's icon), whose one action is the overflow button (⋮, a Material Symbols vector drawable in `res/drawable`) opening a `DropdownMenu` with New puzzle, enabled once the game has started or failed. Whether the menu is open is kept in the composable (`remember`), as Google's guide on state hoisting allows for UI element state with no logic behind it; it closes on a rotation, as menus do. It is placed in the content, above the board or beside it, so it adds no window insets of its own (`windowInsets = WindowInsets(0.dp)`): the `Scaffold` has already padded the content clear of the system bars |
 | View | `ConfirmDialog` | The game's yes/no question, an `AlertDialog` with Yes and No |
 | View | `InformDialog` | An `AlertDialog` with the game's message and one button, OK. A warning is titled "Warning", and the text has its kind's color, as on the status line. Tapping outside the dialog, or Back, counts as OK, since the game only waits until the message has been seen |
 | View | `NewPuzzleDialog` | An `AlertDialog`, "Start a new puzzle? The one in progress will be lost.", with Start new and Cancel; shown while `SudokuUiState.askingNewPuzzle` |
 | ViewModel | `SudokuViewModel` | `uiState` combines `repository.state` with the screen's own state (whether New puzzle is asking, and the `next` route) into `SudokuUiState`, `.stateIn(viewModelScope, WhileSubscribed(5 s))`; each intent is `viewModelScope.launch { repository.act(...) }`; `onStopped()` asks the repository to save the game; `factory(layout)` gets the game on that layout, and the layouts' repository, from the app's container. `onNewPuzzle()` asks first when the board has values, else goes on at once; once the player goes on (`onNewPuzzleAnswer(true)`), it ends the game with `FORCE_QUIT` (unless the game has failed, when it has already ended), reads the layouts, waits for the game to end, and sets `next` to `Route.toStart(layouts)`: with the auto-save gone, that is the picker, or a new game on the only layout. `onInformed()` gives the game the player's OK, as `repository.answer(true)`. `onUndo()`, `onRewind()` and `onErase()` act `UNDO`, `REWIND` and `DEL`. Whether Guess is on is kept in a `MutableStateFlow`, combined into `uiState` with the rest: `onGuessToggled()` flips it, and `onDigit()` acts `GUESS` while `guessing`, else `VALUE`. It is one-shot, like Shift: a digit and every command (`command()`: Undo, Rewind, Erase, the mode switch, and New puzzle) turn it off, a tap on a cell doesn't; and as the ViewModel's, it stays on through a rotation. The digits left are derived from the state it already produces |
-| ViewModel | `SudokuUiState` | The game's state, plus what the screen works out from it: the mode switch, `canStartNew` (the game has started or failed), `askingNewPuzzle`, and `next`, the route that replaces the game, null until a new puzzle has been asked for and the game has ended. `offers(action)`, whether the mode offers the action, for the commands' enabled state; and `guessOn` with `guessing`: Guess is on, and the mode offers `GUESS`. `entering`, the kind of value the pad enters: a given (`INITIAL`) in setup, a `GUESS` while guessing, else a `TYPED` value; the pad and the outline take its color. `left(digit)`, how many places the digit has left: one in each row of the board, less the cells holding it, whatever their kind or conflict, and never fewer than none. It is derived from `game.cells`, not kept, so it always matches the board |
+| ViewModel | `SudokuUiState` | The game's state, plus what the screen works out from it: the mode switch, `canStartNew` (the game has started or failed), `askingNewPuzzle`, and `next`, the route that replaces the game, null until a new puzzle has been asked for and the game has ended. `offers(action)`, whether the mode offers the action, for the commands' enabled state; and `guessOn` with `guessing`: Guess is on, and the mode offers `GUESS`. `entering`, the kind of value the pad enters: a given (`INITIAL`) in setup, a `GUESS` while guessing, else a `TYPED` value; the pad and the outlines take its color. `outlined(position)`, the sides of a cell along which the selected cell and its related cells are outlined together: those of a cell among them that face one that isn't, or the board's edge; none for a cell that isn't. `left(digit)`, how many places the digit has left: one in each row of the board, less the cells holding it, whatever their kind or conflict, and never fewer than none. It is derived from `game.cells`, not kept, so it always matches the board |
 | ViewModel | `SudokuIntents` | What the player can do on the screen: a tap on a cell or a digit, the commands, the Guess toggle, the mode switch, the dialogs' answers, and New puzzle |
 | Data source | `GameAction`, `GameMode`, `Conflict` | `GameNames.kt`: the game's names, as Kotlin enums. `GameAction` is the game's actions the app uses: `FORCE_QUIT` stops the game at once, without the game's own "Really quit?". `GameMode` is the game's modes, `SETUP` and `PLAY` (`game/actions.py`'s `Mode`), which the mode switch picks its segment by. `Conflict`, a cell's conflict mark (`game/cell_attrs.py`): `CONFLICTING`, the value just entered clashes with a related cell, `CONFLICTED`, a value it clashes with, or `NONE` |
 | Data layer | `GameRepository` | The one way to the game, in an app-long scope: `state = events.runningFold(GameState()) { s, e -> s.after(e) }.stateIn(scope, Eagerly)`; `act()` and `answer()` run on `Dispatchers.IO`, one at a time, so they keep their order. `save()` doesn't wait: it launches the save in the app-long scope, on the same one-at-a-time dispatcher, so it isn't canceled when Back clears the ViewModel right after `ON_STOP`, and it comes after the actions already made |
@@ -368,7 +370,7 @@ its data sources. The Python game is at the bottom, as the source of truth for t
 | View test | `SudokuScreenTest` | Compose UI tests of `SudokuScreen` (see Testing the screen), each showing the screen with a `SudokuUiState` it makes, and checking what the player sees and which intents a tap calls |
 | View test | `RecordingIntents` | `SudokuIntents` that record each call, for the tests to check, as `FakeGame` records the actions |
 | Python | `Screen` | `ui/android/screen.py`: the screen as `AndroidUI` sees it, which `PythonScreen` implements. `questionAnswered()` ends a `confirm()` or an `inform()`. `showCell()`'s `conflict` is a `CellAttrs` conflict mark, or "", and `showSelected()`'s `related` the related cells |
-| Python | `AndroidUI` | The port's adapter (`ui/android/`); it shows a cell's conflict mark as it is, and the selected cell with its related cells (`game.related_cells()`): `act()` and `save()` → one requests queue → `play()`, so a save never lands in the middle of a move; an action goes to `puzzle.handle()`, a save to `AutoSave`. `play()` has `AutoSave` restore the game first, and forget it once the game is over; `confirm()` waits for `answer()`, then reports `questionAnswered()`. `inform()` does the same: it has the screen show the message (`showInform()`), waits for the OK, then reports `questionAnswered()`. A broken action is reported through `inform()`, as the terminal waits for a key, not on the status line. `answer()` puts an `Answer` on the one requests queue, and a dialog's wait takes requests off it, as `play()` does, until one ends it; the actions it holds are kept for `play()`, which carries them out first, in order. `play()` keeps the game it plays, so a wait can save it. `guess_depth_changed()` warns through `inform()` when guesses go from within the screen's shades of gray to deeper than the last, with the terminal's words, "No more shades of gray left - repeating last shade."; like any `inform()`, it waits for the OK |
+| Python | `AndroidUI` | The port's adapter (`ui/android/`); it shows a cell's conflict mark as it is, and the selected cell with its related cells (`game.related_cells()`): `act()` and `save()` → one requests queue → `play()`, so a save never lands in the middle of a move; an action goes to `puzzle.handle()`, a save to `AutoSave`. `play()` has `AutoSave` restore the game first, and forget it once the game is over; `confirm()` waits for `answer()`, then reports `questionAnswered()`. `inform()` does the same: it has the screen show the message (`showInform()`), waits for the OK, then reports `questionAnswered()`. A broken action is reported through `inform()`, as the terminal waits for a key, not on the status line. `answer()` puts an `Answer` on the one requests queue, and a dialog's wait takes requests off it, as `play()` does, until one ends it; the actions it holds are kept for `play()`, which carries them out first, in order. `play()` keeps the game it plays, so a wait can save it. `guess_depth_changed()` warns through `inform()` when guesses go from within the screen's shades of gray to deeper than the last, with the terminal's words, "No more shades of gray left - repeating last shade."; like any `inform()`, it waits for the OK. `switching_to(mode)` tells the game how the player switches to the mode, for its warnings: "tap Setup to go back to setup", "tap Play to start playing", where the terminal says ESC |
 | Python | `Request`, `Act`, `Save`, `Answer` | `ui/android/requests.py`, what the requests queue holds. Each says what it does in play (`in_play(game)`) and while a dialog waits (`while_waiting(game, held)`, which returns the answer once one ends the wait, else None). `Act` (the player's action) is carried out in play, and held while a dialog waits. `Save` is carried out at once either way, so a save at `ON_STOP` isn't lost behind an open dialog. `Answer(yes)` ends the wait with the player's answer; in play it is dropped, as no dialog waits for it (a second tap on OK). A new kind of request is a new class, with `play()` and the wait unchanged. Saving in a wait is safe because the game asks and informs only before or after a change to the puzzle, never in the middle of one |
 | Python | `AutoSave` | `ui/android/auto_save.py`: the game in progress, in the file it is given, read and written through `SaveFile`. `restore()` restores the file's puzzle into the game, or warns why it can't (damaged, from a newer version, or on another layout) and leaves the file alone; `save()` writes the game when the board has values; `forget()` deletes the file once the game is over. A file it couldn't read is overwritten only once the player has something to save, and is never deleted, so the player can still install a newer version or keep the file |
 | Python | `SaveFile` | The game's save files (`game/save_file.py`), the same format as on the PC |
@@ -393,7 +395,7 @@ a value the composition passes down to every composable inside it, without a par
 The colors, and what they are in the terminal, are in `../CLAUDE.md`'s Design decisions (Colors). Each is chosen
 so that it reads on everything it can be drawn on, which `GameColorsTest` checks:
 
-- a value at least 3:1 against its background (WCAG's ratio for large text), with the highlight over it or not;
+- a value at least 3:1 against its background (WCAG's ratio for large text);
 - the pad's digits, in each kind's color it enters, the same 3:1 against the pad's keys;
 - the small possible values and the messages at least 4.5:1 (WCAG's ratio for body text).
 
@@ -415,7 +417,7 @@ sequenceDiagram
     B-->>UI: the positions of the 20 cells in its block, row and column
     UI->>PS: showSelected(2, 7, related)
     PS-->>S: GameEvent.Selected(position, related), through the repository and the ViewModel
-    Note over S: the cell outlined, it and its related cells highlighted
+    Note over S: the cell outlined, and it and its related cells outlined together
 ```
 
 The related cells are the game's to say, as in other layouts a block need not be a regular 3x3 box.
@@ -760,10 +762,6 @@ flowchart TB
     AboutViewModel -. "StateFlow‹AboutUiState›" .-> AboutScreen
     AboutViewModel -- "notice()" --> CopyrightRepository
 
-    classDef new fill:#2e7d32,stroke:#a5d6a7,stroke-width:2px,color:#ffffff
-    classDef changed fill:#b45309,stroke:#fcd34d,stroke-width:2px,color:#ffffff
-    class HowToPlayScreen,UpTopBar,Strings,AboutScreen,AboutViewModel,AboutUiState,BuildConfig new
-    class SudokuApp changed
 ```
 
 | Layer | Class | What it does |
@@ -845,7 +843,7 @@ flowchart LR
     Password --> Release
     Debug -- "app-debug.apk" --> Emulator["the emulator, and the tests"]
     Release -- "app-release.apk" --> Phone["Tony's phone"]
-    Release -- "app-release.apk, step 10d" --> GitHub["a GitHub Release *(10d)"]
+    Release -- "app-release.apk, step 10e" --> GitHub["a GitHub Release *(10e)"]
 
 ```
 

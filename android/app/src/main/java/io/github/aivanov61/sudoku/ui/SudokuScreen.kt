@@ -57,6 +57,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -86,14 +87,18 @@ import io.github.aivanov61.sudoku.game.Position
 import io.github.aivanov61.sudoku.ui.theme.GameColors
 import io.github.aivanov61.sudoku.ui.theme.SudokuTheme
 
-/** The narrowest the controls can be beside the board: the digit pad's nine buttons, and the space between them */
+/** The narrowest the controls can be beside the board: the commands, and the digit pad's three buttons across */
 private val MIN_CONTROLS_WIDTH = 300.dp
+
+/** The digits in each row of a 3x3 square, as both a cell's small digits and the digit pad lay them out */
+private val DIGIT_ROWS = listOf(1..3, 4..6, 7..9)
 
 /** How much of its color a disabled control keeps, as Material 3's own components do; a digit with none left too */
 private const val DISABLED_ALPHA = 0.38f
 
-/** How thick the selected cell's outline is */
-private val SELECTED_OUTLINE = 2.5.dp
+/** How thick the selected cell's outline is, and the band that outlines it and its related cells together */
+private val SELECTED_OUTLINE = 3.dp
+private val RELATED_OUTLINE = 2.dp
 
 /** How thick the lines are between the blocks, and between the cells within a block */
 private val BLOCK_EDGE = 2.5.dp
@@ -164,7 +169,7 @@ private fun Stacked(state: SudokuUiState, intents: SudokuIntents, topBar: @Compo
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 val boardModifier = Modifier.weight(1f, fill = false).aspectRatio(size.cols.toFloat() / size.rows)
-                Board(size, state.game, state.entering, intents::onCellTapped, boardModifier)
+                Board(size, state, intents::onCellTapped, boardModifier)
                 Controls(state, intents, Modifier.fillMaxWidth())
             }
         }
@@ -180,13 +185,18 @@ private fun Notice(text: String, modifier: Modifier, color: Color = Color.Unspec
 }
 
 /**
- * The cells, the selected one outlined in the color of the kind of value the pad enters ([entering]), and it and its
- * related cells highlighted
+ * The cells, and in the color of the kind of value the pad enters, the selected one outlined, and it and its related
+ * cells outlined together
  */
 @Composable
-private fun Board(size: BoardSize, game: GameState, entering: CellKind, onTap: (Position) -> Unit, modifier: Modifier) {
-    val outline = SudokuTheme.gameColors.values.of(entering)
-    Column(modifier) {
+private fun Board(size: BoardSize, state: SudokuUiState, onTap: (Position) -> Unit, modifier: Modifier) {
+    val game = state.game
+    val outline = SudokuTheme.gameColors.values.of(state.entering)
+    val board = modifier.drawWithContent {
+        drawContent()
+        drawRelatedOutline(size, state, outline)
+    }
+    Column(board) {
         for (row in 0 until size.rows) {
             Row(Modifier.weight(1f)) {
                 for (col in 0 until size.cols) {
@@ -196,22 +206,21 @@ private fun Board(size: BoardSize, game: GameState, entering: CellKind, onTap: (
                         .fillMaxSize()
                         .clickable { onTap(position) }
                         .semantics { contentDescription = "Row ${row + 1}, column ${col + 1}" }
-                    val isSelected = position == game.selected
-                    Cell(game.cells[position], if (isSelected) outline else null, isSelected || position in game.related, modifier)
+                    Cell(game.cells[position], if (position == game.selected) outline else null, modifier)
                 }
             }
         }
     }
 }
 
-/** A cell in the game's colors, with the highlight when [isRelated] to the selected one, and outlined in [outline] if any */
+/** A cell in the game's colors, outlined in [outline] if any */
 @Composable
-private fun Cell(cell: CellState?, outline: Color?, isRelated: Boolean, modifier: Modifier) {
+private fun Cell(cell: CellState?, outline: Color?, modifier: Modifier) {
     val colors = MaterialTheme.colorScheme
     val gameColors = SudokuTheme.gameColors
     Box(
         modifier = modifier
-            .background(gameColors.background(cell, isRelated))
+            .background(gameColors.background(cell))
             .drawBehind { drawEdges(cell?.edges.orEmpty(), colors.onSurface) }
             .then(if (outline != null) Modifier.border(SELECTED_OUTLINE, outline) else Modifier),
         contentAlignment = Alignment.Center,
@@ -230,23 +239,49 @@ private fun Cell(cell: CellState?, outline: Color?, isRelated: Boolean, modifier
     }
 }
 
-/** Thin lines around every cell, thick ones on the sides that are block edges */
+/** Thin lines around every cell, thick ones on the sides that are block edges ([edges]) */
 private fun DrawScope.drawEdges(edges: Set<Edge>, color: Color) {
     val (w, h) = size.width to size.height
-    fun width(edge: Edge) = (if (edge in edges) BLOCK_EDGE else CELL_EDGE).toPx()
-    drawLine(color, Offset(0f, 0f), Offset(w, 0f), width(Edge.TOP))
-    drawLine(color, Offset(0f, h), Offset(w, h), width(Edge.BOTTOM))
-    drawLine(color, Offset(0f, 0f), Offset(0f, h), width(Edge.LEFT))
-    drawLine(color, Offset(w, 0f), Offset(w, h), width(Edge.RIGHT))
+    drawLine(color, Offset(0f, 0f), Offset(w, 0f), edgeWidth(Edge.TOP, edges))
+    drawLine(color, Offset(0f, h), Offset(w, h), edgeWidth(Edge.BOTTOM, edges))
+    drawLine(color, Offset(0f, 0f), Offset(0f, h), edgeWidth(Edge.LEFT, edges))
+    drawLine(color, Offset(w, 0f), Offset(w, h), edgeWidth(Edge.RIGHT, edges))
+}
+
+/** How thick the line on the side of a cell is: a block edge's, if it is one of the cell's [edges], else a cell's */
+private fun DrawScope.edgeWidth(edge: Edge, edges: Set<Edge>): Float = (if (edge in edges) BLOCK_EDGE else CELL_EDGE).toPx()
+
+/**
+ * The band, [RELATED_OUTLINE] wide, that outlines the selected cell and its related cells together: inside them, just
+ * within the grid's lines, on their [SudokuUiState.outlined] sides.  The board draws it over the cells, so it runs
+ * unbroken across the lines between them.
+ */
+private fun DrawScope.drawRelatedOutline(board: BoardSize, state: SudokuUiState, color: Color) {
+    val (cellWidth, cellHeight) = size.width / board.cols to size.height / board.rows
+    val band = RELATED_OUTLINE.toPx()
+    for (position in state.game.related + state.game.selected) {
+        val (left, top) = position.col * cellWidth to position.row * cellHeight
+        val (right, bottom) = left + cellWidth to top + cellHeight
+        val edges = state.game.cells[position]?.edges.orEmpty()
+        for (edge in state.outlined(position)) {
+            val inset = edgeWidth(edge, edges) / 2 + band / 2  // the band's middle, from the middle of the grid's line
+            when (edge) {
+                Edge.TOP -> drawLine(color, Offset(left, top + inset), Offset(right, top + inset), band)
+                Edge.BOTTOM -> drawLine(color, Offset(left, bottom - inset), Offset(right, bottom - inset), band)
+                Edge.LEFT -> drawLine(color, Offset(left + inset, top), Offset(left + inset, bottom), band)
+                Edge.RIGHT -> drawLine(color, Offset(right - inset, top), Offset(right - inset, bottom), band)
+            }
+        }
+    }
 }
 
 /** The possible values in small digits, each in its place of a 3x3 square */
 @Composable
 private fun PossibleValues(possible: Set<Int>, color: Color) {
     Column(Modifier.fillMaxSize().padding(2.dp)) {
-        for (first in listOf(1, 4, 7)) {
+        for (digits in DIGIT_ROWS) {
             Row(Modifier.weight(1f)) {
-                for (digit in first until first + 3) {
+                for (digit in digits) {
                     Box(Modifier.weight(1f).fillMaxSize(), contentAlignment = Alignment.Center) {
                         if (digit in possible) {
                             Text(digit.toString(), fontSize = 9.sp, lineHeight = 9.sp, color = color)
@@ -258,13 +293,19 @@ private fun PossibleValues(possible: Set<Int>, color: Color) {
     }
 }
 
-/** What goes below or beside the board: the message area, the command palette, and the digit pad, nearest the thumb */
+/**
+ * What goes below or beside the board: the message area, the mode switch, and nearest the thumb, the commands and,
+ * on their right, the digit pad
+ */
 @Composable
 private fun Controls(state: SudokuUiState, intents: SudokuIntents, modifier: Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(12.dp)) {
         MessageArea(state.game.message)
-        CommandPalette(state, intents)
-        DigitPad(state::left, SudokuTheme.gameColors.values.of(state.entering), intents::onDigit)
+        ModeSwitch(state.game.mode, intents::onSwitchMode)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            CommandPalette(state, intents, Modifier.weight(1f))
+            DigitPad(state::left, SudokuTheme.gameColors.values.of(state.entering), intents::onDigit, Modifier.weight(1f))
+        }
     }
 }
 
@@ -300,19 +341,23 @@ private fun MessageArea(status: GameMessage) {
 private fun messageColor(kind: MessageKind): Color = SudokuTheme.gameColors.message(kind)
 
 /**
- * The nine digits, in the [color] of the kind of value they enter, each with how many places it has left ([left]);
- * every digit can be entered, even with none left
+ * The nine digits in a 3x3 square, each in the place it has among a cell's small digits, in the [color] of the kind
+ * of value they enter, each with how many places it has left ([left]); every digit can be entered, even with none left
  */
 @Composable
-private fun DigitPad(left: (Int) -> Int, color: Color, onDigit: (Int) -> Unit) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        for (digit in 1..9) {
-            FilledTonalButton(
-                onClick = { onDigit(digit) },
-                modifier = Modifier.weight(1f),
-                contentPadding = PaddingValues(0.dp),
-            ) {
-                DigitKey(digit, left(digit), color)
+private fun DigitPad(left: (Int) -> Int, color: Color, onDigit: (Int) -> Unit, modifier: Modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        for (digits in DIGIT_ROWS) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                for (digit in digits) {
+                    FilledTonalButton(
+                        onClick = { onDigit(digit) },
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(0.dp),
+                    ) {
+                        DigitKey(digit, left(digit), color)
+                    }
+                }
             }
         }
     }
@@ -336,20 +381,23 @@ private fun DigitKey(digit: Int, left: Int, color: Color) {
     }
 }
 
-/** The game-play buttons: the mode switch, and below it the commands and the Guess toggle */
+/**
+ * The game-play commands, two by two: Undo and Erase, and below them Rewind beside the Guess toggle, as Rewind takes
+ * back to the last guess
+ */
 @Composable
-private fun CommandPalette(state: SudokuUiState, intents: SudokuIntents) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        ModeSwitch(state.game.mode, intents::onSwitchMode)
-        val commands = listOf(
-            Command("Undo", R.drawable.ic_undo, GameAction.UNDO, intents::onUndo),
-            Command("Rewind", R.drawable.ic_fast_rewind, GameAction.REWIND, intents::onRewind),
-            Command("Erase", R.drawable.ic_ink_eraser, GameAction.DEL, intents::onErase),
-        )
+private fun CommandPalette(state: SudokuUiState, intents: SudokuIntents, modifier: Modifier) {
+    val undo = Command("Undo", R.drawable.ic_undo, GameAction.UNDO, intents::onUndo)
+    val erase = Command("Erase", R.drawable.ic_ink_eraser, GameAction.DEL, intents::onErase)
+    val rewind = Command("Rewind", R.drawable.ic_fast_rewind, GameAction.REWIND, intents::onRewind)
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(Modifier.fillMaxWidth()) {
-            for (command in commands) {
+            for (command in listOf(undo, erase)) {
                 CommandButton(command, enabled = state.offers(command.action), Modifier.weight(1f))
             }
+        }
+        Row(Modifier.fillMaxWidth()) {
+            CommandButton(rewind, enabled = state.offers(rewind.action), Modifier.weight(1f))
             GuessToggle(state.guessing, state.offers(GameAction.GUESS), intents::onGuessToggled, Modifier.weight(1f))
         }
     }
@@ -444,7 +492,7 @@ private fun SideBySide(
     Row(Modifier.padding(8.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         val ratio = size.cols.toFloat() / size.rows
         val boardModifier = Modifier.fillMaxHeight().aspectRatio(ratio, matchHeightConstraintsFirst = true)
-        Board(size, state.game, state.entering, intents::onCellTapped, boardModifier)
+        Board(size, state, intents::onCellTapped, boardModifier)
         Column(
             modifier = Modifier.weight(1f),
             horizontalAlignment = Alignment.CenterHorizontally,

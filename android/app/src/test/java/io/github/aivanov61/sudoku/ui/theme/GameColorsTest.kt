@@ -38,39 +38,32 @@ class GameColorsTest {
 
     @Test
     fun aCellOutsideAnyGuessLetsTheBoardShowThrough() {
-        assertEquals(Color.Transparent, colors.background(cell(), related = false))
+        assertEquals(Color.Transparent, colors.background(cell()))
     }
 
     @Test
     fun eachGuessDeeperHasTheNextShade() {
-        val shades = (1..GameColors.GUESS_SHADES).map { colors.background(cell(depth = it), related = false) }
+        val shades = (1..GameColors.GUESS_SHADES).map { colors.background(cell(depth = it)) }
         assertEquals(colors.guessShades, shades)
     }
 
     @Test
     fun guessesDeeperThanTheLastShadeRepeatIt() {
-        val deeper = colors.background(cell(depth = GameColors.GUESS_SHADES + 1), related = false)
+        val deeper = colors.background(cell(depth = GameColors.GUESS_SHADES + 1))
         assertEquals(colors.guessShades.last(), deeper)
     }
 
     @Test
-    fun aGivenIsOnItsOwnBackground() {
-        assertEquals(colors.givenBackground, colors.background(cell(CellKind.INITIAL), related = false))
+    fun aGivenLetsTheBoardShowThrough() {
+        assertEquals(Color.Transparent, colors.background(cell(CellKind.INITIAL)))
     }
 
     @Test
     fun aConflictShowsOverTheKindAndTheShade() {
         val conflicting = cell(CellKind.INITIAL, Conflict.CONFLICTING)
         val conflicted = cell(CellKind.GUESS, Conflict.CONFLICTED, depth = 2)
-        assertEquals(colors.conflictingBackground, colors.background(conflicting, related = false))
-        assertEquals(colors.conflictedBackground, colors.background(conflicted, related = false))
-    }
-
-    @Test
-    fun aRelatedCellHasTheHighlightOverItsOwnBackground() {
-        val guess = cell(CellKind.GUESS, depth = 3)
-        assertEquals(colors.highlight.compositeOver(colors.guessShades[2]), colors.background(guess, related = true))
-        assertEquals(colors.highlight, colors.background(cell(), related = true))
+        assertEquals(colors.conflictingBackground, colors.background(conflicting))
+        assertEquals(colors.conflictedBackground, colors.background(conflicted))
     }
 
     @Test
@@ -111,20 +104,14 @@ class GameColorsTest {
     @Test
     fun everyValueReadsOnEveryBackgroundItCanBeDrawnOn() {
         assertReadable(VALUE_CONTRAST) { gameColors, scheme ->
-            everyCell().flatMap { cell ->
-                listOf(false, true).map { related ->
-                    Triple("$cell, related $related", gameColors.value(cell), gameColors.background(cell, related).over(scheme))
-                }
-            }
+            everyCell().map { cell -> Triple("$cell", gameColors.value(cell), gameColors.background(cell).over(scheme)) }
         }
     }
 
     @Test
     fun thePossibleValuesReadOnAnEmptyCell() {
         assertReadable(TEXT_CONTRAST) { gameColors, scheme ->
-            listOf(false, true).map { related ->
-                Triple("related $related", scheme.onSurfaceVariant, gameColors.background(cell(), related).over(scheme))
-            }
+            listOf(Triple("empty", scheme.onSurfaceVariant, gameColors.background(cell()).over(scheme)))
         }
     }
 
@@ -148,12 +135,17 @@ class GameColorsTest {
     private fun cell(kind: CellKind = CellKind.TYPED, conflict: Conflict = Conflict.NONE, depth: Int = 0) =
         CellState(5, kind, conflict, depth, emptySet(), emptySet())
 
-    /** A cell of every kind, conflict and guess depth, one deeper than the last shade too */
+    /**
+     * A cell of every kind, conflict and guess depth, one deeper than the last shade too; a given only outside any
+     * guess, as givens are entered in setup, where there are no guesses
+     */
     private fun everyCell() = CellKind.entries.flatMap { kind ->
         Conflict.entries.flatMap { conflict ->
-            (0..GameColors.GUESS_SHADES + 1).map { depth -> cell(kind, conflict, depth) }
+            depths(kind).map { depth -> cell(kind, conflict, depth) }
         }
     }
+
+    private fun depths(kind: CellKind) = if (kind == CellKind.INITIAL) 0..0 else 0..GameColors.GUESS_SHADES + 1
 
     /** The color as it shows on the theme's surface, which shows through where it is see-through */
     private fun Color.over(scheme: ColorScheme) = compositeOver(scheme.surface)

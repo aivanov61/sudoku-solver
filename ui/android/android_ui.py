@@ -50,6 +50,8 @@ class AndroidUI:
     through steps are not offered.
     """
 
+    SWITCHING_TO = {Mode.SETUP: "tap Setup to go back to setup", Mode.PLAY: "tap Play to start playing"}  # how the player switches to each mode
+
     def __init__(self, screen: Screen, auto_save_path: str, shades: int) -> None:
         self.__screen = screen
         self.__shades = shades  # the shades of gray the screen has for guess depths
@@ -140,6 +142,10 @@ class AndroidUI:
 
     def mode_changed(self, mode: Mode, actions: tuple[Action, ...]) -> None:
         self.__screen.modeChanged(mode.value, [action.value for action in actions])
+
+    def switching_to(self, mode: Mode) -> str:
+        """A tap on the mode's segment of the screen's mode switch"""
+        return self.SWITCHING_TO[mode]
 
     # Private functions
 

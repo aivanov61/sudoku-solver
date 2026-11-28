@@ -107,8 +107,9 @@ and the splash and the top app bar read it with `stringResource()`. "Sudoku" sti
 
 Every screen is shown in `SudokuTheme` (`ui/theme/`): Material 3's light or dark color scheme, as the phone is set,
 and `GameColors`, the terminal's colors made readable on each (see Design decisions, Colors), which it provides
-through a `CompositionLocal`. The selected cell is outlined, over a highlight of its related cells (its block, row
-and column), which the game reports with it (`Puzzle.related_cells()`), as only the game knows a layout's blocks.
+through a `CompositionLocal`. The selected cell is outlined, and so are it and its related cells (its block, row and
+column) taken together, by a band just inside the grid's lines around them (`SudokuUiState.outlined()`); the game
+reports them with it (`Puzzle.related_cells()`), as only the game knows a layout's blocks.
 
 The game in progress is auto-saved to the app's own storage (`filesDir/autosave.json`, an ordinary save file):
 the `Game` entry saves it whenever the app is stopped (`LifecycleEventEffect(ON_STOP)`), since Android may then end
@@ -186,8 +187,10 @@ The Kotlin code, in three packages, wired together by the app's container:
   the layouts from the `LayoutRepository` to work `next` out once the game has ended. `SudokuScreen` is stateless:
   a Material 3 `Scaffold` around the game and its top app bar (`GameTopBar`, the overflow menu with New puzzle).
 
-  The command palette has a Setup | Play segmented button (the mode the game last reported), and Undo, Rewind,
-  Erase and Guess, each an icon with its label, disabled when the mode doesn't offer it.
+  Below the message area, a Setup | Play segmented button (the mode the game last reported); below it, the command
+  palette on the left, two by two (Undo and Erase, then Rewind beside Guess), each an icon with its label, disabled
+  when the mode doesn't offer it, and on the right the digit pad, 3x3, each digit in its place among a cell's small
+  digits.
 
   Guess is one-shot, like Shift: the next digit or command turns it off. Whether it is on is the ViewModel's
   (`guessOn`), so it stays on through a rotation. A guess's cell is shaded by its depth in `GameColors`' guess shades,
@@ -241,6 +244,9 @@ can still install a newer version or keep the file.
 
 `guess_depth_changed()` warns through `inform()` when guesses go deeper than the screen's shades of gray, whose
 number `AndroidUI` is given, as the terminal warns.
+
+`switching_to()` tells the game how the player switches modes ("tap Setup to go back to setup"), for its warnings,
+where the terminal says ESC.
 
 `confirm()` and `inform()` wait on the same queue, until an `Answer`, then report `questionAnswered()`. A save that
 comes meanwhile is carried out at once, as Android may end the app before the dialog is answered, and an action is
@@ -314,7 +320,8 @@ Each phase is one Android concept. **Pair** marks the phases Tony writes himself
 | 10a | Theming: light and dark, a design system's own colors | The terminal's colors, the selected cell outlined over its related cells |
 | 10b | Building and installing an APK; Gradle's configuration cache | Finishing touches (thicker block lines, dimmed givens in the dark, the pad and the outline in the color of what the pad enters), the configuration cache turned on (if Chaquopy's tasks allow it), and the app on Tony's phone |
 | 10c | Pushing screens onto the back stack; Up versus Back | How to play and About (the app's version and the copyright) in the top app bar's menu, each a screen of its own |
-| 10d | An Android project's README: what to install, how to build, and how to put the app on a phone | `android/README.md`, like the repository's own `README.md`, for the Android app in place of the terminal; tag `mvp1` |
+| 10d | Derived UI state, continued | Finishing touches from playing it: warnings that name the app's controls rather than the terminal's keys, typed values green and guesses orange (in the terminal too), the related cells outlined rather than tinted, a 3x3 pad beside the commands, Rewind beside Guess |
+| 10e | An Android project's README: what to install, how to build, and how to put the app on a phone | `android/README.md`, like the repository's own `README.md`, for the Android app in place of the terminal; tag `mvp1` |
 
 Branches are named `mvp<n>-phase<m>-<topic>`, e.g. `mvp1-phase1-data-layer`.
 
@@ -333,7 +340,7 @@ Branches are named `mvp<n>-phase<m>-<topic>`, e.g. `mvp1-phase1-data-layer`.
 
    The unit tests run at every step. The Compose UI tests take minutes on the emulator, so they run only when a
    change touches a screen or its tests, and always before a commit.
-4. Try it on the emulator. Tony tries it on his phone once all of a stage's steps are done (10a to 10d for MVP 1).
+4. Try it on the emulator. Tony tries it on his phone once all of a stage's steps are done (10a to 10e for MVP 1).
 5. Commit once Tony has tried it and says so.
 6. Fast-forward main and push only on his word, then delete the branch.
 
@@ -366,15 +373,15 @@ closely; where a terminal color doesn't read on the theme's background, the app 
 
 | Meaning | Terminal | Light theme | Dark theme |
 |---|---|---|---|
-| A given | purple on lavender | purple `#A020F0`, bold, on lavender `#E6E6FA` | a lighter purple `#D8A8FF`, bold, on lavender dimmed to `#44445A` |
-| A typed value | darkorange3 `#CD6600` | a darker orange, `#9C4A00` | orange `#FFA500` |
-| A guessed value | green | dark green `#1B5E20` | limegreen `#32CD32` |
+| A given | purple on lavender | purple `#A020F0`, bold, on the board's own color | a lighter purple `#D8A8FF`, bold, on the board's own color |
+| A typed value | green | dark green `#1B5E20` | limegreen `#32CD32` |
+| A guessed value | darkorange3 `#CD6600` | a darker orange, `#9C4A00` | orange `#FFA500` |
 | A solved value | lightskyblue `#87CEFA` | a darker sky blue, `#01579B` | lightskyblue |
 | The value just entered that clashes (conflicting) | bold red on bright yellow | red `#C50F1F`, bold, on bright yellow `#F9F1A5` | the same |
 | A value it clashes with (conflicted) | its own color on yellow | its own color, bold, on `#F5D547` | the same, in the light theme's colors |
-| Guess depth | shades of gray, lighter each guess (away from black) | 8 shades, darker each guess, `#F2F2F2` to `#C8C8C8` | 8 shades, lighter each guess, `#242424` to `#474747`, so a guess still reads on the last under the highlight |
+| Guess depth | shades of gray, lighter each guess (away from black) | 8 shades, darker each guess, `#F4F4F4` to `#B5B5B5` (the darkest the guessed orange reads on) | 8 shades, lighter each guess, `#262626` to `#5E5E5E` (the lightest limegreen reads on) |
 | The selected cell, and the pad's digits | the terminal's cursor | an outline, and digits, in the color of what the pad enters: a given's in setup, a typed value's in play, a guessed value's while Guess is on | the same |
-| The selected cell's block, row and column | (none) | a faint tint of `primary` over the cell's own background | white at 12% over it, to stand out from the black |
+| The selected cell's block, row and column | (none) | outlined together, in the selected cell's color, by a 2 dp band just inside the grid's lines, which stay as they are; the selected cell's own outline is 3 dp | the same |
 | Possible values | the terminal's text color | the theme's `onSurfaceVariant` | the same |
 | Grid lines | the terminal's text color | the theme's `onSurface` | the same |
 | Successes and hints | lightskyblue | the solved blue, `#01579B` | lightskyblue |

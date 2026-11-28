@@ -22,6 +22,7 @@ import io.github.aivanov61.sudoku.game.BoardSize
 import io.github.aivanov61.sudoku.game.CellKind
 import io.github.aivanov61.sudoku.game.CellState
 import io.github.aivanov61.sudoku.game.Conflict
+import io.github.aivanov61.sudoku.game.Edge
 import io.github.aivanov61.sudoku.game.GameAction
 import io.github.aivanov61.sudoku.game.GameMode
 import io.github.aivanov61.sudoku.game.Position
@@ -90,6 +91,27 @@ class SudokuUiStateTest {
         assertEquals(CellKind.GUESS, state.entering)
     }
 
+    // The outline of the selected cell and its related cells
+
+    @Test
+    fun aSelectedCellWithNoneRelatedIsOutlinedOnEverySide() {
+        assertEquals(Edge.entries.toSet(), selected(Position(4, 4)).outlined(Position(4, 4)))
+    }
+
+    @Test
+    fun theSideBetweenTwoOutlinedCellsIsNotOutlined() {
+        val state = selected(Position(4, 4), Position(4, 5))
+        assertEquals(setOf(Edge.TOP, Edge.LEFT, Edge.BOTTOM), state.outlined(Position(4, 4)))
+        assertEquals(setOf(Edge.TOP, Edge.RIGHT, Edge.BOTTOM), state.outlined(Position(4, 5)))
+    }
+
+    @Test
+    fun aCellOutsideIsNotOutlinedEvenBesideThem() {
+        val state = selected(Position(4, 4), Position(4, 5))
+        assertEquals(emptySet<Edge>(), state.outlined(Position(3, 5)))
+        assertEquals(emptySet<Edge>(), state.outlined(Position(4, 3)))
+    }
+
     // The digits left
 
     @Test
@@ -137,6 +159,10 @@ class SudokuUiStateTest {
         val all = positions.mapIndexed { index, position -> position to (cells.getOrNull(index) ?: value(null)) }
         return SudokuUiState(GameState(size = BoardSize(9, 9), cells = all.toMap()))
     }
+
+    /** A game whose selected cell is the first position given, and the rest its related cells */
+    private fun selected(selected: Position, vararg related: Position): SudokuUiState =
+        SudokuUiState(GameState(selected = selected, related = related.toSet()))
 
     private fun value(digit: Int?, kind: CellKind = CellKind.TYPED): CellState =
         CellState(digit, kind, Conflict.NONE, 0, emptySet(), emptySet())

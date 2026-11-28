@@ -76,7 +76,7 @@ A dead end is either an empty cell with no possible values left, or a value that
 
 ## Guesses
 
-When you're stuck and need to try a value, enter it as a guess with a shifted digit. Guesses are shown in green on a gray background.
+When you're stuck and need to try a value, enter it as a guess with a shifted digit. Guesses are shown in orange on a gray background.
 
 Every value you enter after a guess gets the same gray background, so you can see everything that depends on it. Each new guess makes the gray a shade lighter. If a guess turns out wrong, press `r` to rewind: everything entered after the guess is undone, and the cursor lands on the guessed cell so you can type a different guess over it. Pressing `r` again also undoes that guess and rewinds to the guess before it. After ten nested guesses there are no lighter shades left: the program warns you when you go past the last shade and then reuses it for any deeper guesses. If you undo back within the shades and later go past the last one again, it warns you again.
 
@@ -191,8 +191,8 @@ A puzzle can only be restored into the layout it was saved from. A file saved by
 | Looks like | Meaning |
 |---|---|
 | Purple on lavender | A given number from setup |
-| Orange | A value you entered |
-| Green on gray | A guess; gray backgrounds also mark values entered after a guess |
+| Green | A value you entered |
+| Orange on gray | A guess; gray backgrounds also mark values entered after a guess |
 | Light sky blue | A value filled in by `n` or `a`; "solved" on the status line |
 | Light sky blue small digits | A cell you tagged with `m` |
 | Yellow bottom line | Values were taken off this cell (see "Configuration") |

@@ -28,6 +28,9 @@ class TestDisplayRenderAttrs(TestCase):
         out = DisplayAttrs.render(dict())
         self.assertEqual(out, DisplayAttrs.DEFAULT_COLOR)
 
+    def test_a_typed_value_renders_green(self):
+        self.assertEqual(DisplayAttrs.render(()), "green")
+
     def test_unrecognized_attributes_renders_normal_terminal_output(self):
         out = DisplayAttrs.render(dict(junk1="junk", junk2=("JUNK"), junk3=DisplayAttrs.FgBgAttr(("blue"), ("red"))))
         self.assertEqual(out, DisplayAttrs.DEFAULT_COLOR)
@@ -46,9 +49,9 @@ class TestDisplayRenderAttrs(TestCase):
     def test_solved_attribute_keeps_the_guess_shading(self):
         self.assertEqual(DisplayAttrs.render((CellAttrs.SOLVED, dict(depth=1))), "lightskyblue_on_gray10")
 
-    def test_guess_attribute_renders_green(self):
+    def test_guess_attribute_renders_darkorange3(self):
         out = DisplayAttrs.render(CellAttrs.GUESS)
-        self.assertEqual(out, "green")
+        self.assertEqual(out, "darkorange3")
 
     def test_depth_attribute_that_is_not_a_dict_is_ignored(self):
         out = DisplayAttrs.render("depth")
@@ -64,13 +67,13 @@ class TestDisplayRenderAttrs(TestCase):
         out = DisplayAttrs.render(("depth", dict(depth=5), "depth"))
         self.assertEqual(out, f"{DisplayAttrs.DEFAULT_COLOR}_on_gray50")
 
-    def test_guess_seven_deep_renders_green_on_gray70(self):
+    def test_guess_seven_deep_renders_darkorange3_on_gray70(self):
         out = DisplayAttrs.render((CellAttrs.GUESS, dict(depth=7)))
-        self.assertEqual(out, "green_on_gray70")
+        self.assertEqual(out, "darkorange3_on_gray70")
 
     def test_guess_deeper_than_the_last_shade_renders_the_last_shade(self):
         out = DisplayAttrs.render((CellAttrs.GUESS, dict(depth=12)))
-        self.assertEqual(out, "green_on_gray100")
+        self.assertEqual(out, "darkorange3_on_gray100")
 
     def test_small_digits_of_an_untagged_cell_render_only_the_background(self):
         self.assertEqual(DisplayAttrs.render_small_digits((), False), "normal")
@@ -114,7 +117,7 @@ class TestDisplayRenderAttrs(TestCase):
         self.assertEqual(out, "purple_on_yellow")
 
         out = DisplayAttrs.render((CellAttrs.CONFLICTED, CellAttrs.GUESS, dict(depth=2)))
-        self.assertEqual(out, "green_on_yellow")
+        self.assertEqual(out, "darkorange3_on_yellow")
 
 
 class TestDisplayRenderBgAttrs(TestCase):

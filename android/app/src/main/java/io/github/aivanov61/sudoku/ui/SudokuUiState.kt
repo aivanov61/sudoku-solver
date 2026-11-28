@@ -19,8 +19,10 @@ package io.github.aivanov61.sudoku.ui
 
 import io.github.aivanov61.sudoku.data.GameState
 import io.github.aivanov61.sudoku.game.CellKind
+import io.github.aivanov61.sudoku.game.Edge
 import io.github.aivanov61.sudoku.game.GameAction
 import io.github.aivanov61.sudoku.game.GameMode
+import io.github.aivanov61.sudoku.game.Position
 
 /**
  * Everything the game screen shows: the game as last reported, and what the screen works out from it; and the
@@ -53,6 +55,13 @@ data class SudokuUiState(
         }
 
     /**
+     * The sides of the cell at the position along which the selected cell and its related cells, taken together, are
+     * outlined: those of a cell among them that face a cell that isn't, or the board's edge; none for a cell that isn't
+     */
+    fun outlined(position: Position): Set<Edge> =
+        if (isOutlined(position)) Edge.entries.filterNot { isOutlined(position.beside(it)) }.toSet() else emptySet()
+
+    /**
      * How many places the digit has left for the pad to show: one in each row, less the cells that hold it, whatever
      * their kind and even in conflict, as the app doesn't know the solution; never fewer than none
      */
@@ -67,4 +76,16 @@ data class SudokuUiState(
      */
     val canStartNew: Boolean
         get() = game.size != null || game.failure != null
+
+    // Private functions
+
+    private fun isOutlined(position: Position): Boolean = position == game.selected || position in game.related
+
+    /** The position on the other side of the edge, which may be off the board */
+    private fun Position.beside(edge: Edge): Position = when (edge) {
+        Edge.TOP -> Position(row - 1, col)
+        Edge.LEFT -> Position(row, col - 1)
+        Edge.RIGHT -> Position(row, col + 1)
+        Edge.BOTTOM -> Position(row + 1, col)
+    }
 }

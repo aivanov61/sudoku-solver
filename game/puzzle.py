@@ -332,7 +332,7 @@ class Puzzle:
     def __refused_while_initializing(self) -> bool:
         """Warn that a play command was used in setup mode, returning whether it was"""
         if self._initializing:
-            self.__warn("This works only while playing - ESC starts playing. ")
+            self.__warn(f"This works only while playing - {self.__ui.switching_to(Mode.PLAY)}. ")
         return self._initializing
 
     def __move(self, d_row: int, d_col: int) -> None:
@@ -360,7 +360,7 @@ class Puzzle:
         return is_actively_playing
 
     def __warn_nothing_to_undo(self) -> None:
-        self.__warn("Nothing to undo - ESC goes back to setup. ")
+        self.__warn(f"Nothing to undo - {self.__ui.switching_to(Mode.SETUP)}. ")
 
     def __solving_refused(self) -> bool:
         """Warn, returning True, if "n" or "a" cannot solve: in setup mode, or once the puzzle is complete"""
